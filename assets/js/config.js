@@ -15,7 +15,7 @@ window.SITE_CONFIG = {
   contactEmail: null, // e.g. "hello@brighttrailspublishing.com"
 
   books: {
-    "mavericks-big-snore":        { amazon: null, cover: "assets/img/covers/mavericks-big-snore.jpg", price: null },
+    "mavericks-big-snore":        { amazon: "https://www.amazon.com/dp/B0HR4T99KR", cover: "assets/img/covers/mavericks-big-snore.jpg", price: null },
     "mavericks-first-sleepover":  { amazon: null, cover: "assets/img/covers/mavericks-first-sleepover.jpg", price: null },
     "mavericks-little-rumble":    { amazon: null, cover: "assets/img/covers/mavericks-little-rumble.jpg", price: null },
     "thick-to-thin-coloring":     { amazon: null, cover: null, price: null },
