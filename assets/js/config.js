@@ -16,7 +16,7 @@ window.SITE_CONFIG = {
 
   books: {
     "mavericks-big-snore":        { amazon: null, cover: null, price: null },
-    "mavericks-first-sleepover":  { amazon: null, cover: null, price: null },
+    "mavericks-first-sleepover":  { amazon: null, cover: "assets/img/covers/mavericks-first-sleepover.jpg", price: null },
     "thick-to-thin-coloring":     { amazon: null, cover: null, price: null },
     "mindanao-tricycles":         { amazon: null, cover: null, price: null },
     "luzon-visayas-tricycles":    { amazon: null, cover: null, price: null },

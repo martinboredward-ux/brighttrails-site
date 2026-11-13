@@ -48,7 +48,7 @@
     }
     if (typeof b.cover === "string" && b.cover) {
       var img = document.createElement("img");
-      img.src = b.cover; img.alt = "Cover of " + card.querySelector("h3").textContent;
+      img.src = /^(https?:)?\/\//.test(b.cover) || b.cover.charAt(0) === "/" ? b.cover : "/" + b.cover; img.alt = "Cover of " + card.querySelector("h3").textContent;
       img.loading = "lazy";
       card.querySelector(".cover").appendChild(img);
     }
