@@ -21,6 +21,7 @@ window.SITE_CONFIG = {
     "thick-to-thin-coloring":     { amazon: null, cover: null, price: null },
     "mindanao-tricycles":         { amazon: null, cover: "assets/img/covers/mindanao-tricycles.jpg", price: null },
     "luzon-visayas-tricycles":    { amazon: null, cover: null, price: null },
+    "thanksgiving-coloring":      { amazon: null, cover: null, price: null },
     "animal-science-wild-animals":{ amazon: null, cover: null, price: "$10.99" },
     "hearth-and-holly":           { amazon: null, cover: null, price: null },
     "line-tracing-anxiety-relief":{ amazon: null, cover: null, price: null },
