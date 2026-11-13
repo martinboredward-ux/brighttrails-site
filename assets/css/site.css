@@ -1,4 +1,10 @@
 /* Bright Trails Publishing — shared styles */
+/* Fonts are self-hosted (no requests to Google). SIL Open Font License, see assets/fonts/. */
+@font-face { font-family: "Nunito"; font-style: normal; font-weight: 400; font-display: swap; src: url("/assets/fonts/nunito-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Nunito"; font-style: normal; font-weight: 700; font-display: swap; src: url("/assets/fonts/nunito-latin-700-normal.woff2") format("woff2"); }
+@font-face { font-family: "Nunito"; font-style: normal; font-weight: 800; font-display: swap; src: url("/assets/fonts/nunito-latin-800-normal.woff2") format("woff2"); }
+@font-face { font-family: "Bricolage Grotesque"; font-style: normal; font-weight: 800; font-display: swap; src: url("/assets/fonts/bricolage-grotesque-latin-800-normal.woff2") format("woff2"); }
+
 :root {
   --ink: #1B2B24;
   --forest: #15382A;
@@ -194,3 +200,12 @@ p { margin: 0; }
 .page p + p { margin-top: 12px; }
 
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+/* Forms: checkbox rows and privacy request form */
+.check-row { display: flex; gap: 10px; align-items: flex-start; font-weight: 700; color: var(--forest); }
+.check-row input { width: 22px; height: 22px; margin-top: 2px; flex: none; accent-color: var(--green); }
+.form-note { font-size: 14px; color: #5C4A1E; }
+.request-form { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; }
+.request-form label { font-weight: 800; color: var(--forest); }
+.request-form input, .request-form select, .request-form textarea { padding: 13px 14px; font-size: 16px; font-family: inherit; border: 2px solid var(--forest); border-radius: 10px; background: #fff; color: var(--ink); width: 100%; }
+.request-form button { align-self: flex-start; }

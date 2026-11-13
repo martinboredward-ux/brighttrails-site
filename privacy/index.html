@@ -4,18 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Privacy | Bright Trails Publishing</title>
-<meta name="description" content="How Bright Trails Publishing handles your information.">
+<meta name="description" content="How Bright Trails Publishing handles your personal information.">
 <link rel="canonical" href="https://brighttrailspublishing.com/privacy/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Bright Trails Publishing">
 <meta property="og:title" content="Privacy | Bright Trails Publishing">
-<meta property="og:description" content="How Bright Trails Publishing handles your information.">
+<meta property="og:description" content="How Bright Trails Publishing handles your personal information.">
 <meta property="og:url" content="https://brighttrailspublishing.com/privacy/">
 <meta name="theme-color" content="#15382A">
 <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&amp;family=Nunito:wght@400;700;800&amp;display=swap" rel="stylesheet">
+<link rel="preload" href="/assets/fonts/nunito-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/css/site.css">
 <script src="/assets/js/config.js" defer></script>
 <script src="/assets/js/site.js" defer></script>
@@ -39,18 +37,69 @@
 <main id="main">
 
 <section class="wrap page">
-  <h1>Privacy</h1>
-  <p>Last updated: November 2026.</p>
-  <h2>What we collect</h2>
-  <p>If you sign up for free printables, we collect your email address and the age group you choose. If you sponsor a classroom set, we also collect the name and message you ask us to print, and the payment provider (such as Stripe or PayPal) handles your payment details. We never see or store your card number.</p>
-  <h2>How we use it</h2>
-  <p>We use your email to send the printables you asked for, news about new books, and photos of classroom deliveries you sponsored. We don’t sell or share your information. You can unsubscribe at any time.</p>
+  <h1>Privacy policy</h1>
+  <p>Last updated: 13 November 2026.</p>
+  <p>This policy explains what personal information brighttrailspublishing.com collects, why, and what you can do about it. We follow the Philippine Data Privacy Act of 2012 and, for visitors in the European Union and the UK, the GDPR.</p>
+
+  <h2>Who we are</h2>
+  <p>Bright Trails Publishing is a family-run publisher based in the Philippines, operated by Edward J. Martimbor. We are responsible for (the “controller” of) the information described here. To reach us about privacy, use the request form at the bottom of this page.</p>
+
+  <h2>What we collect and why</h2>
+  <ul>
+    <li><strong>Free printables signup:</strong> your email address and the age group you choose, so we can send the pages you asked for. Legal basis: your request (contract) and your consent.</li>
+    <li><strong>Book news:</strong> only if you tick the box, we use your email to tell you about new books, about once a month. Legal basis: your consent, which you can withdraw at any time.</li>
+    <li><strong>Classroom set sponsors</strong> (when this opens): your name, email, and the name and message you ask us to print in the books, so we can print them and send you delivery photos. Payments are handled by Stripe or PayPal. We never see or store your card number. Legal basis: our agreement with you.</li>
+    <li><strong>Privacy requests:</strong> the details you put in the request form, so we can answer you. Legal basis: our legal obligations.</li>
+    <li><strong>Basic server logs:</strong> our host, Netlify, briefly records technical data such as IP addresses to keep the site running and secure. Legal basis: legitimate interest in a working, secure website.</li>
+  </ul>
+  <p>We don’t use cookies for tracking, advertising or analytics, and we don’t load fonts, scripts or trackers from other companies. Our fonts are hosted on our own site.</p>
+
+  <h2>Who else handles your information</h2>
+  <ul>
+    <li><strong>Netlify, Inc.</strong> (USA) hosts the website and stores form submissions.</li>
+    <li><strong>Stripe or PayPal</strong> process payments for classroom sets.</li>
+    <li><strong>An email service</strong>, if we start using one to send book news. We’ll name it here before we do.</li>
+  </ul>
+  <p>Some of these companies are in the United States, so your information may be transferred outside the Philippines or the EU. We only use providers that protect personal data under contract, such as the EU Standard Contractual Clauses. We never sell, rent or trade your information.</p>
+
+  <h2>How long we keep it</h2>
+  <ul>
+    <li>Signup emails: until you unsubscribe or ask us to delete them.</li>
+    <li>Sponsor records: for as long as tax and accounting rules require, then deleted.</li>
+    <li>Privacy requests: up to two years after we close the request.</li>
+  </ul>
+
+  <h2>Your rights</h2>
+  <p>You can ask to see the information we hold about you, correct it, delete it, receive a copy, or object to or restrict how we use it. You can withdraw consent to book news at any time by using the unsubscribe link in any email, or the form below. We answer within 30 days. If you’re not satisfied, you can complain to the Philippine National Privacy Commission (privacy.gov.ph) or, in the EU or UK, to your local data protection authority.</p>
+
   <h2>Children</h2>
-  <p>This site is for parents, teachers and other adults. We don’t knowingly collect information from children. If you think a child has signed up, contact us and we’ll delete it.</p>
-  <h2>School photos</h2>
-  <p>We only share photos from school deliveries with the school’s permission, and we avoid showing children’s faces unless their parents have agreed in writing.</p>
-  <h2>Contact</h2>
-  <p>Questions or deletion requests: <a data-email hidden></a><span data-email-fallback>use the email address in the footer of our emails.</span></p>
+  <p>Our books are for children, but this website is for parents, teachers and other adults. We don’t knowingly collect information from anyone under 18. If you think a child has given us their information, tell us using the form below and we’ll delete it.</p>
+
+  <h2>School delivery photos</h2>
+  <p>We only share photos from school deliveries with the school’s permission. We don’t show children’s faces unless a parent or guardian has agreed in writing.</p>
+
+  <h2>Changes</h2>
+  <p>If we change this policy, we’ll update the date at the top. If a change is significant, we’ll tell people on our email list.</p>
+
+  <h2 id="request">Make a privacy request</h2>
+  <form class="request-form" name="privacy-request" method="POST" action="/privacy/received/" data-netlify="true" netlify-honeypot="bot-field">
+    <input type="hidden" name="form-name" value="privacy-request">
+    <p hidden><label>Leave this empty <input name="bot-field"></label></p>
+    <label for="pr-email">Your email address</label>
+    <input id="pr-email" name="email" type="email" autocomplete="email" required>
+    <label for="pr-type">What would you like us to do?</label>
+    <select id="pr-type" name="request">
+      <option>Delete my information</option>
+      <option>Send me a copy of my information</option>
+      <option>Correct my information</option>
+      <option>Unsubscribe me from book news</option>
+      <option>Something else</option>
+    </select>
+    <label for="pr-details">Details (optional)</label>
+    <textarea id="pr-details" name="details" rows="4"></textarea>
+    <button class="button" type="submit">Send request</button>
+  </form>
+  <p data-email-wrap hidden>Or email us: <a data-email hidden></a></p>
 </section>
 </main>
 <footer class="site-footer">

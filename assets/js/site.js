@@ -110,6 +110,7 @@
   if (typeof cfg.contactEmail === "string" && /@/.test(cfg.contactEmail)) {
     document.querySelectorAll("[data-email]").forEach(function (a) {
       a.href = "mailto:" + cfg.contactEmail; a.textContent = cfg.contactEmail; a.hidden = false;
+      var wrap = a.closest("[data-email-wrap]"); if (wrap) wrap.hidden = false;
     });
     document.querySelectorAll("[data-email-fallback]").forEach(function (el) { el.hidden = true; });
   }

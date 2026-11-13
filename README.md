@@ -8,7 +8,8 @@ Static site for Bright Trails Publishing. Plain HTML, CSS and JavaScript: no bui
 | --- | --- |
 | `/` | `index.html`: hero, books by age, Maveric Fox Series, Bright Trails Gives, free printables signup, about |
 | `/thanks/` | `thanks/index.html`: shown after someone signs up for printables |
-| `/privacy/` | `privacy/index.html`: privacy policy |
+| `/privacy/` | `privacy/index.html`: privacy policy with a privacy request form |
+| `/privacy/received/` | shown after someone sends a privacy request |
 | `404.html` | not-found page |
 
 Shared files: `assets/css/site.css`, `assets/js/site.js`, logo and favicon in `assets/img/`, book covers go in `assets/img/covers/`.
@@ -30,3 +31,10 @@ The form uses Netlify Forms. After the first deploy, open the site in Netlify, g
 1. In Netlify, choose **Add new site › Import an existing project › GitHub** and pick this repository.
 2. Leave the build command empty. Publish directory is `.` (already set in `netlify.toml`).
 3. Under **Domain management**, add `brighttrailspublishing.com` and point the DNS at Netlify. You can keep DNS at GoDaddy, as with edwardmartimbor.com.
+
+## Privacy
+
+- Fonts are self-hosted in `assets/fonts/` (SIL Open Font License). Don't add Google Fonts, analytics or embeds without updating the privacy policy first.
+- Netlify Forms collects two forms: **printables** (with an optional `news` consent box) and **privacy-request**. In Netlify, add an email notification for **privacy-request** so you see requests quickly, and answer within 30 days.
+- Only send book news to people whose submission has `news: yes`.
+- If you add an email service (e.g. MailerLite), name it in the privacy policy's "Who else handles your information" section.

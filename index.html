@@ -13,9 +13,7 @@
 <meta property="og:url" content="https://brighttrailspublishing.com/">
 <meta name="theme-color" content="#15382A">
 <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&amp;family=Nunito:wght@400;700;800&amp;display=swap" rel="stylesheet">
+<link rel="preload" href="/assets/fonts/nunito-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/css/site.css">
 <script src="/assets/js/config.js" defer></script>
 <script src="/assets/js/site.js" defer></script>
@@ -249,7 +247,7 @@
   <div class="printables">
     <div class="printables-copy stack">
       <h2 class="display h2">Free printable coloring and tracing pages</h2>
-      <p class="lede">Get a free pack of sample pages to print at home, and hear first when a new book comes out. About one email a month.</p>
+      <p class="lede">Get a free pack of sample pages to print at home. You can also choose to hear when a new book comes out, about one email a month.</p>
       <p class="adult-note">For parents, teachers and grown-ups. Please don’t have children sign up.</p>
     </div>
     <form class="signup" name="printables" method="POST" action="/thanks/" data-netlify="true" netlify-honeypot="bot-field">
@@ -265,8 +263,9 @@
         <option>Classroom sets</option>
         <option>All of them</option>
       </select>
+      <label class="check-row"><input type="checkbox" name="news" value="yes"> <span>Also email me when new books come out (optional, unsubscribe anytime)</span></label>
       <button class="button" type="submit">Send me the free pages</button>
-      <p style="font-size:14px;color:#5C4A1E">We only use your email for Bright Trails news. See our <a href="/privacy/">privacy policy</a>.</p>
+      <p class="form-note">We use your email to send the free pages and, only if you tick the box, book news. We never sell it. See our <a href="/privacy/">privacy policy</a>.</p>
     </form>
   </div>
 </section>
