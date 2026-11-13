@@ -23,7 +23,7 @@ window.SITE_CONFIG = {
     "luzon-visayas-tricycles":    { amazon: null, cover: null, price: null },
     "thanksgiving-coloring":      { amazon: null, cover: null, price: null },
     "animal-science-wild-animals":{ amazon: null, cover: null, price: "$10.99" },
-    "hearth-and-holly":           { amazon: null, cover: null, price: null },
+    "hearth-and-holly":           { amazon: null, cover: "assets/img/covers/hearth-and-holly.jpg", price: null },
     "line-tracing-anxiety-relief":{ amazon: null, cover: null, price: null },
     "line-tracing-young-adults":  { amazon: null, cover: null, price: null }
   },
