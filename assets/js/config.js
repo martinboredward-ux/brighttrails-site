@@ -19,7 +19,7 @@ window.SITE_CONFIG = {
     "mavericks-first-sleepover":  { amazon: null, cover: "assets/img/covers/mavericks-first-sleepover.jpg", price: null },
     "mavericks-little-rumble":    { amazon: null, cover: "assets/img/covers/mavericks-little-rumble.jpg", price: null },
     "thick-to-thin-coloring":     { amazon: null, cover: null, price: null },
-    "mindanao-tricycles":         { amazon: null, cover: null, price: null },
+    "mindanao-tricycles":         { amazon: null, cover: "assets/img/covers/mindanao-tricycles.jpg", price: null },
     "luzon-visayas-tricycles":    { amazon: null, cover: null, price: null },
     "animal-science-wild-animals":{ amazon: null, cover: null, price: "$10.99" },
     "hearth-and-holly":           { amazon: null, cover: null, price: null },
