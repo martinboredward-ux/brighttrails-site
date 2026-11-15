@@ -12,6 +12,15 @@
   function setText(sel, text) {
     document.querySelectorAll(sel).forEach(function (el) { el.textContent = text; });
   }
+  var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  function shortDate(iso) {
+    if (typeof iso !== "string") return "";
+    var parts = iso.split("-");
+    if (parts.length !== 3) return "";
+    var m = parseInt(parts[1], 10) - 1;
+    var d = parseInt(parts[2], 10);
+    return MONTHS[m] ? MONTHS[m] + " " + d : "";
+  }
 
   // ---- Mobile menu ----
   var toggle = document.querySelector(".menu-toggle");
@@ -55,6 +64,22 @@
     }
     var price = card.querySelector(".price");
     if (price && typeof b.price === "string" && b.price) { price.textContent = b.price; price.hidden = false; }
+
+    // ---- Format badges: Kindle / Paperback / Paperback coming soon ----
+    var kindleTag = card.querySelector("[data-fmt-kindle]");
+    var paperbackTag = card.querySelector("[data-fmt-paperback]");
+    var paperbackSoonTag = card.querySelector("[data-fmt-paperback-soon]");
+    if (kindleTag) kindleTag.hidden = !b.kindle;
+    if (paperbackTag) paperbackTag.hidden = !b.paperback;
+    if (paperbackSoonTag) {
+      if (!b.paperback && typeof b.paperbackDate === "string" && b.paperbackDate) {
+        var when = shortDate(b.paperbackDate);
+        paperbackSoonTag.textContent = when ? "Paperback — " + when : "Paperback coming soon";
+        paperbackSoonTag.hidden = false;
+      } else {
+        paperbackSoonTag.hidden = true;
+      }
+    }
   });
 
   // Series list buttons share the same Amazon links

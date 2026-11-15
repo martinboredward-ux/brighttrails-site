@@ -115,6 +115,8 @@ p { margin: 0; }
 .tag { font-size: 13px; font-weight: 800; padding: 4px 10px; border-radius: 999px; background: var(--mint); color: var(--forest); }
 .tag.live { background: var(--green); color: #fff; }
 .tag.soon { background: #FFE3A3; color: #5C3A00; }
+.tag.fmt-ok { background: var(--mint); color: var(--forest); border: 1px solid var(--line); }
+.tag.fmt-soon { background: #FFE3A3; color: #5C3A00; }
 .book h3 { font-size: 19px; font-weight: 800; line-height: 1.25; }
 .book p { font-size: 15px; color: var(--muted); flex-grow: 1; }
 .book .price { font-weight: 800; color: var(--forest); flex-grow: 0; }
