@@ -12,15 +12,6 @@
   function setText(sel, text) {
     document.querySelectorAll(sel).forEach(function (el) { el.textContent = text; });
   }
-  var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  function shortDate(iso) {
-    if (typeof iso !== "string") return "";
-    var parts = iso.split("-");
-    if (parts.length !== 3) return "";
-    var m = parseInt(parts[1], 10) - 1;
-    var d = parseInt(parts[2], 10);
-    return MONTHS[m] ? MONTHS[m] + " " + d : "";
-  }
 
   // ---- Mobile menu ----
   var toggle = document.querySelector(".menu-toggle");
@@ -72,13 +63,8 @@
     if (kindleTag) kindleTag.hidden = !b.kindle;
     if (paperbackTag) paperbackTag.hidden = !b.paperback;
     if (paperbackSoonTag) {
-      if (!b.paperback && typeof b.paperbackDate === "string" && b.paperbackDate) {
-        var when = shortDate(b.paperbackDate);
-        paperbackSoonTag.textContent = when ? "Paperback — " + when : "Paperback coming soon";
-        paperbackSoonTag.hidden = false;
-      } else {
-        paperbackSoonTag.hidden = true;
-      }
+      paperbackSoonTag.textContent = "Paperback coming soon";
+      paperbackSoonTag.hidden = !!b.paperback;
     }
   });
 
