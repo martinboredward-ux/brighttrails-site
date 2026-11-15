@@ -40,6 +40,7 @@
     var notify = card.querySelector("[data-notify]");
     var live = card.querySelector(".tag.live");
     var soon = card.querySelector(".tag.soon");
+    card.dataset.live = isUrl(b.amazon) ? "1" : "0";
     if (isUrl(b.amazon)) {
       buy.href = b.amazon; buy.rel = "noopener"; buy.hidden = false;
       if (notify) notify.hidden = true;
@@ -69,6 +70,7 @@
   // ---- Age filter ----
   var notes = {
     all: "Everything on the Bright Trails shelf, from toddlers to grown-ups.",
+    available: "Books you can buy on Amazon right now.",
     little: "Thick lines, gentle stories and nothing scary. Made for ages 3–5.",
     kids: "Coloring with real facts about animals and the Philippines.",
     adults: "Calm, guided coloring and tracing for teens and grown-ups."
@@ -84,7 +86,9 @@
         b.setAttribute("aria-pressed", String(b === btn));
       });
       document.querySelectorAll(".book[data-shelf]").forEach(function (card) {
-        card.hidden = !(shelf === "all" || card.dataset.shelf === shelf);
+        var ageOk = shelf === "all" || shelf === "available" || card.dataset.shelf === shelf;
+        var availOk = shelf !== "available" || card.dataset.live === "1";
+        card.hidden = !(ageOk && availOk);
       });
       setText(".shelf-note", notes[shelf] || notes.all);
     });
