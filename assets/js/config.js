@@ -18,7 +18,7 @@ window.SITE_CONFIG = {
     "mavericks-big-snore":        { amazon: "https://www.amazon.com/dp/B0HR4T99KR", cover: "assets/img/covers/mavericks-big-snore.jpg", price: null },
     "mavericks-first-sleepover":  { amazon: "https://www.amazon.com/dp/B0HR57LKQG", cover: "assets/img/covers/mavericks-first-sleepover.jpg", price: null },
     "mavericks-little-rumble":    { amazon: "https://www.amazon.com/dp/B0HRQXDMMQ", cover: "assets/img/covers/mavericks-little-rumble.jpg", price: null },
-    "mavericks-grumpy-day":       { amazon: "https://www.amazon.com/dp/B0HC1NH3ND", cover: null, price: null },
+    "mavericks-grumpy-day":       { amazon: "https://www.amazon.com/dp/B0HC1NH3ND", cover: "assets/img/covers/mavericks-grumpy-day.jpg", price: null },
     "thick-to-thin-coloring":     { amazon: null, cover: null, price: null },
     "mindanao-tricycles":         { amazon: "https://www.amazon.com/dp/B0HQZC4JP9", cover: "assets/img/covers/mindanao-tricycles.jpg", price: null },
     "luzon-visayas-tricycles":    { amazon: null, cover: null, price: null },
