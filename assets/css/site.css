@@ -118,6 +118,7 @@ p { margin: 0; }
 .book h3 { font-size: 19px; font-weight: 800; line-height: 1.25; }
 .book p { font-size: 15px; color: var(--muted); flex-grow: 1; }
 .book .price { font-weight: 800; color: var(--forest); flex-grow: 0; }
+.release-note { font-size: 13px; font-weight: 700; color: var(--accent); flex-grow: 0; margin: -4px 0 0; }
 
 /* Series */
 .series { background: var(--forest); color: #fff; border-radius: 28px; padding: clamp(28px, 5vw, 48px); display: flex; flex-wrap: wrap; gap: 40px; align-items: center; }
