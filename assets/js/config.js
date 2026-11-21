@@ -20,14 +20,19 @@ window.SITE_CONFIG = {
     "mavericks-little-rumble":    { amazon: "https://www.amazon.com/dp/B0HRQXDMMQ", cover: "assets/img/covers/mavericks-little-rumble.jpg", price: null },
     "mavericks-grumpy-day":       { amazon: "https://www.amazon.com/dp/B0HC1NH3ND", cover: "assets/img/covers/mavericks-grumpy-day.jpg", price: null },
     "mavericks-first-snow":       { amazon: null, cover: "assets/img/covers/mavericks-first-snow.jpg", price: null },
-    "thick-to-thin-coloring":     { amazon: null, cover: null, price: null },
+    "tiny-trails-winter-dot":     { amazon: null, cover: "assets/img/covers/tiny-trails-winter-dot.jpg", price: null },
+    "tiny-trails-bold-and-cute":  { amazon: null, cover: "assets/img/covers/tiny-trails-bold-and-cute.jpg", price: null },
     "mindanao-tricycles":         { amazon: "https://www.amazon.com/dp/B0HQZC4JP9", cover: "assets/img/covers/mindanao-tricycles.jpg", price: null },
     "luzon-visayas-tricycles":    { amazon: null, cover: "assets/img/covers/luzon-visayas-tricycles.jpg", price: null },
     "thanksgiving-coloring":      { amazon: "https://www.amazon.com/dp/B0HR5YTNNV", cover: "assets/img/covers/thanksgiving-coloring.jpg", price: null },
     "animal-science-wild-animals":{ amazon: "https://www.amazon.com/dp/B0HRV9F3D8", cover: "assets/img/covers/animal-science-wild-animals.jpg", price: "$10.99" },
+    "animal-science-book-2":      { amazon: null, cover: null, price: null },
+    "barnaby-bumblebee-arctic":   { amazon: null, cover: "assets/img/covers/barnaby-bumblebee-arctic.jpg", price: null },
+    "can-do-kid":                 { amazon: null, cover: null, price: null },
     "hearth-and-holly":           { amazon: "https://www.amazon.com/dp/B0HS3LMZ5J", cover: "assets/img/covers/hearth-and-holly.jpg", price: null },
-    "line-tracing-anxiety-relief":{ amazon: null, cover: null, price: null },
-    "line-tracing-young-adults":  { amazon: null, cover: null, price: null }
+    "line-tracing-anxiety-relief":{ amazon: null, cover: "assets/img/covers/line-tracing-anxiety-relief.jpg", price: null },
+    "line-tracing-anxiety-teens": { amazon: null, cover: "assets/img/covers/line-tracing-anxiety-teens.jpg", price: null },
+    "line-tracing-young-adults":  { amazon: null, cover: "assets/img/covers/line-tracing-young-adults.jpg", price: null }
   },
 
   gives: {
