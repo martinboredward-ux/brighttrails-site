@@ -115,6 +115,20 @@
     document.querySelectorAll("[data-email-fallback]").forEach(function (el) { el.hidden = true; });
   }
 
+  // ---- Signup form: send the entry in the background, then always open the printables page ----
+  document.querySelectorAll("form.signup").forEach(function (form) {
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var go = function () { window.location.href = "/free-printables/"; };
+      try {
+        var body = new URLSearchParams(new FormData(form)).toString();
+        fetch("/", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: body })
+          .then(go, go);
+        setTimeout(go, 4000);
+      } catch (err) { go(); }
+    });
+  });
+
   // ---- Year ----
   setText("[data-year]", String(new Date().getFullYear()));
 })();
