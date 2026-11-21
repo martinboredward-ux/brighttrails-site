@@ -22,7 +22,7 @@ window.SITE_CONFIG = {
     "mavericks-first-snow":       { amazon: null, cover: "assets/img/covers/mavericks-first-snow.jpg", price: null },
     "thick-to-thin-coloring":     { amazon: null, cover: null, price: null },
     "mindanao-tricycles":         { amazon: "https://www.amazon.com/dp/B0HQZC4JP9", cover: "assets/img/covers/mindanao-tricycles.jpg", price: null },
-    "luzon-visayas-tricycles":    { amazon: null, cover: null, price: null },
+    "luzon-visayas-tricycles":    { amazon: null, cover: "assets/img/covers/luzon-visayas-tricycles.jpg", price: null },
     "thanksgiving-coloring":      { amazon: "https://www.amazon.com/dp/B0HR5YTNNV", cover: "assets/img/covers/thanksgiving-coloring.jpg", price: null },
     "animal-science-wild-animals":{ amazon: "https://www.amazon.com/dp/B0HRV9F3D8", cover: "assets/img/covers/animal-science-wild-animals.jpg", price: "$10.99" },
     "hearth-and-holly":           { amazon: "https://www.amazon.com/dp/B0HS3LMZ5J", cover: "assets/img/covers/hearth-and-holly.jpg", price: null },
