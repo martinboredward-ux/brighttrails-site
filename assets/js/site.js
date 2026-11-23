@@ -120,12 +120,24 @@
     form.addEventListener("submit", function (e) {
       e.preventDefault();
       var go = function () { window.location.href = "/free-printables/"; };
+      var fail = function () {
+        var msg = form.querySelector(".form-error");
+        if (!msg) {
+          msg = document.createElement("p");
+          msg.className = "form-note form-error";
+          msg.setAttribute("role", "alert");
+          form.appendChild(msg);
+        }
+        msg.innerHTML = "Sorry, we couldn\u2019t save your email just now. Please try again in a minute, or <a href=\"/free-printables/\">get the free pages here</a>.";
+        if (button) { button.disabled = false; }
+      };
+      var button = form.querySelector("button[type=submit]");
+      if (button) { button.disabled = true; }
       try {
         var body = new URLSearchParams(new FormData(form)).toString();
         fetch("/", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: body })
-          .then(go, go);
-        setTimeout(go, 4000);
-      } catch (err) { go(); }
+          .then(function (res) { if (res.ok) { go(); } else { fail(); } }, fail);
+      } catch (err) { fail(); }
     });
   });
 
