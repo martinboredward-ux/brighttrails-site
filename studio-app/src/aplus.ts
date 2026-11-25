@@ -5,6 +5,16 @@ export const SPECS: Spec[] = [
   { size: "300x300", w: 300, h: 300 },
 ];
 
+export interface BannerOptions {
+  fit: "fit" | "fill";
+  /** 300x300 only: caption bar under the picture. */
+  textBar: boolean;
+}
+export const DEFAULT_OPTIONS: BannerOptions = { fit: "fit", textBar: false };
+
+const FOREST = "#15382A";
+const CREAM = "#F6EEDF";
+
 function wrap(ctx: CanvasRenderingContext2D, text: string, maxW: number): string[] {
   const out: string[] = [];
   for (const para of text.split("\n")) {
@@ -18,63 +28,74 @@ function wrap(ctx: CanvasRenderingContext2D, text: string, maxW: number): string
   return out;
 }
 
-export function loadImage(file: File): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error("Could not read that image"));
-    img.src = url;
-  });
+/** Draws img inside the box. "fit" shows the whole picture with padding; "fill" covers the box and may crop. */
+function place(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number, y: number, w: number, h: number, mode: "fit" | "fill", pad: number) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  ctx.clip();
+  const bw = mode === "fit" ? w - pad * 2 : w;
+  const bh = mode === "fit" ? h - pad * 2 : h;
+  const scale = mode === "fit" ? Math.min(bw / img.naturalWidth, bh / img.naturalHeight) : Math.max(bw / img.naturalWidth, bh / img.naturalHeight);
+  const dw = img.naturalWidth * scale;
+  const dh = img.naturalHeight * scale;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+  ctx.restore();
 }
 
-/** Draws an opaque RGB banner: cream background, image on the right (cover-fit), headline and body on the left. */
-export function drawBanner(canvas: HTMLCanvasElement, spec: Spec, headline: string, body: string, img: HTMLImageElement | null) {
+/** Draws an opaque RGB banner at the exact pixel size of the module. */
+export function drawBanner(canvas: HTMLCanvasElement, spec: Spec, headline: string, body: string, img: HTMLImageElement | null, opts: BannerOptions = DEFAULT_OPTIONS) {
   canvas.width = spec.w;
   canvas.height = spec.h;
   const ctx = canvas.getContext("2d", { alpha: false })!;
   const { w, h } = spec;
-  ctx.fillStyle = "#F6EEDF";
-  ctx.fillRect(0, 0, w, h);
 
-  const square = spec.size === "300x300";
-  const imgW = square ? w : Math.round(w * 0.42);
-  const imgX = square ? 0 : w - imgW;
-
-  if (img) {
-    // cover-fit the picture into its box
-    const boxW = imgW;
-    const boxH = h;
-    const scale = Math.max(boxW / img.width, boxH / img.height);
-    const dw = img.width * scale;
-    const dh = img.height * scale;
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(imgX, 0, boxW, boxH);
-    ctx.clip();
-    ctx.drawImage(img, imgX + (boxW - dw) / 2, (boxH - dh) / 2, dw, dh);
-    ctx.restore();
-  } else if (!square) {
-    ctx.fillStyle = "#15382A";
-    ctx.fillRect(imgX, 0, imgW, h);
-  }
-
-  if (square) {
-    // text sits on a solid band at the bottom so it stays readable over the picture
-    const bandH = Math.round(h * 0.4);
-    ctx.fillStyle = "rgba(21,56,42,0.92)";
-    ctx.fillRect(0, h - bandH, w, bandH);
+  if (spec.size === "300x300") {
+    ctx.fillStyle = FOREST;
+    ctx.fillRect(0, 0, w, h);
+    if (img) {
+      // Picture only by default. With the caption bar, the picture takes the space above it.
+      const barH = opts.textBar ? 64 : 0;
+      place(ctx, img, 0, 0, w, h - barH, opts.fit, 14);
+      if (opts.textBar) {
+        ctx.fillStyle = CREAM;
+        ctx.fillRect(0, h - barH, w, barH);
+        ctx.fillStyle = FOREST;
+        ctx.font = "bold 20px Arial, Helvetica, sans-serif";
+        const lines = wrap(ctx, headline, w - 28).slice(0, 2);
+        const startY = h - barH + (lines.length === 1 ? 38 : 28);
+        lines.forEach((l, i) => ctx.fillText(l, 14, startY + i * 24));
+      }
+      return;
+    }
+    // No picture yet: a text tile.
+    ctx.fillStyle = CREAM;
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = FOREST;
+    ctx.font = "bold 28px Arial, Helvetica, sans-serif";
+    wrap(ctx, headline, w - 40).slice(0, 4).forEach((l, i) => ctx.fillText(l, 20, 56 + i * 34));
+    ctx.font = "16px Arial, Helvetica, sans-serif";
+    ctx.fillStyle = "#333333";
+    wrap(ctx, body, w - 40).slice(0, 6).forEach((l, i) => ctx.fillText(l, 20, 190 + i * 22));
     ctx.fillStyle = "#FFC94D";
-    ctx.font = "bold 22px Arial, Helvetica, sans-serif";
-    wrap(ctx, headline, w - 32).slice(0, 2).forEach((l, i) => ctx.fillText(l, 16, h - bandH + 32 + i * 26));
+    ctx.fillRect(20, h - 30, 70, 6);
     return;
   }
 
+  ctx.fillStyle = CREAM;
+  ctx.fillRect(0, 0, w, h);
+  const imgW = Math.round(w * 0.42);
+  const imgX = w - imgW;
+  ctx.fillStyle = FOREST;
+  ctx.fillRect(imgX, 0, imgW, h);
+  if (img) place(ctx, img, imgX, 0, imgW, h, opts.fit, h >= 500 ? 28 : 18);
+
   const pad = 40;
   const textW = w - imgW - pad * 2;
-  const hSize = spec.h >= 500 ? 44 : 34;
-  const bSize = spec.h >= 500 ? 22 : 18;
-  ctx.fillStyle = "#15382A";
+  const hSize = h >= 500 ? 44 : 34;
+  const bSize = h >= 500 ? 22 : 18;
+  ctx.fillStyle = FOREST;
   ctx.font = `bold ${hSize}px Arial, Helvetica, sans-serif`;
   const hLines = wrap(ctx, headline, textW).slice(0, 4);
   let y = pad + hSize;
@@ -82,7 +103,7 @@ export function drawBanner(canvas: HTMLCanvasElement, spec: Spec, headline: stri
   y += 10;
   ctx.fillStyle = "#333333";
   ctx.font = `${bSize}px Arial, Helvetica, sans-serif`;
-  wrap(ctx, body, textW).slice(0, spec.h >= 500 ? 9 : 4).forEach((l) => { ctx.fillText(l, pad, y); y += bSize * 1.4; });
+  wrap(ctx, body, textW).slice(0, h >= 500 ? 9 : 4).forEach((l) => { ctx.fillText(l, pad, y); y += bSize * 1.4; });
   ctx.fillStyle = "#FFC94D";
   ctx.fillRect(pad, h - pad - 6, 90, 6);
 }

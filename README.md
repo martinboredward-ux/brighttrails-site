@@ -55,3 +55,13 @@ An admin tool for planning books, building activity-page PDFs, writing KDP listi
 - `/studio` is `noindex`, disallowed in `robots.txt`, and sent with `X-Robots-Tag`.
 - Restore point: git tag `pre-studio-backup` is the site exactly as it was before the Studio.
 - Local run: `npm install && npm run build && npx netlify dev` (open `/` and `/studio/`).
+
+
+### Studio image generation and environment variables
+
+`/studio` can draw pictures through Netlify AI Gateway (no API keys needed): ChatGPT Mini, ChatGPT 1.5 and Nano Banana 2.1 (with a saved character reference). Pictures are stored in the `kdp-book-images` Blobs store and served only through the password-checked `/api/studio/image`.
+
+Optional environment variables (all fall back to built-in model lists if "model not found"):
+- `GEMINI_MODEL` (text), `GEMINI_IMAGE_MODEL` (default `gemini-nano-banana-2.1`)
+- `OPENAI_IMAGE_MODEL` (default `gpt-image-1-mini` for Mini, `gpt-image-1.5` for 1.5)
+- `APP_PASSWORD` (required)

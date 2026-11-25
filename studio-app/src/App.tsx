@@ -6,10 +6,12 @@ import Tab1Details from "./tabs/Tab1Details";
 import Tab2Builder from "./tabs/Tab2Builder";
 import Tab3Kdp from "./tabs/Tab3Kdp";
 import Tab4APlus from "./tabs/Tab4APlus";
+import { ThemeToggle, useTheme } from "./theme";
 
 const TABS = ["1 · Details & Style Bible", "2 · Book Builder", "3 · KDP Package", "4 · A+ Content"] as const;
 
 function Login({ onDone }: { onDone: () => void }) {
+  const [theme, toggleTheme] = useTheme();
   const [pw, setPw] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
@@ -31,9 +33,12 @@ function Login({ onDone }: { onDone: () => void }) {
   return (
     <div className="grid min-h-screen place-items-center p-6">
       <form onSubmit={submit} className="card w-full max-w-sm space-y-4">
-        <div>
-          <h1 className="text-xl font-extrabold text-forest">KDP Book Studio</h1>
-          <p className="text-sm text-forest/70">Bright Trails Publishing · private</p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-extrabold text-forest">KDP Book Studio</h1>
+            <p className="text-sm text-muted">Bright Trails Publishing · private</p>
+          </div>
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
         </div>
         <div>
           <label className="label" htmlFor="pw">Password</label>
@@ -47,6 +52,7 @@ function Login({ onDone }: { onDone: () => void }) {
 }
 
 export default function App() {
+  const [theme, toggleTheme] = useTheme();
   const [authed, setAuthed] = useState(!!getPassword());
   const [books, setBooks] = useState<Book[]>([]);
   const [book, setBook] = useState<Book | null>(null);
@@ -54,7 +60,7 @@ export default function App() {
   const [tab, setTab] = useState(0);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const assets = useRef<ExportAssets>({ pdf: null, images: {} });
+  const assets = useRef<ExportAssets>({ pdf: null });
   const bookRef = useRef<Book | null>(null);
   bookRef.current = book;
   const dirtyRef = useRef(false);
@@ -69,6 +75,17 @@ export default function App() {
     if (!authed) return;
     listBooks().then((bs) => { setBooks(bs); setBook((cur) => cur ?? bs[0] ?? null); }).catch(fail);
   }, [authed, fail]);
+
+  // Change something and save straight away (used for picture choices, which should not wait for the Save button).
+  const commit = async (patch: Partial<Book>) => {
+    const cur = bookRef.current;
+    if (!cur) return;
+    const next = { ...cur, ...patch };
+    bookRef.current = next;
+    setBook(next);
+    setDirty(true);
+    await save();
+  };
 
   const update = (patch: Partial<Book>) => {
     setBook((b) => (b ? { ...b, ...patch } : b));
@@ -108,7 +125,7 @@ export default function App() {
 
   const pick = async (id: string) => {
     if (dirty && !confirm("Discard unsaved changes?")) return;
-    try { setBook(await getBook(id)); setDirty(false); assets.current = { pdf: null, images: {} }; } catch (e) { fail(e); }
+    try { setBook(await getBook(id)); setDirty(false); assets.current = { pdf: null }; } catch (e) { fail(e); }
   };
 
   const add = async () => {
@@ -147,11 +164,14 @@ export default function App() {
     <div className="mx-auto flex min-h-screen max-w-7xl flex-col gap-4 p-4 md:flex-row">
       <aside className="md:w-64 md:shrink-0">
         <div className="card space-y-3">
-          <h1 className="text-lg font-extrabold text-forest">KDP Book Studio</h1>
+          <div className="flex items-center justify-between gap-2">
+            <h1 className="text-lg font-extrabold text-forest">KDP Book Studio</h1>
+            <ThemeToggle theme={theme} onToggle={toggleTheme} />
+          </div>
           <ul className="space-y-1">
             {books.map((b) => (
               <li key={b.id}>
-                <button onClick={() => pick(b.id)} className={`w-full rounded-lg px-3 py-2 text-left text-sm ${book?.id === b.id ? "bg-forest text-white" : "hover:bg-forest/5"}`}>
+                <button onClick={() => pick(b.id)} className={`w-full rounded-lg px-3 py-2 text-left text-sm ${book?.id === b.id ? "bg-brand text-onbrand" : "hover:bg-forest/10"}`}>
                   {b.title}
                   <span className="block text-xs opacity-70">{b.mode}</span>
                 </button>
@@ -159,7 +179,7 @@ export default function App() {
             ))}
           </ul>
           <button className="btn-alt w-full" onClick={add}>+ New book</button>
-          <button className="text-xs text-forest/60 underline" onClick={() => { clearPassword(); setAuthed(false); }}>Sign out</button>
+          <button className="text-xs text-muted underline" onClick={() => { clearPassword(); setAuthed(false); }}>Sign out</button>
         </div>
       </aside>
 
@@ -177,7 +197,7 @@ export default function App() {
             <div className="card flex flex-wrap items-center gap-2">
               <nav className="flex flex-wrap gap-1">
                 {TABS.map((t, i) => (
-                  <button key={t} onClick={() => setTab(i)} className={`rounded-lg px-3 py-2 text-sm font-semibold ${tab === i ? "bg-sun text-forest" : "hover:bg-forest/5"}`}>{t}</button>
+                  <button key={t} onClick={() => setTab(i)} className={`rounded-lg px-3 py-2 text-sm font-semibold ${tab === i ? "bg-sun text-onsun" : "hover:bg-forest/10"}`}>{t}</button>
                 ))}
               </nav>
               <div className="ml-auto flex items-center gap-2">
@@ -187,10 +207,10 @@ export default function App() {
                 <button className="btn-alt" onClick={del}>Delete</button>
               </div>
             </div>
-            {tab === 0 && <Tab1Details book={book} update={update} locked={running} />}
-            {tab === 1 && <Tab2Builder book={book} update={update} save={save} setBook={setBook} assets={assets} fail={fail} />}
+            {tab === 0 && <Tab1Details book={book} books={books} update={update} locked={running} />}
+            {tab === 1 && <Tab2Builder book={book} update={update} commit={commit} save={save} setBook={setBook} assets={assets} fail={fail} />}
             {tab === 2 && <Tab3Kdp book={book} update={update} save={save} setBook={setBook} fail={fail} />}
-            {tab === 3 && <Tab4APlus book={book} update={update} assets={assets} />}
+            {tab === 3 && <Tab4APlus book={book} update={update} setBook={setBook} fail={fail} />}
           </>
         )}
       </main>

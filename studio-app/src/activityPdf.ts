@@ -1,6 +1,8 @@
 import { jsPDF } from "jspdf";
 
-export type Pattern = "dotted" | "wavy" | "alphabet" | "numbers" | "counting" | "grid";
+export type Pattern = "dotted" | "wavy" | "alphabet" | "numbers" | "counting" | "grid" | "images";
+
+export interface ImagePage { dataUrl: string; format: "PNG" | "JPEG"; w: number; h: number }
 
 export const PATTERNS: { id: Pattern; label: string; note: string }[] = [
   { id: "dotted", label: "Dotted line tracing rows", note: "Straight dotted lines with a start dot and arrow on every row." },
@@ -9,6 +11,7 @@ export const PATTERNS: { id: Pattern; label: string; note: string }[] = [
   { id: "numbers", label: "Number tracing guides", note: "One big number per page (0 to 9) with counting dots." },
   { id: "counting", label: "STEM counting", note: "Rows of shapes to count, with a box for the number." },
   { id: "grid", label: "STEM grid template", note: "Square-grid page for patterns, coordinates and drawing." },
+  { id: "images", label: "Generated pictures only", note: "One page per picture ticked in Book images below. Other page types add the ticked pictures after their own pages." },
 ];
 
 export interface PdfOptions {
@@ -164,9 +167,19 @@ function gridPage(doc: jsPDF) {
   for (let r = 0; r <= rows; r++) doc.line(left, top + r * cell, left + cols * cell, top + r * cell);
 }
 
-export function buildActivityPdf(opts: PdfOptions): Blob {
+/** One full page: the picture fitted inside the safe margins, never stretched or cropped. */
+function imagePage(doc: jsPDF, img: ImagePage) {
+  const boxW = W - 2 * M;
+  const boxH = H - 2 * M;
+  const scale = Math.min(boxW / img.w, boxH / img.h);
+  const w = img.w * scale;
+  const h = img.h * scale;
+  doc.addImage(img.dataUrl, img.format, (W - w) / 2, (H - h) / 2, w, h);
+}
+
+export function buildActivityPdf(opts: PdfOptions, imagePages: ImagePage[] = []): Blob {
   const doc = new jsPDF({ unit: "in", format: [W, H], orientation: "portrait" });
-  const pages = Math.max(1, Math.min(200, Math.floor(opts.pages)));
+  const pages = opts.pattern === "images" ? 0 : Math.max(1, Math.min(200, Math.floor(opts.pages)));
   for (let i = 0; i < pages; i++) {
     if (i > 0) doc.addPage([W, H]);
     switch (opts.pattern) {
@@ -182,9 +195,16 @@ export function buildActivityPdf(opts: PdfOptions): Blob {
       case "numbers": numbersPage(doc, i); break;
       case "counting": countingPage(doc, i); break;
       case "grid": gridPage(doc); break;
+      case "images": break;
     }
     // A blank reverse stops marker bleed-through onto the next activity page.
     if (opts.blankReverse) doc.addPage([W, H]);
   }
+  // Generated pictures: one page each, with the same blank reverse so markers do not bleed through.
+  imagePages.forEach((img, i) => {
+    if (pages > 0 || i > 0) doc.addPage([W, H]);
+    imagePage(doc, img);
+    if (opts.blankReverse) doc.addPage([W, H]);
+  });
   return doc.output("blob");
 }

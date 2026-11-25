@@ -1,16 +1,57 @@
 @import "tailwindcss";
 
-@theme {
-  --color-forest: #15382a;
-  --color-green: #1f5a43;
-  --color-sun: #ffc94d;
-  --color-cream: #f6eedf;
-  --color-accent: #c2541f;
+/* Light is the default. The .dark class on <html> swaps the variables below. */
+:root {
+  --c-bg: #f6eedf;
+  --c-surface: #ffffff;
+  --c-line: #e4e8e4;
+  --c-ink: #15382a;       /* main text and brand ink */
+  --c-muted: #5a6f66;
+  --c-brand: #15382a;     /* primary button */
+  --c-onbrand: #ffffff;
+  --c-green: #1f5a43;     /* success text / hover */
+  --c-sun: #ffc94d;       /* highlight */
+  --c-onsun: #15382a;
+  --c-accent: #c2541f;    /* warnings */
+  color-scheme: light;
 }
 
-body { background: var(--color-cream); color: #1d2b25; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-.field { @apply w-full rounded-lg border border-forest/20 bg-white px-3 py-2 text-sm outline-none focus:border-green focus:ring-2 focus:ring-green/20; }
-.label { @apply mb-1 block text-xs font-semibold uppercase tracking-wide text-forest/70; }
-.btn { @apply inline-flex items-center justify-center gap-2 rounded-lg bg-forest px-4 py-2 text-sm font-semibold text-white transition hover:bg-green disabled:cursor-not-allowed disabled:opacity-50; }
-.btn-alt { @apply inline-flex items-center justify-center gap-2 rounded-lg border border-forest/30 bg-white px-4 py-2 text-sm font-semibold text-forest transition hover:bg-forest/5 disabled:cursor-not-allowed disabled:opacity-50; }
-.card { @apply rounded-xl border border-forest/10 bg-white p-4 shadow-sm; }
+/* Deep Forest Slate */
+.dark {
+  --c-bg: #0d1512;
+  --c-surface: #14201b;
+  --c-line: #243830;
+  --c-ink: #e8e4d9;
+  --c-muted: #9fb0a7;
+  --c-brand: #e9b949;
+  --c-onbrand: #14201b;
+  --c-green: #8fcfa9;
+  --c-sun: #e9b949;
+  --c-onsun: #14201b;
+  --c-accent: #ff9d6e;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-cream: var(--c-bg);
+  --color-surface: var(--c-surface);
+  --color-line: var(--c-line);
+  --color-forest: var(--c-ink);
+  --color-muted: var(--c-muted);
+  --color-brand: var(--c-brand);
+  --color-onbrand: var(--c-onbrand);
+  --color-green: var(--c-green);
+  --color-sun: var(--c-sun);
+  --color-onsun: var(--c-onsun);
+  --color-accent: var(--c-accent);
+}
+
+body { background: var(--c-bg); color: var(--c-ink); font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+::placeholder { color: var(--c-muted); opacity: 0.8; }
+.field { @apply w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-forest outline-none focus:border-sun focus:ring-2 focus:ring-sun/30; }
+select.field option { background: var(--c-surface); color: var(--c-ink); }
+.label { @apply mb-1 block text-xs font-semibold uppercase tracking-wide text-muted; }
+.btn { @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-onbrand transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50; }
+.btn-alt { @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-line bg-surface px-4 py-2 text-sm font-semibold text-forest transition hover:bg-forest/10 disabled:cursor-not-allowed disabled:opacity-50; }
+.card { @apply rounded-xl border border-line bg-surface p-4 shadow-sm; }
+.hint { @apply text-xs text-muted; }

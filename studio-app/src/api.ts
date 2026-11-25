@@ -1,4 +1,4 @@
-import type { Action, Book, KdpPackage } from "./types";
+import type { Action, Book, GeneratedImage, ImageAspect, ImageProvider, KdpPackage, StylePreset } from "./types";
 
 const KEY = "studio-password";
 export const getPassword = () => sessionStorage.getItem(KEY) ?? "";
@@ -38,4 +38,62 @@ export async function startJob(payload: { bookId: string; action: Action; sectio
   });
   if (res.status === 401) throw new AuthError("Wrong password");
   if (!res.ok && res.status !== 202) throw new Error(`Could not start the job (${res.status})`);
+}
+
+// Pictures live in their own store and are fetched with the password header, then shown from a
+// blob: URL, so the password never appears in an address.
+export async function uploadImage(bookId: string, blob: Blob): Promise<string> {
+  const res = await fetch(`/api/studio/image?bookId=${encodeURIComponent(bookId)}`, {
+    method: "POST",
+    headers: { "content-type": blob.type || "image/jpeg", "x-studio-password": getPassword() },
+    body: blob,
+  });
+  if (res.status === 401) throw new AuthError("Wrong password");
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `Upload failed (${res.status})`);
+  return data.id as string;
+}
+
+export async function fetchImageBlob(id: string): Promise<Blob> {
+  const res = await fetch(`/api/studio/image?id=${encodeURIComponent(id)}`, { headers: { "x-studio-password": getPassword() } });
+  if (res.status === 401) throw new AuthError("Wrong password");
+  if (!res.ok) throw new Error(`Could not load image (${res.status})`);
+  return res.blob();
+}
+
+export const deleteImage = (id: string) =>
+  fetch(`/api/studio/image?id=${encodeURIComponent(id)}`, { method: "DELETE", headers: { "x-studio-password": getPassword() } }).catch(() => undefined);
+
+export interface ImageJobRequest {
+  bookId: string;
+  provider: ImageProvider;
+  quality: "low" | "medium";
+  aspect: ImageAspect;
+  stylePreset: StylePreset;
+  prompt: string;
+  referenceImageId?: string;
+  sectionId?: string;
+}
+export interface ImageJob { id: string; status: "queued" | "running" | "done" | "error"; imageId?: string; image?: GeneratedImage; notes?: string[]; error?: string }
+
+/** Starts an image job and waits for it, checking every few seconds (up to 6 minutes). */
+export async function generateImage(req: ImageJobRequest, onTick?: (status: string) => void): Promise<{ job: ImageJob; image: GeneratedImage }> {
+  const { jobId } = await call<{ jobId: string }>("/api/studio/generate-image", { method: "POST", body: JSON.stringify(req) });
+  const started = Date.now();
+  let misses = 0;
+  while (Date.now() - started < 6 * 60_000) {
+    await new Promise((r) => setTimeout(r, 2500));
+    try {
+      const { job } = await call<{ job: ImageJob }>(`/api/studio/generate-image?jobId=${jobId}`);
+      onTick?.(job.status);
+      if (job.status === "error") throw new Error(job.error || "Image generation failed");
+      if (job.status === "done" && job.image) return { job, image: job.image };
+    } catch (e) {
+      if (e instanceof AuthError) throw e;
+      // The job record can take a moment to appear. Anything else is a real failure.
+      if (e instanceof Error && /Not found/i.test(e.message) && misses++ < 8) continue;
+      throw e;
+    }
+  }
+  throw new Error("The picture is taking too long. Check the gallery in a minute; it may still appear.");
 }
