@@ -1,10 +1,11 @@
 import JSZip from "jszip";
 import type { Book } from "./types";
-import { SPECS, canvasToPng, drawBanner } from "./aplus";
+import { DEFAULT_OPTIONS, SPECS, canvasToPng, drawBanner } from "./aplus";
+import { getImage } from "./imageCache";
+import { fetchImageBlob } from "./api";
 
 export interface ExportAssets {
   pdf: Blob | null;
-  images: Partial<Record<string, HTMLImageElement | null>>;
 }
 
 const manuscript = (b: Book) => b.sections.map((s) => `## ${s.title}\n\n${s.draft || s.summary}\n`).join("\n");
@@ -38,11 +39,28 @@ export async function exportBundle(book: Book, assets: ExportAssets): Promise<{ 
   ap.file("a-plus-copy.json", JSON.stringify(k?.aPlusModules ?? [], null, 2));
   for (const spec of SPECS) {
     const m = k?.aPlusModules.find((x) => x.size === spec.size);
-    const img = assets.images[spec.size] ?? null;
-    if (!m && !img) continue;
+    if (!m) continue;
+    const img = m.imageId ? await getImage(m.imageId).catch(() => null) : null;
     const canvas = document.createElement("canvas");
-    drawBanner(canvas, spec, m?.headline ?? "", m?.body ?? "", img);
+    drawBanner(canvas, spec, m.headline, m.body, img, { fit: m.fit ?? DEFAULT_OPTIONS.fit, textBar: m.textBar ?? DEFAULT_OPTIONS.textBar });
     ap.file(`module-${spec.size}.png`, await canvasToPng(canvas));
+  }
+
+  if (book.images.length) {
+    const gi = zip.folder("04_Generated_Images")!;
+    const index: unknown[] = [];
+    let n = 0;
+    for (const img of book.images) {
+      n++;
+      const blob = await fetchImageBlob(img.id).catch(() => null);
+      if (!blob) continue;
+      const section = book.sections.find((s) => s.id === img.sectionId)?.title ?? "";
+      const ext = blob.type === "image/jpeg" ? "jpg" : "png";
+      const file = `${String(n).padStart(3, "0")}${section ? `-${section.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40)}` : ""}.${ext}`;
+      gi.file(file, blob);
+      index.push({ file, section, prompt: img.prompt, engine: img.provider, model: img.modelUsed, style: img.stylePreset, aspect: img.aspect, quality: img.quality, createdAt: img.createdAt, characterReference: img.id === book.characterRefId });
+    }
+    gi.file("index.json", JSON.stringify(index, null, 2));
   }
 
   return { name: `${book.slug}-kdp-aplus-bundle.zip`, blob: await zip.generateAsync({ type: "blob" }) };

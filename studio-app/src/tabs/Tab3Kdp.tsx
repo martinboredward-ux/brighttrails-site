@@ -66,7 +66,7 @@ export default function Tab3Kdp({ book, update, save, setBook, fail }: Props) {
       <section className="card flex flex-wrap items-center gap-2">
         <button className="btn" onClick={generate} disabled={busy}>{busy ? "Generating…" : "Generate KDP package (Gemini Flash)"}</button>
         <button className="btn-alt" onClick={copyPrompt}>$0 copy prompt for web chat</button>
-        <span className="text-xs text-forest/60">Fills titles, description, 7 keywords, categories and A+ copy. Edit everything below.</span>
+        <span className="text-xs text-muted">Fills titles, description, 7 keywords, categories and A+ copy. Edit everything below.</span>
       </section>
 
       {kdp.warnings?.length ? (
@@ -75,7 +75,7 @@ export default function Tab3Kdp({ book, update, save, setBook, fail }: Props) {
 
       <section className="card space-y-2">
         <h2 className="text-base font-bold text-forest">Title ideas</h2>
-        {kdp.titleIdeas.length === 0 && <p className="text-sm text-forest/60">None yet.</p>}
+        {kdp.titleIdeas.length === 0 && <p className="text-sm text-muted">None yet.</p>}
         <ul className="space-y-1 text-sm">
           {kdp.titleIdeas.map((t, i) => (
             <li key={i} className="flex items-center gap-2">
@@ -93,9 +93,9 @@ export default function Tab3Kdp({ book, update, save, setBook, fail }: Props) {
           return (
             <div key={i}>
               <div className="flex items-center gap-2">
-                <span className="w-5 text-xs text-forest/60">{i + 1}</span>
+                <span className="w-5 text-xs text-muted">{i + 1}</span>
                 <input className={`field ${is.tooLong ? "!border-accent" : ""}`} value={k} onChange={(e) => set({ keywords: kdp.keywords.map((x, j) => (j === i ? e.target.value : x)) })} />
-                <span className={`w-14 text-right text-xs font-semibold ${is.tooLong ? "text-accent" : is.length > 44 ? "text-sun" : "text-forest/60"}`}>{is.length}/50</span>
+                <span className={`w-14 text-right text-xs font-semibold ${is.tooLong ? "text-accent" : is.length > 44 ? "font-bold text-forest" : "text-muted"}`}>{is.length}/50</span>
               </div>
               {(is.overTitle.length > 0 || is.overOthers.length > 0) && (
                 <p className="ml-7 mt-1 text-xs text-accent">
@@ -106,14 +106,14 @@ export default function Tab3Kdp({ book, update, save, setBook, fail }: Props) {
             </div>
           );
         })}
-        <p className="text-xs text-forest/60">KDP allows 50 characters per box. Words already in your title or subtitle, or repeated across boxes, add nothing.</p>
+        <p className="text-xs text-muted">KDP allows 50 characters per box. Words already in your title or subtitle, or repeated across boxes, add nothing.</p>
       </section>
 
       <section className="card space-y-2">
         <h2 className="text-base font-bold text-forest">Description (HTML)</h2>
         <textarea className="field min-h-48 font-mono" value={kdp.htmlDescription} onChange={(e) => set({ htmlDescription: e.target.value })} />
         {badTags.length > 0 && <p className="text-xs text-accent">KDP-unsafe tags found: {badTags.map((t) => `<${t}>`).join(", ")}. Allowed: b, i, br, p, ul, li, h4.</p>}
-        <details className="text-sm"><summary className="cursor-pointer text-forest/70">Preview</summary><div className="prose mt-2 rounded-lg bg-cream p-3 [&_h4]:font-bold [&_ul]:list-disc [&_ul]:pl-5" dangerouslySetInnerHTML={{ __html: previewHtml(kdp.htmlDescription) }} /></details>
+        <details className="text-sm"><summary className="cursor-pointer text-muted">Preview</summary><div className="prose mt-2 rounded-lg bg-surface border border-line p-3 [&_h4]:font-bold [&_ul]:list-disc [&_ul]:pl-5" dangerouslySetInnerHTML={{ __html: previewHtml(kdp.htmlDescription) }} /></details>
       </section>
 
       <section className="card space-y-2">
@@ -128,7 +128,7 @@ export default function Tab3Kdp({ book, update, save, setBook, fail }: Props) {
         <p className="rounded-lg bg-sun/25 px-3 py-2 text-xs text-forest">
           Low-content reminder: only blank journals, notebooks, planners and logbooks count as low-content. Coloring, line-tracing, activity books, storybooks and workbooks are not. Check the box only if your book has no authored content.
         </p>
-        <p className="text-xs text-forest/60">KDP AI disclosure for this book: <b>{book.aiDisclosure}</b> (change it on tab 1).</p>
+        <p className="text-xs text-muted">KDP AI disclosure for this book: <b>{book.aiDisclosure}</b> (change it on tab 1).</p>
       </section>
     </div>
   );

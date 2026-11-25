@@ -1,12 +1,17 @@
 import { useState, type Dispatch, type RefObject, type SetStateAction } from "react";
-import type { Action, Book } from "../types";
+import type { Action, Book, GeneratedImage } from "../types";
 import { startJob } from "../api";
-import { PATTERNS, buildActivityPdf, type Pattern } from "../activityPdf";
+import { PATTERNS, buildActivityPdf, type ImagePage, type Pattern } from "../activityPdf";
+import { fetchImageBlob } from "../api";
+import { blobToImage } from "../imageTools";
+import ImageEngine from "../components/ImageEngine";
+import ImageGallery from "../components/ImageGallery";
 import { download, type ExportAssets } from "../exportZip";
 
 interface Props {
   book: Book;
   update: (p: Partial<Book>) => void;
+  commit: (p: Partial<Book>) => Promise<void>;
   save: () => Promise<Book | null>;
   setBook: Dispatch<SetStateAction<Book | null>>;
   assets: RefObject<ExportAssets>;
@@ -20,7 +25,7 @@ const LABEL: Record<string, string> = {
   extract_workbook: "Extracting workbook (Claude)",
 };
 
-export default function Tab2Builder({ book, update, save, setBook, assets, fail }: Props) {
+export default function Tab2Builder({ book, update, commit, save, setBook, assets, fail }: Props) {
   const [model, setModel] = useState<"haiku" | "sonnet">("haiku");
   const [pattern, setPattern] = useState<Pattern>("dotted");
   const [pages, setPages] = useState(26);
@@ -30,6 +35,19 @@ export default function Tab2Builder({ book, update, save, setBook, assets, fail 
   const [open, setOpen] = useState<string | null>(null);
   const [copied, setCopied] = useState("");
   const running = book.jobStatus === "running";
+  const [pdfPick, setPdfPick] = useState<Set<string>>(new Set());
+  const [pdfBusy, setPdfBusy] = useState(false);
+
+  // New pictures arrive from the server (already saved there), so they are added without marking the book unsaved.
+  const addImage = (img: GeneratedImage) => {
+    setBook((b) => (b ? { ...b, images: [...b.images.filter((i) => i.id !== img.id), img] } : b));
+    if (img.stylePreset === "coloring") setPdfPick((s) => new Set(s).add(img.id));
+  };
+  const removeImage = (id: string) => {
+    setBook((b) => (b ? { ...b, images: b.images.filter((i) => i.id !== id), characterRefId: b.characterRefId === id ? "" : b.characterRefId } : b));
+    setPdfPick((s) => { const n = new Set(s); n.delete(id); return n; });
+  };
+  const togglePick = (id: string) => setPdfPick((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   const run = async (action: Action, sectionId?: string) => {
     const saved = await save();
@@ -54,13 +72,25 @@ export default function Tab2Builder({ book, update, save, setBook, assets, fail 
     try { await navigator.clipboard.writeText(text); setCopied(id); setTimeout(() => setCopied(""), 1500); } catch { /* clipboard blocked */ }
   };
 
-  const makePdf = () => {
+  const makePdf = async () => {
+    setPdfBusy(true);
     try {
-      const blob = buildActivityPdf({ pattern, pages, blankReverse: blank, title: pdfTitle });
+      const chosen = book.images.filter((i) => pdfPick.has(i.id));
+      if (pattern === "images" && !chosen.length) { setPdfMsg("Tick at least one picture under Book images first."); return; }
+      const imagePages: ImagePage[] = [];
+      for (const img of chosen) {
+        const blob = await fetchImageBlob(img.id);
+        const el = await blobToImage(blob);
+        const dataUrl = await new Promise<string>((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = () => rej(new Error("Could not read a picture")); r.readAsDataURL(blob); });
+        imagePages.push({ dataUrl, format: blob.type === "image/jpeg" ? "JPEG" : "PNG", w: el.naturalWidth, h: el.naturalHeight });
+      }
+      const blob = buildActivityPdf({ pattern, pages, blankReverse: blank, title: pdfTitle }, imagePages);
       assets.current.pdf = blob;
-      setPdfMsg(`Built ${pages} activity page${pages === 1 ? "" : "s"}${blank ? ` plus ${pages} blank reverse pages (${pages * 2} total)` : ""}.`);
+      const patternPages = pattern === "images" ? 0 : pages;
+      const total = (patternPages + imagePages.length) * (blank ? 2 : 1);
+      setPdfMsg(`Built ${patternPages + imagePages.length} activity page${patternPages + imagePages.length === 1 ? "" : "s"}${imagePages.length ? ` (${imagePages.length} from your pictures)` : ""}${blank ? `, ${total} pages with blank reverses` : ""}.`);
       download(`${book.slug}-${pattern}-interior.pdf`, blob);
-    } catch (e) { fail(e); }
+    } catch (e) { fail(e); } finally { setPdfBusy(false); }
   };
 
   const setSection = (id: string, patch: Partial<Book["sections"][number]>) =>
@@ -79,7 +109,7 @@ export default function Tab2Builder({ book, update, save, setBook, assets, fail 
             </select>
           </label>
         </div>
-        <p className="text-xs text-forest/60">Outline and review use Gemini Flash. Section drafts and workbook extraction use the Claude model you pick. These run on Netlify AI Gateway and use Netlify credits. The “copy prompt” buttons cost nothing: paste into your Claude or Gemini web chat.</p>
+        <p className="text-xs text-muted">Outline and review use Gemini Flash. Section drafts and workbook extraction use the Claude model you pick. These run on Netlify AI Gateway and use Netlify credits. The “copy prompt” buttons cost nothing: paste into your Claude or Gemini web chat.</p>
         <div className="flex flex-wrap gap-2">
           <button className="btn" disabled={running} onClick={() => run("generate_outline")}>Generate outline + style bible</button>
           <button className="btn" disabled={running || !book.sections.length} onClick={() => run("review_book")}>Review manuscript</button>
@@ -97,10 +127,10 @@ export default function Tab2Builder({ book, update, save, setBook, assets, fail 
           <h2 className="text-base font-bold text-forest">Sections ({book.sections.length})</h2>
           <button className="btn-alt" disabled={running} onClick={() => update({ sections: [...book.sections, { id: `s${Date.now().toString(36)}`, title: "New section", summary: "", draft: "" }] })}>+ Add section</button>
         </div>
-        {!book.sections.length && <p className="text-sm text-forest/60">No sections yet. Generate an outline or add sections by hand.</p>}
+        {!book.sections.length && <p className="text-sm text-muted">No sections yet. Generate an outline or add sections by hand.</p>}
         <ul className="space-y-2">
           {book.sections.map((s, i) => (
-            <li key={s.id} className="rounded-lg border border-forest/10">
+            <li key={s.id} className="rounded-lg border border-line">
               <div className="flex flex-wrap items-center gap-2 p-2">
                 <button className="flex-1 text-left text-sm font-semibold" onClick={() => setOpen(open === s.id ? null : s.id)}>
                   {i + 1}. {s.title} {s.draft ? <span className="text-xs font-normal text-green">· drafted</span> : null}
@@ -110,10 +140,13 @@ export default function Tab2Builder({ book, update, save, setBook, assets, fail 
                 <button className="text-xs text-accent underline" disabled={running} onClick={() => update({ sections: book.sections.filter((x) => x.id !== s.id) })}>Remove</button>
               </div>
               {open === s.id && (
-                <div className="space-y-2 border-t border-forest/10 p-3">
+                <div className="space-y-2 border-t border-line p-3">
                   <input className="field" value={s.title} readOnly={running} onChange={(e) => setSection(s.id, { title: e.target.value })} />
                   <textarea className="field min-h-16" value={s.summary} readOnly={running} onChange={(e) => setSection(s.id, { summary: e.target.value })} placeholder="Summary" />
                   <textarea className="field min-h-48 font-mono" value={s.draft} readOnly={running} onChange={(e) => setSection(s.id, { draft: e.target.value })} placeholder="Draft spec (paste from your web chat or let the Draft button write it)" />
+                  <h3 className="pt-1 text-sm font-bold text-forest">Pictures for this section</h3>
+                  <ImageEngine book={book} sectionId={s.id} initialPrompt={`${s.title}. ${s.summary}`.trim()} defaultAspect={book.mode === "activity" ? "portrait" : "landscape"} defaultPreset={book.mode === "activity" ? "coloring" : "storybook"} onDone={addImage} fail={fail} />
+                  <ImageGallery book={book} images={book.images.filter((i) => i.sectionId === s.id)} selected={pdfPick} onToggle={togglePick} onCharacter={(id) => void commit({ characterRefId: id })} onRemoved={removeImage} fail={fail} />
                 </div>
               )}
             </li>
@@ -128,6 +161,12 @@ export default function Tab2Builder({ book, update, save, setBook, assets, fail 
         </section>
       )}
 
+      <section className="card space-y-3">
+        <h2 className="text-base font-bold text-forest">Book images ({book.images.length})</h2>
+        <p className="hint">Every picture you generate is kept here, saved separately from the book text. Pick a character reference for Nano Banana, tick pictures for the PDF, or download them.</p>
+        <ImageGallery book={book} images={book.images} selected={pdfPick} onToggle={togglePick} onCharacter={(id) => void commit({ characterRefId: id })} onRemoved={removeImage} fail={fail} />
+      </section>
+
       {book.mode === "activity" && (
         <section className="card space-y-3">
           <h2 className="text-base font-bold text-forest">Vector Activity PDF generator <span className="text-xs font-normal text-green">· runs in your browser, $0</span></h2>
@@ -137,7 +176,7 @@ export default function Tab2Builder({ book, update, save, setBook, assets, fail 
               <select className="field" value={pattern} onChange={(e) => setPattern(e.target.value as Pattern)}>
                 {PATTERNS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
               </select>
-              <p className="mt-1 text-xs text-forest/60">{PATTERNS.find((p) => p.id === pattern)?.note}</p>
+              <p className="mt-1 text-xs text-muted">{PATTERNS.find((p) => p.id === pattern)?.note}</p>
             </div>
             <div>
               <label className="label">Activity pages</label>
@@ -153,10 +192,10 @@ export default function Tab2Builder({ book, update, save, setBook, assets, fail 
             Insert a blank reverse page after every activity page (stops marker bleed-through)
           </label>
           <div className="flex items-center gap-3">
-            <button className="btn" onClick={makePdf}>Build 8.5 × 11 in PDF</button>
+            <button className="btn" onClick={makePdf} disabled={pdfBusy}>{pdfBusy ? "Building…" : "Build 8.5 × 11 in PDF"}</button>
             {pdfMsg && <span className="text-xs text-green">{pdfMsg} Included in the ZIP export.</span>}
           </div>
-          <p className="text-xs text-forest/60">KDP needs at least 24 pages, an even page count works best, and the interior must be 8.5 × 11 in without bleed. Add your own cover and run KDP’s previewer before ordering a proof.</p>
+          <p className="text-xs text-muted">KDP needs at least 24 pages, an even page count works best, and the interior must be 8.5 × 11 in without bleed. Add your own cover and run KDP’s previewer before ordering a proof.</p>
         </section>
       )}
     </div>

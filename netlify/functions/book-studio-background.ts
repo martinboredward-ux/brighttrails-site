@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { checkAuth, json } from "../lib/studio-auth.ts";
 import { geminiGenerate } from "../lib/gemini.ts";
 import { getBook, putBook, type Book, type Section } from "../lib/studio-store.ts";
+import { seriesContext } from "../lib/series-context.ts";
 
 // Background function (15-minute limit). Invoked at /.netlify/functions/book-studio-background.
 // Netlify answers the HTTP call with 202 straight away; progress is written to the book's jobStatus.
@@ -65,11 +66,13 @@ async function run(p: Payload): Promise<Partial<Book>> {
   const book = await getBook(p.bookId);
   if (!book) throw new Error("Book not found");
   const which = p.model === "sonnet" ? "sonnet" : "haiku";
+  // Linked books (series memory) travel with every prompt below.
+  const ctx = bookContext(book) + (await seriesContext(book));
 
   switch (p.action) {
     case "generate_outline": {
       const text = await gemini(
-        `${bookContext(book)}
+        `${ctx}
 
 Create the working plan for this book. Return ONLY JSON: {"styleBible": string, "sections": [{"title": string, "summary": string}]}.
 - styleBible: 200-400 words covering voice, reading level, visual style, recurring characters or motifs, layout rules for the trim size, and things to avoid. It will be given to the writer for every section, so make it specific.
@@ -98,7 +101,7 @@ Create the working plan for this book. Return ONLY JSON: {"styleBible": string, 
         .map((s) => `## ${s.title}\n${s.draft || s.summary}`)
         .join("\n\n");
       const text = await claude(
-        `${bookContext(book)}
+        `${ctx}
 
 STYLE BIBLE
 ${book.styleBible || "(none yet)"}
@@ -120,7 +123,7 @@ Write the full spec for this section as clean Markdown, following the mode guida
     case "review_book": {
       const manuscript = book.sections.map((s) => `## ${s.title}\n${s.draft || s.summary}`).join("\n\n");
       const text = await gemini(
-        `${bookContext(book)}
+        `${ctx}
 
 STYLE BIBLE
 ${book.styleBible || "(none)"}
@@ -136,7 +139,7 @@ Give a developmental review as Markdown: 1) what works, 2) structure and pacing 
     case "extract_workbook": {
       const manuscript = book.sections.map((s) => `## ${s.title}\n${s.draft || s.summary}`).join("\n\n");
       const text = await claude(
-        `${bookContext(book)}
+        `${ctx}
 
 SOURCE MANUSCRIPT
 ${manuscript || book.notes || "(no sections yet)"}

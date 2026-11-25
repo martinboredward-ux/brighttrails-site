@@ -3,6 +3,7 @@ import { checkAuth, json } from "../lib/studio-auth.ts";
 import { geminiGenerate } from "../lib/gemini.ts";
 import { scanBanned } from "../lib/banned-words.ts";
 import { getBook, putBook, type APlusModule, type KdpPackage } from "../lib/studio-store.ts";
+import { seriesContext } from "../lib/series-context.ts";
 
 export const config: Config = { path: "/api/studio/generate-kdp-package" };
 
@@ -45,6 +46,7 @@ export default async (req: Request): Promise<Response> => {
     const book = body.bookId ? await getBook(body.bookId) : null;
     if (!book) return json({ error: "Book not found" }, 404);
 
+    const series = await seriesContext(book);
     const prompt = `You prepare Amazon KDP listings for Bright Trails Publishing, a small kids/adult activity and story book imprint.
 
 BOOK
@@ -56,7 +58,8 @@ Trim size: ${book.trim}
 Notes: ${book.notes || "(none)"}
 Style bible / outline summary: ${(book.styleBible || "").slice(0, 3000)}
 Sections: ${book.sections.map((s) => s.title).join("; ").slice(0, 1500) || "(none yet)"}
-
+${series}
+${series ? "If related books are listed above, the 300x300 or 970x300 A+ module may mention the series or name a sibling title as a quiet cross-sell, in plain words and with none of the banned words below.\n" : ""}
 Return ONLY a JSON object with exactly these keys:
 - "titleIdeas": array of exactly 3 title or title+subtitle ideas (strings). Do not use sticker claims, "#1", "best seller" or "free".
 - "htmlDescription": the Amazon book description as HTML using ONLY these tags: <b>, <i>, <br>, <p>, <ul>, <li>, <h4>. No attributes, no other tags. 150-250 words, honest about contents, no price or promotion claims.
@@ -75,7 +78,8 @@ Return ONLY a JSON object with exactly these keys:
       const bodyText = String(m.body ?? "").slice(0, 200);
       const hits = scanBanned(`${headline} ${bodyText}`);
       if (hits.length) warnings.push(`A+ ${size}: contains banned word(s): ${hits.join(", ")}. Edit before use.`);
-      return { size, headline, body: bodyText };
+      const old = book.kdp?.aPlusModules?.find((x) => x.size === size);
+      return { size, headline, body: bodyText, ...(old?.imageId ? { imageId: old.imageId } : {}), ...(old?.fit ? { fit: old.fit } : {}), ...(old?.textBar !== undefined ? { textBar: old.textBar } : {}) };
     });
 
     const pkg: KdpPackage = {

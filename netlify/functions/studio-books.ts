@@ -3,6 +3,7 @@ import { checkAuth, json } from "../lib/studio-auth.ts";
 import {
   JOB_FIELDS,
   deleteBook,
+  deleteBookImages,
   getBook,
   listBooks,
   newBook,
@@ -16,8 +17,8 @@ export const config: Config = { path: ["/api/studio/books", "/api/studio/books/*
 
 // Fields the browser may change. Job fields are owned by the background function.
 const EDITABLE: (keyof Book)[] = [
-  "title", "subtitle", "mode", "audience", "trim", "aiDisclosure", "notes",
-  "styleBible", "sections", "review", "workbook", "kdp",
+  "title", "subtitle", "mode", "audience", "seriesName", "linkedBookIds", "trim", "aiDisclosure", "notes",
+  "styleBible", "sections", "review", "workbook", "kdp", "characterRefId",
 ];
 
 function idFromPath(req: Request): string | null {
@@ -53,6 +54,10 @@ export default async (req: Request): Promise<Response> => {
       for (const k of EDITABLE) {
         if (k in body) (next as unknown as Record<string, unknown>)[k] = (body as Record<string, unknown>)[k];
       }
+      next.linkedBookIds = Array.isArray(next.linkedBookIds)
+        ? [...new Set(next.linkedBookIds.map(String))].filter((x) => x !== id).slice(0, 12)
+        : [];
+      next.seriesName = String(next.seriesName ?? "").slice(0, 120);
       // Never let a browser save overwrite job state.
       for (const k of JOB_FIELDS) (next as unknown as Record<string, unknown>)[k] = current[k];
       next.slug = slugify(next.title);
@@ -63,6 +68,7 @@ export default async (req: Request): Promise<Response> => {
 
     if (req.method === "DELETE" && id) {
       await deleteBook(id);
+      await deleteBookImages(id);
       return json({ ok: true });
     }
 
