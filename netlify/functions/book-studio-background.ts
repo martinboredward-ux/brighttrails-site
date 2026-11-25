@@ -1,7 +1,7 @@
 import type { Config } from "@netlify/functions";
 import Anthropic from "@anthropic-ai/sdk";
-import { GoogleGenAI } from "@google/genai";
 import { checkAuth, json } from "../lib/studio-auth.ts";
+import { geminiGenerate } from "../lib/gemini.ts";
 import { getBook, putBook, type Book, type Section } from "../lib/studio-store.ts";
 
 // Background function (15-minute limit). Invoked at /.netlify/functions/book-studio-background.
@@ -38,15 +38,7 @@ AI disclosure setting: ${b.aiDisclosure}
 Notes: ${b.notes || "(none)"}`;
 }
 
-async function gemini(prompt: string, json = false): Promise<string> {
-  const ai = new GoogleGenAI({});
-  const res = await ai.models.generateContent({
-    model: "gemini-flash-latest",
-    contents: prompt,
-    config: json ? { responseMimeType: "application/json" } : undefined,
-  });
-  return (res.text ?? "").trim();
-}
+const gemini = (prompt: string, json = false) => geminiGenerate(prompt, { json });
 
 async function claude(prompt: string, which: keyof typeof MODELS): Promise<string> {
   const client = new Anthropic();

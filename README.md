@@ -50,7 +50,7 @@ An admin tool for planning books, building activity-page PDFs, writing KDP listi
 | Shared code | `netlify/lib/` (password check, Netlify Blobs store `kdp-book-studio`, banned-word list) |
 
 - Set `APP_PASSWORD` in Netlify environment variables. Every Studio function checks it (`x-studio-password` header) and `/studio` shows a login screen.
-- AI calls go through Netlify AI Gateway with no API keys: Gemini Flash (`gemini-flash-latest`) and Claude (`claude-haiku-5-5`, switchable to `claude-sonnet-5-5`). They use Netlify credits. Every AI button has a free copy-prompt twin for your web chat.
+- AI calls go through Netlify AI Gateway with no API keys: Gemini Flash (tries `GEMINI_MODEL` first, then `gemini-3.8-flash`, `gemini-3.7-flash`, `gemini-4-hydrogen`, `gemini-3-flash-preview`; set `GEMINI_MODEL` in Netlify to change it without a deploy) and Claude (`claude-haiku-5-5`, switchable to `claude-sonnet-5-5`). They use Netlify credits. Every AI button has a free copy-prompt twin for your web chat.
 - Activity PDFs and A+ banners are built in the browser and cost nothing.
 - `/studio` is `noindex`, disallowed in `robots.txt`, and sent with `X-Robots-Tag`.
 - Restore point: git tag `pre-studio-backup` is the site exactly as it was before the Studio.

@@ -1,6 +1,6 @@
 import type { Config } from "@netlify/functions";
-import { GoogleGenAI } from "@google/genai";
 import { checkAuth, json } from "../lib/studio-auth.ts";
+import { geminiGenerate } from "../lib/gemini.ts";
 import { scanBanned } from "../lib/banned-words.ts";
 import { getBook, putBook, type APlusModule, type KdpPackage } from "../lib/studio-store.ts";
 
@@ -45,7 +45,6 @@ export default async (req: Request): Promise<Response> => {
     const book = body.bookId ? await getBook(body.bookId) : null;
     if (!book) return json({ error: "Book not found" }, 404);
 
-    const ai = new GoogleGenAI({});
     const prompt = `You prepare Amazon KDP listings for Bright Trails Publishing, a small kids/adult activity and story book imprint.
 
 BOOK
@@ -66,12 +65,7 @@ Return ONLY a JSON object with exactly these keys:
 - "isLowContent": boolean. Coloring books, line-tracing books, activity books, storybooks and workbooks are NOT low-content: answer false for them. Answer true only for blank journals, notebooks, planners, logbooks with no authored content.
 - "aPlusModules": array of exactly 3 objects, in this order, each {"size","headline","body"}: sizes "970x600", "970x300", "300x300". Headline 60 characters or fewer, body 200 characters or fewer. Never use any of these words or phrases: free, bonus, affordable, cheap, discount, sale, buy now, order now, add to cart, best seller, #1, guarantee, new, latest, review, 5 star.`;
 
-    const result = await ai.models.generateContent({
-      model: "gemini-flash-latest",
-      contents: prompt,
-      config: { responseMimeType: "application/json", temperature: 0.7 },
-    });
-    const text = (result.text ?? "").trim().replace(/^```(?:json)?|```$/g, "").trim();
+    const text = (await geminiGenerate(prompt, { json: true, temperature: 0.7 })).replace(/^```(?:json)?|```$/g, "").trim();
     const raw = JSON.parse(text) as Partial<KdpPackage>;
 
     const warnings: string[] = [];
