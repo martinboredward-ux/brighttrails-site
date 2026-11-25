@@ -1,6 +1,6 @@
 # brighttrailspublishing.com
 
-Static site for Bright Trails Publishing. Plain HTML, CSS and JavaScript: no build step, no server, no dependencies. Same setup as edwardmartimbor-site.
+Static site for Bright Trails Publishing. The public site is plain HTML, CSS and JavaScript. The one addition is the private KDP Book Studio at `/studio` (see the last section), which has its own build.
 
 ## Structure
 
@@ -38,3 +38,20 @@ The form uses Netlify Forms. After the first deploy, open the site in Netlify, g
 - Netlify Forms collects two forms: **printables** (with an optional `news` consent box) and **privacy-request**. In Netlify, add an email notification for **privacy-request** so you see requests quickly, and answer within 30 days.
 - Only send book news to people whose submission has `news: yes`.
 - If you add an email service (e.g. MailerLite), name it in the privacy policy's "Who else handles your information" section.
+
+## KDP Book Studio (`/studio`, private)
+
+An admin tool for planning books, building activity-page PDFs, writing KDP listings and making A+ images. It is isolated from the public pages.
+
+| Part | Where |
+| --- | --- |
+| App (Vite + React + TypeScript + Tailwind, `base: /studio/`) | `studio-app/`, builds into `./studio/` (not committed) |
+| API | `netlify/functions/studio-books.ts` (`/api/studio/books`), `studio-kdp-package.ts` (`/api/studio/generate-kdp-package`), `book-studio-background.ts` (`/.netlify/functions/book-studio-background`) |
+| Shared code | `netlify/lib/` (password check, Netlify Blobs store `kdp-book-studio`, banned-word list) |
+
+- Set `APP_PASSWORD` in Netlify environment variables. Every Studio function checks it (`x-studio-password` header) and `/studio` shows a login screen.
+- AI calls go through Netlify AI Gateway with no API keys: Gemini Flash (`gemini-flash-latest`) and Claude (`claude-haiku-5-5`, switchable to `claude-sonnet-5-5`). They use Netlify credits. Every AI button has a free copy-prompt twin for your web chat.
+- Activity PDFs and A+ banners are built in the browser and cost nothing.
+- `/studio` is `noindex`, disallowed in `robots.txt`, and sent with `X-Robots-Tag`.
+- Restore point: git tag `pre-studio-backup` is the site exactly as it was before the Studio.
+- Local run: `npm install && npm run build && npx netlify dev` (open `/` and `/studio/`).

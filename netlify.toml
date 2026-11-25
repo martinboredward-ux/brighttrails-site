@@ -1,3 +1,27 @@
 [build]
   publish = "."
-  command = ""
+  command = "npm --prefix studio-app install && npm --prefix studio-app run build"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# Studio single-page app. Real files under /studio/ (JS, CSS) are served first;
+# anything else under /studio/ falls back to the app shell.
+[[redirects]]
+  from = "/studio/*"
+  to = "/studio/index.html"
+  status = 200
+
+# Keep the private Studio and its API out of search results.
+[[headers]]
+  for = "/studio/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-store"
+
+[[headers]]
+  for = "/api/studio/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-store"
