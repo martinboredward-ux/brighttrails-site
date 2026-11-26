@@ -43,10 +43,11 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
   const [pdfBusy, setPdfBusy] = useState(false);
   const [htmlBusy, setHtmlBusy] = useState(false);
   const [backing, setBacking] = useState(false);
+  const [picLayout, setPicLayout] = useState<"page" | "inline">(book.mode === "storybook" ? "inline" : "page");
   const makeHtml = async () => {
     setHtmlBusy(true);
     try {
-      const html = await buildPrintableBook(book, { backingPages: backing });
+      const html = await buildPrintableBook(book, { backingPages: backing, pictureLayout: picLayout });
       download(`${book.slug}-printable-book.html`, new Blob([html], { type: "text/html" }));
     } catch (e) { fail(e); } finally { setHtmlBusy(false); }
   };
@@ -208,6 +209,12 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
         <section className="card space-y-3">
           <h2 className="text-base font-bold text-forest">Printable book (8.5 × 11 in HTML)</h2>
           <p className="hint">Turns your drafted sections and their pictures into a title page, then a story page and an activity page for each section. {book.sections.length ? `${book.sections.length} section${book.sections.length === 1 ? "" : "s"} ready.` : "Add sections first."}</p>
+          <label className="flex items-center gap-2 text-sm">Picture size
+            <select className="field !w-auto" value={picLayout} onChange={(e) => setPicLayout(e.target.value as "page" | "inline")}>
+              <option value="page">Large: full page for each picture</option>
+              <option value="inline">Small: picture shares the story page</option>
+            </select>
+          </label>
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={backing} onChange={(e) => setBacking(e.target.checked)} /> Insert a blank backing page after every page (stops marker bleed-through)</label>
           {(untagged > 0 || empty > 0) && <p className="rounded-lg bg-sun/30 px-3 py-2 text-sm text-forest">{empty > 0 ? `${empty} section${empty === 1 ? " has" : "s have"} no draft yet. ` : ""}{untagged > 0 ? `${untagged} section${untagged === 1 ? " is" : "s are"} in the older draft format, so some boxes would print empty. ` : ""}Use “Draft all sections” above to fill them in.</p>}
           <div className="flex flex-wrap items-center gap-3">
