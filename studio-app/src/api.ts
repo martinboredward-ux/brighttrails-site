@@ -100,3 +100,7 @@ export async function generateImage(req: ImageJobRequest, onTick?: (status: stri
   }
   throw new Error("The picture is taking too long. Check the gallery in a minute; it may still appear.");
 }
+
+export interface CoverCheck { ok: boolean; summary: string; checks: { name: string; pass: boolean; note: string }[] }
+export const checkCover = (payload: Record<string, unknown>) =>
+  call<CoverCheck>("/api/studio/cover-check", { method: "POST", body: JSON.stringify(payload) });

@@ -4,6 +4,7 @@ import { checkAuth, json } from "../lib/studio-auth.ts";
 import { geminiGenerate } from "../lib/gemini.ts";
 import { getBook, putBook, type Book, type Section } from "../lib/studio-store.ts";
 import { seriesContext } from "../lib/series-context.ts";
+import { automatedChecks, cleanFixes, diffSummary, parseJson } from "../lib/review-utils.ts";
 
 // Background function (15-minute limit). Invoked at /.netlify/functions/book-studio-background.
 // Netlify answers the HTTP call with 202 straight away; progress is written to the book's jobStatus.
@@ -198,19 +199,30 @@ Create the working plan for this book. Return ONLY JSON: {"styleBible": string, 
     }
 
     case "review_book": {
-      const manuscript = book.sections.map((s) => `## ${s.title}\n${s.draft || s.summary}`).join("\n\n");
+      // Review #2: Pre-Cover Proofread & Formatting QA. Strictly spelling, tags, consistency, artwork and reading level.
+      const manuscript = book.sections.map((sec, i) => `## SECTION ${i + 1}: ${sec.title}\n${sec.draft || sec.summary}`).join("\n\n");
+      const toddler = book.mode === "storybook";
       const text = await gemini(
         `${ctx}
 
 STYLE BIBLE
 ${book.styleBible || "(none)"}
 
+AUTOMATED CHECKS (already run by the Studio, treat as facts)
+${automatedChecks(book)}
+
 MANUSCRIPT
 ${manuscript || "(no sections yet)"}
 
-Give a developmental review as Markdown: 1) what works, 2) structure and pacing problems, 3) continuity or consistency issues, 4) audience fit and reading level, 5) a prioritized fix list of at most 10 items. Be specific and refer to sections by title.`,
+You are a proofreader and print-formatting QA editor running just BEFORE the cover. Stay strictly inside: spelling, grammar and typos; consistency of names and Tagalog or other special terms; broken "[" brackets or missing [TAG] blocks; Answer Key vs Worksheet accuracy (every answer must match its question); missing section artwork; reading-level and format consistency for the audience "${book.audience || "not set"}". ${toddler ? "This is a toddler STORYBOOK: it must contain NO elementary fill-in Word Bank drills, no spelling worksheets and no answer keys; flag any that exist and any wording too hard for the age." : ""} Do NOT comment on plot, market or structure.
+
+Return ONLY JSON: {"review": string, "reviewFixes": [{"id": string, "title": string, "detail": string, "target": "sections"}]}.
+"review" is readable Markdown QA notes with headings "## Spelling & grammar", "## Names & special terms", "## Tags & formatting", "## Answer Key vs Worksheet", "## Artwork", "## Reading level" (write "No problems found." under a heading that is clean). Mention sections by number and title.
+"reviewFixes" has at most 12 specific, separate fixes (a short imperative title and a detail naming the section and the exact words). Empty array if nothing needs fixing.`,
+        true,
       );
-      return { review: text };
+      const data = parseJson<{ review?: string; reviewFixes?: unknown }>(text);
+      return { review: String(data.review ?? "").trim() || "No problems found.", reviewFixes: cleanFixes(data.reviewFixes, ["sections"]), reviewSelected: [] };
     }
 
     case "market_research": {
@@ -232,8 +244,12 @@ Be specific and short. In "Market Fit" say what competing books in this niche us
     }
 
     case "pre_review": {
+      // Review #1: Idea, Market & Age-Fit Review, before outlining.
       const text = await gemini(
         `${ctx}
+
+MARKET RESEARCH
+${book.research?.trim() || "(not run)"}
 
 NOTES (rough ideas, storyline options, or a finished plan)
 ${book.notes || "(none yet)"}
@@ -241,24 +257,27 @@ ${book.notes || "(none yet)"}
 STYLE BIBLE
 ${book.styleBible || "(none yet)"}
 
+TARGET AGE / AUDIENCE: ${book.audience || "(not set)"}
+
 AUTHOR'S QUESTION
 ${book.reviewQuestion?.trim() || "(none)"}
 
-You are a story coach and developmental editor reviewing a book BEFORE it is outlined. Work only from the notes, style bible and series context above. Write Markdown.
+You are a story coach and market editor reviewing a book BEFORE it is outlined. Judge market positioning, the hook, storyline options, age-appropriateness for the stated audience (an 18-month to 4-year-old toddler needs very different text, length, vocabulary and activities than a Grade 1-3 reader), pacing, and character roles. Work only from the material above.
 
-Step 1. Decide what the notes contain.
-- If they contain TWO OR MORE storyline options or rough alternatives (for example Option A and Option B, or "either ... or"), act as an interactive story coach: add a "## Head-to-head" section comparing the options on reader appeal, pacing, market fit, and illustration and activity potential (a short table is fine). Then "## Recommendation" naming the stronger storyline and exactly WHY, and what to borrow from the other one. Then suggest improvements to the winner.
-- If they contain ONE plan, add "## Continuity and style check": timeline conflicts, missing or unclear character roles, reading level versus the audience, and page-budget gaps for the trim size and mode. If an element is fine, say so in one line.
-- If the notes are messy rough ideas, first write "## What I understood" in 3-5 bullet points, then give the checks above.
+Inside "review" write Markdown. If the notes hold TWO OR MORE storyline options (Option A and Option B, or "either ... or"), include "## Head-to-head" (reader appeal, pacing, market fit, illustration and activity potential), then "## Recommendation" naming the stronger one and exactly WHY. If they hold one plan, include "## Continuity and style check". If they are messy rough ideas, start with "## What I understood" (3-5 bullets). Always include "## Market positioning and hook", "## Age fit" and "## Pacing and character roles". If the author asked a question, answer it under "## Answer to your question".
 
-Step 2. If the author asked a question, answer it directly under "## Answer to your question".
-
-Step 3. Finish with "## Suggested fixes" as a numbered list of at most 10 concrete changes to the Notes or Style Bible. Each starts with a verb. Do not rewrite the whole notes.`,
+Return ONLY JSON: {"review": string, "reviewFixes": [{"id": string, "title": string, "detail": string, "target": "notes" | "styleBible"}]}.
+"reviewFixes" has at most 10 concrete, separate changes. Each title starts with a verb. Use target "notes" for plot, storyline, structure or content changes and "styleBible" for voice, reading level, visual style, recurring characters or layout rules. Do not rewrite the whole notes.`,
+        true,
       );
-      return { preReview: text };
+      const data = parseJson<{ review?: string; reviewFixes?: unknown }>(text);
+      return { preReview: String(data.review ?? "").trim(), preReviewFixes: cleanFixes(data.reviewFixes, ["notes", "styleBible"]), preReviewSelected: [] };
     }
 
     case "apply_review": {
+      const picked = (book.preReviewFixes ?? []).filter((f) => (book.preReviewSelected ?? []).includes(f.id));
+      const extra = book.reviewDirection?.trim();
+      if (!picked.length && !extra) throw new Error("Tick at least one fix, or type extra instructions, then apply.");
       const text = await gemini(
         `${ctx}
 
@@ -268,30 +287,40 @@ ${book.notes || "(none)"}
 CURRENT STYLE BIBLE
 ${book.styleBible || "(none)"}
 
-PRE-OUTLINE REVIEW
+REVIEW (for background only)
 ${book.preReview || "(none)"}
 
-AUTHOR'S FIXES AND DIRECTION TO APPLY (this overrides the review; items the author says to skip must be skipped; if it names a winning storyline, lock that storyline in)
-${book.reviewDirection?.trim() || "(none given: apply the review's numbered suggested fixes and its recommendation)"}
+FIXES THE AUTHOR CHECKED (apply exactly these and nothing else from the review)
+${picked.map((f, i) => `${i + 1}. [${f.target}] ${f.title}: ${f.detail}`).join("\n") || "(none checked)"}
 
-Rewrite the NOTES and the STYLE BIBLE so they incorporate the accepted fixes and lock in the chosen storyline. Rules: keep every fact, name and detail the author wrote unless a fix changes it; remove the losing storyline options once one is chosen; do not invent new characters, places or plot; keep lists and headings readable; Notes under 7000 characters; Style Bible 200-400 words covering voice and reading level, visual style, recurring characters (with the exact names and details already given), layout rules, and things to avoid. Return ONLY JSON: {"notes": string, "styleBible": string}.`,
+EXTRA INSTRUCTIONS FROM THE AUTHOR (these override everything; if they name a winning storyline, lock it in and remove the losing options)
+${extra || "(none)"}
+
+Rewrite the NOTES and the STYLE BIBLE so they incorporate ONLY the checked fixes and the extra instructions. Rules: keep every fact, name and detail the author wrote unless a checked fix changes it; do not apply unchecked suggestions; do not invent new characters, places or plot; keep lists and headings readable; Notes under 7000 characters; Style Bible 200-400 words covering voice and reading level, visual style, recurring characters (with the exact names and details already given), layout rules, and things to avoid. Return ONLY JSON: {"notes": string, "styleBible": string, "appliedChanges": string[]} where appliedChanges is a bulleted-style list of short plain sentences, one per concrete change you really made (say what changed and where).`,
         true,
       );
-      const data = JSON.parse(text.replace(/^```(?:json)?|```$/g, "").trim()) as { notes?: string; styleBible?: string };
+      const data = parseJson<{ notes?: string; styleBible?: string; appliedChanges?: unknown }>(text);
       if (!data.notes?.trim() || !data.styleBible?.trim()) throw new Error("The AI returned an empty Notes or Style Bible. Nothing was changed.");
+      const notes = String(data.notes).slice(0, 12000), styleBible = String(data.styleBible).slice(0, 8000);
+      const claimed = Array.isArray(data.appliedChanges) ? data.appliedChanges.map((x) => String(x).slice(0, 220)).slice(0, 15) : [];
+      const proof = [...(notes !== book.notes ? ["Notes updated"] : []), ...(styleBible !== book.styleBible ? ["Style Bible updated"] : [])];
       return {
         previousNotesBackup: book.notes,
         previousStyleBibleBackup: book.styleBible,
-        notes: String(data.notes).slice(0, 12000),
-        styleBible: String(data.styleBible).slice(0, 8000),
+        notes,
+        styleBible,
+        lastApplied: { kind: "idea" as const, at: new Date().toISOString(), changes: [...proof, ...(claimed.length ? claimed : ["(the AI listed no individual changes)"])] },
       };
     }
 
     case "apply_polish": {
-      const todo = book.sections.map((s, i) => i).filter((i) => book.sections[i].draft.trim());
-      if (!todo.length) throw new Error("There are no drafted sections to polish.");
-      if (!book.review.trim()) throw new Error("Run Review manuscript first, then apply its fixes.");
-      const backup = book.sections.map((s) => ({ ...s }));
+      const picked = (book.reviewFixes ?? []).filter((f) => (book.reviewSelected ?? []).includes(f.id));
+      const extra = book.polishDirection?.trim();
+      if (!picked.length && !extra) throw new Error("Tick at least one fix, or type extra instructions, then apply.");
+      const todo = book.sections.map((_, i) => i).filter((i) => book.sections[i].draft.trim());
+      if (!todo.length) throw new Error("There are no drafted sections to fix.");
+      const backup = book.sections.map((sec) => ({ ...sec }));
+      const log: string[] = [];
       let done = 0;
       for (const idx of todo) {
         await setJob(book.id, { jobAction: `apply_polish:${done + 1}/${todo.length}` });
@@ -305,33 +334,34 @@ Rewrite the NOTES and the STYLE BIBLE so they incorporate the accepted fixes and
 STYLE BIBLE
 ${book.styleBible || "(none)"}
 
-MANUSCRIPT REVIEW
-${book.review.slice(0, 6000)}
+FIXES THE AUTHOR CHECKED (apply only these)
+${picked.map((f, i) => `${i + 1}. ${f.title}: ${f.detail}`).join("\n") || "(none checked)"}
 
-AUTHOR'S DIRECTION (overrides the review; skip anything the author says to skip)
-${book.polishDirection?.trim() || "(none: apply the review's fixes that concern this section)"}
+EXTRA INSTRUCTIONS FROM THE AUTHOR (override the fixes)
+${extra || "(none)"}
 
-SECTION TO POLISH
+SECTION ${idx + 1} TO FIX
 Title: ${sec.title}
 ${sec.draft}
 
-Revise this section ONLY where the review or direction asks for a change that affects it. Keep everything else word for word. ${tagged ? `Return the same tagged blocks in the same order and format, nothing else.\n\n${TAG_FORMAT}\n\n${CLEAN_RULES}` : "Return the full revised section as Markdown."}`,
+Change this section ONLY where a checked fix or the extra instructions affects it. If none affects it, return it exactly as it is. Keep everything else word for word. ${tagged ? `Return the same tagged blocks in the same order and format, nothing else.\n\n${TAG_FORMAT}\n\n${CLEAN_RULES}` : "Return the full revised section as Markdown."}`,
             which,
           );
         } catch (err) {
-          throw new Error(`Stopped at section ${idx + 1} (${sec.title}) after ${done} of ${todo.length}: ${err instanceof Error ? err.message : String(err)}. Polished sections so far are saved; use Undo to restore the originals.`);
+          throw new Error(`Stopped at section ${idx + 1} (${sec.title}) after ${done} of ${todo.length}: ${err instanceof Error ? err.message : String(err)}. Fixed sections so far are saved; use Undo to restore the originals.`);
         }
-        book.sections = book.sections.map((s, i) => (i === idx ? { ...s, draft: text } : s));
+        log.push(...diffSummary(sec.draft, text, `Section ${idx + 1} (${sec.title})`));
+        book.sections = book.sections.map((x, i) => (i === idx ? { ...x, draft: text } : x));
         const fresh = await getBook(book.id);
         if (fresh) {
-          fresh.sections = fresh.sections.map((s) => (s.id === sec.id ? { ...s, draft: text } : s));
+          fresh.sections = fresh.sections.map((x) => (x.id === sec.id ? { ...x, draft: text } : x));
           fresh.previousSectionsBackup = backup;
           fresh.updatedAt = new Date().toISOString();
           await putBook(fresh);
         }
         done++;
       }
-      return {};
+      return { lastApplied: { kind: "qa" as const, at: new Date().toISOString(), changes: log.length ? log.slice(0, 60) : ["No section needed a change."] } };
     }
 
     case "extract_workbook": {

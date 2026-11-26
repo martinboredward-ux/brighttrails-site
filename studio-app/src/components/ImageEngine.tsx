@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Book, CharacterRef, GeneratedImage, ImageAspect, ImageProvider, StylePreset } from "../types";
 import { generateImage } from "../api";
 import { wrapPrompt } from "../imagePrompts";
+import { trimAspect } from "../utils/trims";
 import CharacterLibrary, { KIND_LABEL } from "./CharacterLibrary";
 import { useBlobUrl } from "../blobUrl";
 import { TooltipButton } from "./TooltipButton";
@@ -98,7 +99,7 @@ export default function ImageEngine({ book, sectionId, initialPrompt = "", defau
       </div>
       <div className="grid gap-2 sm:grid-cols-3">
         <label className="text-xs text-muted">Style
-          <select className="field mt-1" value={preset} onChange={(e) => setPreset(e.target.value as StylePreset)}>
+          <select className="field mt-1" value={preset} onChange={(e) => { const v = e.target.value as StylePreset; setPreset(v); if (v === "cover") setAspect(trimAspect(book.trim)); }}>
             <option value="coloring">Coloring page (black and white)</option>
             <option value="storybook">Storybook</option>
             <option value="cover">Cover</option>

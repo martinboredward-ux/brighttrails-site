@@ -4,6 +4,7 @@ import { AuthError, clearPassword, createBook, getBook, getPassword, listBooks, 
 import { exportBundle, download, type ExportAssets } from "./exportZip";
 import Tab1Research from "./tabs/Tab1Research";
 import TabCover from "./tabs/TabCover";
+import ReadinessCard from "./components/ReadinessCard";
 import Tab2Builder from "./tabs/Tab2Builder";
 import Tab3Kdp from "./tabs/Tab3Kdp";
 import Tab4APlus from "./tabs/Tab4APlus";
@@ -177,6 +178,7 @@ export default function App() {
                 <TooltipButton onClick={() => pick(b.id)} className={`w-full rounded-lg px-3 py-2 text-left text-sm ${book?.id === b.id ? "bg-brand text-onbrand" : "hover:bg-forest/10"}`}>
                   {b.title}
                   <span className="block text-xs opacity-70">{b.mode}</span>
+                  {b.approvedAt && <span className="mt-1 inline-block rounded bg-green px-1.5 py-0.5 text-[10px] font-extrabold text-white">APPROVED FOR KDP</span>}
                 </TooltipButton>
               </li>
             ))}
@@ -209,10 +211,12 @@ export default function App() {
                 <TooltipButton className="btn" onClick={exportZip}>Export .ZIP Bundle</TooltipButton>
                 <TooltipButton className="btn-alt" onClick={del}>Delete</TooltipButton>
               </div>
+              <div className="basis-full"><ReadinessCard book={book} commit={commit} compact /></div>
             </div>
+            {tab === 4 && <ReadinessCard book={book} commit={commit} />}
             {tab === 0 && <Tab1Research book={book} books={books} update={update} commit={commit} save={save} setBook={setBook} fail={fail} locked={running} />}
             {tab === 1 && <Tab2Builder book={book} update={update} commit={commit} save={save} setBook={setBook} assets={assets} fail={fail} />}
-            {tab === 2 && <TabCover book={book} update={update} commit={commit} fail={fail} />}
+            {tab === 2 && <TabCover book={book} update={update} commit={commit} setBook={setBook} fail={fail} />}
             {tab === 3 && <Tab3Kdp book={book} update={update} save={save} setBook={setBook} fail={fail} />}
             {tab === 4 && <Tab4APlus book={book} update={update} setBook={setBook} fail={fail} />}
           </>

@@ -30,7 +30,7 @@ const WRAPPERS: Record<StylePreset, (p: string) => string> = {
   library_color: (p) => `Warm, friendly children's picture-book art on a plain white background: flat storybook colors, clean outlines, no lettering or numbers. Subject: ${p}`,
   coloring: (p) => `${COLORING_WRAPPER} ${COLORING_GUARDRAIL} Subject: ${p}`,
   storybook: (p) => `Warm, friendly children's picture book illustration, soft colors, clear simple shapes, no text or lettering. Scene: ${p}`,
-  cover: (p) => `Bright, appealing book cover artwork with a clear focal subject and space for a title, no lettering. Subject: ${p}`,
+  cover: (p) => `Bright, appealing children's book COVER artwork, no lettering of any kind. Composition for title typography: keep the TOP 30% of the picture as open sky or plain negative space with no characters, objects or detail; put the main characters and their faces in the middle and lower-middle, large and clearly visible, well away from the top and bottom edges; keep the bottom 12% a simple calm ground area; the scene must still work if the edges are trimmed. Subject: ${p}`,
   aplus: (p) => `Clean marketing illustration for an online book listing, uncluttered, friendly, no text or lettering. Subject: ${p}`,
 };
 

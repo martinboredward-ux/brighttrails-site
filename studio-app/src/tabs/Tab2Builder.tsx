@@ -122,7 +122,7 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
         const dataUrl = await new Promise<string>((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = () => rej(new Error("Could not read a picture")); r.readAsDataURL(blob); });
         imagePages.push({ dataUrl, format: blob.type === "image/jpeg" ? "JPEG" : "PNG", w: el.naturalWidth, h: el.naturalHeight });
       }
-      const blob = buildActivityPdf({ pattern, pages, blankReverse: blank, title: pdfTitle }, imagePages);
+      const blob = buildActivityPdf({ pattern, pages, blankReverse: blank, title: pdfTitle, trim: book.trim }, imagePages);
       assets.current.pdf = blob;
       const patternPages = pattern === "images" ? 0 : pages;
       const total = (patternPages + imagePages.length) * (blank ? 2 : 1);
@@ -183,7 +183,7 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
                   <textarea className="field min-h-16" value={s.summary} readOnly={running} onChange={(e) => setSection(s.id, { summary: e.target.value })} placeholder="Summary" />
                   <textarea className="field min-h-48 font-mono" value={s.draft} readOnly={running} onChange={(e) => setSection(s.id, { draft: e.target.value })} placeholder="Draft spec (paste from your web chat or let the Draft button write it)" />
                   <h3 className="pt-1 text-sm font-bold text-forest">Pictures for this section</h3>
-                  <ImageEngine key={`${s.id}:${defaultScenePrompt(s)}`} book={book} sectionId={s.id} initialPrompt={defaultScenePrompt(s)} defaultAspect={book.mode === "activity" ? "portrait" : "landscape"} defaultPreset={book.mode === "activity" ? "coloring" : "storybook"} onDone={addImage} fail={fail} commit={commit} pinned={pins[s.id]} />
+                  <ImageEngine key={`${s.id}:${defaultScenePrompt(s)}`} book={book} sectionId={s.id} initialPrompt={defaultScenePrompt(s)} defaultAspect={book.trim === "8.5x8.5" ? "square" : book.mode === "activity" ? "portrait" : "landscape"} defaultPreset={book.mode === "activity" ? "coloring" : "storybook"} onDone={addImage} fail={fail} commit={commit} pinned={pins[s.id]} />
                   <ImageGallery book={book} images={book.images.filter((i) => i.sectionId === s.id)} selected={pdfPick} onToggle={togglePick} onCharacter={toggleLibrary} onRemoved={removeImage} fail={fail} />
                 </div>
               )}
