@@ -29,6 +29,9 @@ export const removeBook = (id: string) => call<{ ok: boolean }>(`/api/studio/boo
 export const generateKdp = (bookId: string) =>
   call<{ kdp: KdpPackage }>("/api/studio/generate-kdp-package", { method: "POST", body: JSON.stringify({ bookId }) }).then((r) => r.kdp);
 
+export const generateRescueAudit = (bookId: string) =>
+  call<{ rescueAudit: string }>("/api/studio/rescue-audit", { method: "POST", body: JSON.stringify({ bookId }) }).then((r) => r.rescueAudit);
+
 /** Starts a background job. Netlify answers 202 at once; poll getBook for jobStatus. */
 export async function startJob(payload: { bookId: string; action: Action; sectionId?: string; model?: "haiku" | "sonnet" }) {
   const res = await fetch("/.netlify/functions/book-studio-background", {

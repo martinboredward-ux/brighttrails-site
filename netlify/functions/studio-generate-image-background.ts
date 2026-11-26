@@ -26,7 +26,9 @@ export default async (req: Request): Promise<Response> => {
   await store.setJSON(jobKey, { ...base, status: "running" });
 
   try {
-    const result = await generateImage(p);
+    // Section pictures get a short style-bible summary so characters keep the same look across engines.
+    const bookNow = p.sectionId ? await getBook(p.bookId) : null;
+    const result = await generateImage({ ...p, styleBible: bookNow?.styleBible });
     const imageId = `${p.bookId}__${crypto.randomUUID()}`;
     await store.set(imageId, result.bytes, { metadata: { contentType: result.contentType, bookId: p.bookId, bytes: result.bytes.byteLength } });
 
