@@ -2,6 +2,9 @@
   publish = "."
   command = "npm --prefix studio-app install && npm --prefix studio-app run build"
   functions = "netlify/functions"
+  # Deploy guard: only build when the latest commit message contains [deploy].
+  # Exit 0 = skip the build, exit 1 = build. Keeps credits from being spent on every push.
+  ignore = "git log -1 --pretty=%B HEAD | grep -qF '[deploy]' && exit 1 || exit 0"
 
 [build.environment]
   NODE_VERSION = "22"
