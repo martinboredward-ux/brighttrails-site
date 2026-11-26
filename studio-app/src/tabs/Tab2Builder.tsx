@@ -4,7 +4,9 @@ import { startJob } from "../api";
 import { PATTERNS, buildActivityPdf, type ImagePage, type Pattern } from "../activityPdf";
 import { fetchImageBlob } from "../api";
 import { blobToImage } from "../imageTools";
-import { buildPrintableBook } from "../printableBook";
+import { buildPrintableBook, parseTagged } from "../printableBook";
+import { defaultScenePrompt } from "../imagePrompts";
+import { CLEAN_RULES, TAG_FORMAT, isTaggedMode } from "../draftFormat";
 import ImageEngine from "../components/ImageEngine";
 import ImageGallery from "../components/ImageGallery";
 import { download, type ExportAssets } from "../exportZip";
@@ -22,6 +24,7 @@ interface Props {
 const LABEL: Record<string, string> = {
   generate_outline: "Generating outline (Gemini)",
   draft_section: "Drafting section (Claude)",
+  draft_all: "Drafting all sections (Claude)",
   review_book: "Reviewing manuscript (Gemini)",
   extract_workbook: "Extracting workbook (Claude)",
 };
@@ -59,24 +62,40 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
   };
   const togglePick = (id: string) => setPdfPick((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
-  const run = async (action: Action, sectionId?: string) => {
+  const run = async (action: Action, sectionId?: string, onlyEmpty?: boolean) => {
     const saved = await save();
     if (!saved) return;
     try {
       setBook((b) => (b ? { ...b, jobStatus: "running", jobAction: action, jobError: "" } : b));
-      await startJob({ bookId: book.id, action, sectionId, model });
+      await startJob({ bookId: book.id, action, sectionId, model, onlyEmpty });
     } catch (e) {
       setBook((b) => (b ? { ...b, jobStatus: "error", jobError: e instanceof Error ? e.message : "Could not start" } : b));
       fail(e);
     }
   };
 
+  const tagged = isTaggedMode(book.mode);
+  const untagged = book.sections.filter((s) => s.draft.trim() && !parseTagged(s.draft)).length;
+  const empty = book.sections.filter((s) => !s.draft.trim()).length;
+  const draftAll = () => {
+    if (!book.sections.length) return;
+    let onlyEmpty = true;
+    if (empty === 0 || untagged > 0 || book.sections.some((s) => s.draft.trim())) {
+      if (empty === book.sections.length) onlyEmpty = true;
+      else {
+        const redo = confirm(`${book.sections.length - empty} section${book.sections.length - empty === 1 ? " already has" : "s already have"} a draft${untagged ? ` (${untagged} in the older format that the printable book cannot fill in)` : ""}.\n\nOK = redraft ALL sections now (replaces existing drafts).\nCancel = only draft the ${empty} empty section${empty === 1 ? "" : "s"}.`);
+        onlyEmpty = !redo;
+        if (onlyEmpty && empty === 0) return;
+      }
+    }
+    void run("draft_all", undefined, onlyEmpty);
+  };
   const manuscript = book.sections.map((s) => `## ${s.title}\n${s.draft || s.summary}`).join("\n\n");
   const hybridPrompt = (kind: "outline" | "section" | "review", s?: { title: string; summary: string }) => {
     const head = `Book: ${book.title}${book.subtitle ? `: ${book.subtitle}` : ""}\nMode: ${book.mode}\nAudience: ${book.audience}\nTrim size: ${book.trim}\nNotes: ${book.notes}\n\nStyle Bible:\n${book.styleBible || "(none yet)"}\n`;
     if (kind === "outline") return `${head}\nCreate a style bible (200-400 words) and 8-16 sections with 1-3 sentence summaries for this book. Return Markdown.`;
     if (kind === "review") return `${head}\nManuscript:\n${manuscript}\n\nGive a developmental review: what works, structure and pacing, continuity, audience fit, and a prioritized fix list (max 10).`;
-    return `${head}\nWrite the full page/spread/chapter spec for this section, keeping to the style bible.\nSection: ${s?.title}\nSummary: ${s?.summary}`;
+    return `${head}\nWrite the content for this section, keeping to the style bible.\nSection: ${s?.title}\nSummary: ${s?.summary}${tagged ? `\n\n${TAG_FORMAT}\n\n${CLEAN_RULES}` : ""}`;
   };
   const copy = async (id: string, text: string) => {
     try { await navigator.clipboard.writeText(text); setCopied(id); setTimeout(() => setCopied(""), 1500); } catch { /* clipboard blocked */ }
@@ -122,14 +141,15 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
         <p className="text-xs text-muted">Outline and review use Gemini Flash. Section drafts and workbook extraction use the Claude model you pick. These run on Netlify AI Gateway and use Netlify credits. The “copy prompt” buttons cost nothing: paste into your Claude or Gemini web chat.</p>
         <div className="flex flex-wrap gap-2">
           <button className="btn" disabled={running} onClick={() => run("generate_outline")}>Generate outline + style bible</button>
+          <button className="btn" disabled={running || !book.sections.length} onClick={draftAll}>Draft all sections</button>
           <button className="btn" disabled={running || !book.sections.length} onClick={() => run("review_book")}>Review manuscript</button>
           {book.mode === "nonfiction" && <button className="btn" disabled={running || !book.sections.length} onClick={() => run("extract_workbook")}>Extract companion workbook</button>}
           <button className="btn-alt" onClick={() => copy("outline", hybridPrompt("outline"))}>{copied === "outline" ? "Copied" : "$0 copy outline prompt"}</button>
           <button className="btn-alt" disabled={!book.sections.length} onClick={() => copy("review", hybridPrompt("review"))}>{copied === "review" ? "Copied" : "$0 copy review prompt"}</button>
         </div>
-        {running && <p className="rounded-lg bg-sun/30 px-3 py-2 text-sm font-semibold text-forest">{LABEL[book.jobAction] ?? "Working"}… checking every 3 seconds. You can leave this page open.</p>}
+        {running && <p className="rounded-lg bg-sun/30 px-3 py-2 text-sm font-semibold text-forest">{book.jobAction.startsWith("draft_all:") ? `${LABEL.draft_all}, section ${book.jobAction.split(":")[1]}` : (LABEL[book.jobAction] ?? "Working")}… checking every 3 seconds. You can leave this page open.</p>}
         {book.jobStatus === "error" && <p className="rounded-lg bg-accent/10 px-3 py-2 text-sm text-accent">Job failed: {book.jobError}</p>}
-        {book.jobStatus === "done" && <p className="text-xs text-green">Last job finished: {LABEL[book.jobAction]?.split(" (")[0] ?? book.jobAction}.</p>}
+        {book.jobStatus === "done" && <p className="text-xs text-green">Last job finished: {LABEL[book.jobAction.split(":")[0]]?.split(" (")[0] ?? book.jobAction}.</p>}
       </section>
 
       <section className="card space-y-3">
@@ -155,7 +175,7 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
                   <textarea className="field min-h-16" value={s.summary} readOnly={running} onChange={(e) => setSection(s.id, { summary: e.target.value })} placeholder="Summary" />
                   <textarea className="field min-h-48 font-mono" value={s.draft} readOnly={running} onChange={(e) => setSection(s.id, { draft: e.target.value })} placeholder="Draft spec (paste from your web chat or let the Draft button write it)" />
                   <h3 className="pt-1 text-sm font-bold text-forest">Pictures for this section</h3>
-                  <ImageEngine book={book} sectionId={s.id} initialPrompt={`${s.title}. ${s.summary}`.trim()} defaultAspect={book.mode === "activity" ? "portrait" : "landscape"} defaultPreset={book.mode === "activity" ? "coloring" : "storybook"} onDone={addImage} fail={fail} commit={commit} />
+                  <ImageEngine key={`${s.id}:${defaultScenePrompt(s)}`} book={book} sectionId={s.id} initialPrompt={defaultScenePrompt(s)} defaultAspect={book.mode === "activity" ? "portrait" : "landscape"} defaultPreset={book.mode === "activity" ? "coloring" : "storybook"} onDone={addImage} fail={fail} commit={commit} />
                   <ImageGallery book={book} images={book.images.filter((i) => i.sectionId === s.id)} selected={pdfPick} onToggle={togglePick} onCharacter={(id) => void commit({ characterRefId: id })} onRemoved={removeImage} fail={fail} />
                 </div>
               )}
@@ -182,6 +202,7 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
           <h2 className="text-base font-bold text-forest">Printable book (8.5 × 11 in HTML)</h2>
           <p className="hint">Turns your drafted sections and their pictures into a title page, then a story page and an activity page for each section. {book.sections.length ? `${book.sections.length} section${book.sections.length === 1 ? "" : "s"} ready.` : "Add sections first."}</p>
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={backing} onChange={(e) => setBacking(e.target.checked)} /> Insert a blank backing page after every page (stops marker bleed-through)</label>
+          {(untagged > 0 || empty > 0) && <p className="rounded-lg bg-sun/30 px-3 py-2 text-sm text-forest">{empty > 0 ? `${empty} section${empty === 1 ? " has" : "s have"} no draft yet. ` : ""}{untagged > 0 ? `${untagged} section${untagged === 1 ? " is" : "s are"} in the older draft format, so some boxes would print empty. ` : ""}Use “Draft all sections” above to fill them in.</p>}
           <div className="flex flex-wrap items-center gap-3">
             <button className="btn" onClick={makeHtml} disabled={htmlBusy || !book.sections.length}>{htmlBusy ? "Building…" : "Export Printable Book (.HTML)"}</button>
             <span className="hint">Open the downloaded HTML in Chrome/Edge and press Ctrl+P → Save as PDF (Margins: None, Size: Letter) for a print-ready KDP interior!</span>

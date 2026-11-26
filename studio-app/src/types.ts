@@ -38,4 +38,4 @@ export interface GeneratedImage {
   id: string; sectionId?: string; prompt: string; provider: ImageProvider; modelUsed: string;
   aspect: ImageAspect; stylePreset: StylePreset; quality: "low" | "medium"; createdAt: string;
 }
-export type Action = "generate_outline" | "draft_section" | "review_book" | "extract_workbook";
+export type Action = "generate_outline" | "draft_section" | "draft_all" | "review_book" | "extract_workbook";

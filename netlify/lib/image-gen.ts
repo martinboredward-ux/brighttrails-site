@@ -21,12 +21,11 @@ export interface ImageResult {
 }
 
 export const COLORING_WRAPPER =
-  "Clean black and white coloring book page, thick bold closed outlines, pure white background, no gray shading, no text, generous margins";
-export const COLORING_GUARDRAIL =
-  "One single full-page children's coloring scene ONLY. NO comic panels, NO multi-box grids, NO charts, NO maps with small labels, NO text.";
+  "Children's coloring book page ONLY: pure white background, hollow uncolored shapes ONLY, uniform 2-3pt clean black outlines ready for crayons. STRICTLY FORBIDDEN: solid black backgrounds, black night skies, heavy black ink fills, gray shading, stippling, crosshatching, numbered dot-to-dots, mazes, charts, or text.";
+export const COLORING_GUARDRAIL = "One single full-page scene with generous margins.";
 
 const WRAPPERS: Record<StylePreset, (p: string) => string> = {
-  coloring: (p) => `${COLORING_WRAPPER}. ${COLORING_GUARDRAIL} Subject: ${p}`,
+  coloring: (p) => `${COLORING_WRAPPER} ${COLORING_GUARDRAIL} Subject: ${p}`,
   storybook: (p) => `Warm, friendly children's picture book illustration, soft colors, clear simple shapes, no text or lettering. Scene: ${p}`,
   cover: (p) => `Bright, appealing book cover artwork with a clear focal subject and space for a title, no lettering. Subject: ${p}`,
   aplus: (p) => `Clean marketing illustration for an online book listing, uncluttered, friendly, no text or lettering. Subject: ${p}`,

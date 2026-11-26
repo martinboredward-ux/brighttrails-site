@@ -33,7 +33,7 @@ export const generateRescueAudit = (bookId: string) =>
   call<{ rescueAudit: string }>("/api/studio/rescue-audit", { method: "POST", body: JSON.stringify({ bookId }) }).then((r) => r.rescueAudit);
 
 /** Starts a background job. Netlify answers 202 at once; poll getBook for jobStatus. */
-export async function startJob(payload: { bookId: string; action: Action; sectionId?: string; model?: "haiku" | "sonnet" }) {
+export async function startJob(payload: { bookId: string; action: Action; sectionId?: string; model?: "haiku" | "sonnet"; onlyEmpty?: boolean }) {
   const res = await fetch("/.netlify/functions/book-studio-background", {
     method: "POST",
     headers: { "content-type": "application/json", "x-studio-password": getPassword() },

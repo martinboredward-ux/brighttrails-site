@@ -73,3 +73,7 @@ Optional environment variables (all fall back to built-in model lists if "model 
 - Section pictures get a short style-bible summary; coloring pictures get a single-scene guardrail. ChatGPT Mini tries `gpt-image-2.5-flare` first.
 - Tab 2 exports an 8.5 x 11 in printable HTML book (also in the ZIP as `05_Printable_Book/`). Open it in Chrome/Edge, Ctrl+P, Save as PDF, Margins None, Size Letter.
 - Tab 3 has a Book Rescue Audit (Gemini) saved on the book and exported as `02_KDP_Package/book-rescue-audit.md`.
+
+### Studio: tagged drafts and Draft all sections
+
+Activity and storybook sections are drafted as `[TAG]` blocks (story, listening prompts, guide, worksheet, word bank, answer key, image prompt). "Draft all sections" on tab 2 runs them in one background job, saving each section as it finishes. The printable HTML book makes a story page, a parent/teacher guide page and a worksheet page per section, then a passport page and an answer key. Older untagged drafts still export, with print-spec lines removed.
