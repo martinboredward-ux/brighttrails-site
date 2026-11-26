@@ -19,6 +19,8 @@ export interface KdpPackage {
   aPlusModules: APlusModule[];
   warnings?: string[];
 }
+export type RefKind = "character" | "badge" | "prop" | "cover" | "page";
+export interface CharacterRef { id: string; name: string; kind: RefKind }
 export interface Book {
   id: string; slug: string; title: string; subtitle: string; mode: Mode; audience: string;
   seriesName: string; linkedBookIds: string[];
@@ -27,6 +29,8 @@ export interface Book {
   kdp: KdpPackage | null;
   images: GeneratedImage[];
   characterRefId: string;
+  /** Character Library: named reference pictures (characters, badges, props) used by every image engine. */
+  characters: CharacterRef[];
   rescueAudit: string;
   jobStatus: JobStatus; jobAction: string; jobError: string; jobUpdatedAt: string;
   createdAt: string; updatedAt: string;

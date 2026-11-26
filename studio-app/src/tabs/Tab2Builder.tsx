@@ -1,5 +1,5 @@
 import { useState, type Dispatch, type RefObject, type SetStateAction } from "react";
-import type { Action, Book, GeneratedImage } from "../types";
+import type { Action, Book, GeneratedImage, RefKind } from "../types";
 import { startJob } from "../api";
 import { PATTERNS, buildActivityPdf, type ImagePage, type Pattern } from "../activityPdf";
 import { fetchImageBlob } from "../api";
@@ -56,8 +56,15 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
     setBook((b) => (b ? { ...b, images: [...b.images.filter((i) => i.id !== img.id), img] } : b));
     if (img.stylePreset === "coloring") setPdfPick((s) => new Set(s).add(img.id));
   };
+  const toggleLibrary = (id: string, kind: RefKind, inLibrary: boolean) => {
+    const lib = book.characters ?? [];
+    if (inLibrary) { void commit({ characters: lib.filter((c) => c.id !== id), characterRefId: "" }); return; }
+    const name = (window.prompt(kind === "character" ? "Character name (for example Mika)" : kind === "badge" ? "Badge name (for example Compass Badge)" : "Name (for example Lighthouse)") ?? "").trim();
+    if (!name) return;
+    void commit({ characters: [...lib, { id, name: name.slice(0, 40), kind }], characterRefId: "" });
+  };
   const removeImage = (id: string) => {
-    setBook((b) => (b ? { ...b, images: b.images.filter((i) => i.id !== id), characterRefId: b.characterRefId === id ? "" : b.characterRefId } : b));
+    setBook((b) => (b ? { ...b, images: b.images.filter((i) => i.id !== id), characters: (b.characters ?? []).filter((c) => c.id !== id) } : b));
     setPdfPick((s) => { const n = new Set(s); n.delete(id); return n; });
   };
   const togglePick = (id: string) => setPdfPick((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
@@ -176,7 +183,7 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
                   <textarea className="field min-h-48 font-mono" value={s.draft} readOnly={running} onChange={(e) => setSection(s.id, { draft: e.target.value })} placeholder="Draft spec (paste from your web chat or let the Draft button write it)" />
                   <h3 className="pt-1 text-sm font-bold text-forest">Pictures for this section</h3>
                   <ImageEngine key={`${s.id}:${defaultScenePrompt(s)}`} book={book} sectionId={s.id} initialPrompt={defaultScenePrompt(s)} defaultAspect={book.mode === "activity" ? "portrait" : "landscape"} defaultPreset={book.mode === "activity" ? "coloring" : "storybook"} onDone={addImage} fail={fail} commit={commit} />
-                  <ImageGallery book={book} images={book.images.filter((i) => i.sectionId === s.id)} selected={pdfPick} onToggle={togglePick} onCharacter={(id) => void commit({ characterRefId: id })} onRemoved={removeImage} fail={fail} />
+                  <ImageGallery book={book} images={book.images.filter((i) => i.sectionId === s.id)} selected={pdfPick} onToggle={togglePick} onCharacter={toggleLibrary} onRemoved={removeImage} fail={fail} />
                 </div>
               )}
             </li>
@@ -194,7 +201,7 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
       <section className="card space-y-3">
         <h2 className="text-base font-bold text-forest">Book images ({book.images.length})</h2>
         <p className="hint">Every picture you generate is kept here, saved separately from the book text. Pick a character reference for Nano Banana, tick pictures for the PDF, or download them.</p>
-        <ImageGallery book={book} images={book.images} selected={pdfPick} onToggle={togglePick} onCharacter={(id) => void commit({ characterRefId: id })} onRemoved={removeImage} fail={fail} />
+        <ImageGallery book={book} images={book.images} selected={pdfPick} onToggle={togglePick} onCharacter={toggleLibrary} onRemoved={removeImage} fail={fail} />
       </section>
 
       {(book.mode === "activity" || book.mode === "storybook") && (

@@ -1,6 +1,7 @@
 import type { Config } from "@netlify/functions";
 import { checkAuth, json } from "../lib/studio-auth.ts";
 import {
+  IMAGE_ID_RE,
   JOB_FIELDS,
   deleteBook,
   deleteBookImages,
@@ -18,7 +19,7 @@ export const config: Config = { path: ["/api/studio/books", "/api/studio/books/*
 // Fields the browser may change. Job fields are owned by the background function.
 const EDITABLE: (keyof Book)[] = [
   "title", "subtitle", "mode", "audience", "seriesName", "linkedBookIds", "trim", "aiDisclosure", "notes",
-  "styleBible", "sections", "review", "workbook", "kdp", "characterRefId", "rescueAudit",
+  "styleBible", "sections", "review", "workbook", "kdp", "characterRefId", "characters", "rescueAudit",
 ];
 
 function idFromPath(req: Request): string | null {
@@ -58,6 +59,15 @@ export default async (req: Request): Promise<Response> => {
         ? [...new Set(next.linkedBookIds.map(String))].filter((x) => x !== id).slice(0, 12)
         : [];
       next.seriesName = String(next.seriesName ?? "").slice(0, 120);
+      // Character Library: only pictures that belong to this book, with a short name each.
+      next.characters = Array.isArray(next.characters)
+        ? next.characters
+            .map((c) => ({ id: String(c?.id ?? ""), name: String(c?.name ?? "").trim().slice(0, 40), kind: (["badge", "prop", "cover", "page"].includes(String(c?.kind)) ? c.kind : "character") as "character" | "badge" | "prop" | "cover" | "page" }))
+            .filter((c) => IMAGE_ID_RE.test(c.id) && c.id.startsWith(`${id}__`))
+            .map((c) => ({ ...c, name: c.name || "Character" }))
+            .slice(0, 40)
+        : [];
+      next.characterRefId = "";
       // Never let a browser save overwrite job state.
       for (const k of JOB_FIELDS) (next as unknown as Record<string, unknown>)[k] = current[k];
       next.slug = slugify(next.title);

@@ -1,8 +1,8 @@
 import { useState } from "react";
-import type { Book, GeneratedImage, ImageAspect, ImageProvider, StylePreset } from "../types";
+import type { Book, CharacterRef, GeneratedImage, ImageAspect, ImageProvider, StylePreset } from "../types";
 import { generateImage } from "../api";
 import { wrapPrompt } from "../imagePrompts";
-import CharacterReference from "./CharacterReference";
+import CharacterLibrary, { KIND_LABEL } from "./CharacterLibrary";
 import { useBlobUrl } from "../blobUrl";
 
 interface Props {
@@ -13,15 +13,28 @@ interface Props {
   defaultPreset?: StylePreset;
   onDone: (image: GeneratedImage) => void;
   fail: (e: unknown) => void;
-  /** When given, the character reference uploader is shown next to the Character Lock note. */
+  /** When given, an upload box for the Character Library is shown under the picture options. */
   commit?: (p: Partial<Book>) => Promise<void>;
 }
 
 const ENGINES: { id: ImageProvider; label: string; sub: string }[] = [
   { id: "openai-mini", label: "ChatGPT Mini", sub: "Low Cost" },
   { id: "openai-1.5", label: "ChatGPT 1.5", sub: "Better detail" },
-  { id: "nano-banana", label: "Nano Banana 2.1", sub: "Character Lock" },
+  { id: "nano-banana", label: "Nano Banana 2.1", sub: "Strong match" },
 ];
+
+function RefChip({ c, on, onToggle }: { c: CharacterRef; on: boolean; onToggle: () => void }) {
+  const { url } = useBlobUrl(c.id);
+  return (
+    <li>
+      <label className={`flex cursor-pointer items-center gap-2 rounded-lg border p-1 pr-2 text-sm ${on ? "border-sun bg-sun/20" : "border-line"}`}>
+        <input type="checkbox" checked={on} onChange={onToggle} />
+        <span className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded border border-line bg-white">{url ? <img src={url} alt="" className="max-h-full max-w-full object-contain" /> : null}</span>
+        <span className="leading-tight"><span className="block font-semibold">{c.name}</span><span className="block text-[11px] text-muted">{KIND_LABEL[c.kind]}</span></span>
+      </label>
+    </li>
+  );
+}
 
 export default function ImageEngine({ book, sectionId, initialPrompt = "", defaultAspect = "portrait", defaultPreset = "coloring", onDone, fail, commit }: Props) {
   const [provider, setProvider] = useState<ImageProvider>("openai-mini");
@@ -34,9 +47,16 @@ export default function ImageEngine({ book, sectionId, initialPrompt = "", defau
   const [status, setStatus] = useState("");
   const [notes, setNotes] = useState<string[]>([]);
   const [copied, setCopied] = useState(false);
-  const canLock = provider === "nano-banana" && !!book.characterRefId;
-  const refThumb = useBlobUrl(book.characterRefId || undefined);
-  const chatgpt = provider !== "nano-banana";
+  const lib = book.characters ?? [];
+  const [manual, setManual] = useState<Set<string> | null>(null);
+  const mentioned = (c: CharacterRef) => {
+    const esc = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const first = c.name.trim().split(/\s+/)[0] ?? "";
+    return new RegExp(`\\b${esc(c.name.trim())}\\b`, "i").test(prompt) || (first.length > 2 && new RegExp(`\\b${esc(first)}\\b`, "i").test(prompt));
+  };
+  const auto = new Set(lib.filter(mentioned).map((c) => c.id));
+  const chosen = useRef ? [...(manual ?? auto)].filter((id) => lib.some((c) => c.id === id)) : [];
+  const toggle = (id: string) => { const n = new Set(manual ?? auto); if (n.has(id)) n.delete(id); else n.add(id); setManual(n); };
 
   const run = async () => {
     if (!prompt.trim()) { setStatus("Write a prompt first."); return; }
@@ -45,7 +65,7 @@ export default function ImageEngine({ book, sectionId, initialPrompt = "", defau
     setStatus("Starting…");
     try {
       const { job, image } = await generateImage(
-        { bookId: book.id, provider, quality, aspect, stylePreset: preset, prompt, sectionId, referenceImageId: canLock && useRef ? book.characterRefId : undefined },
+        { bookId: book.id, provider, quality, aspect, stylePreset: preset, prompt, sectionId, referenceImageIds: chosen.slice(0, 6) },
         (s) => setStatus(s === "queued" ? "Queued…" : "Drawing… this can take up to a minute"),
       );
       setNotes(job.notes ?? []);
@@ -97,26 +117,20 @@ export default function ImageEngine({ book, sectionId, initialPrompt = "", defau
         </label>
       </div>
       <textarea className="field min-h-20" value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Describe the picture. The style wording above is added for you." />
-      {book.characterRefId && (
-        <div className={`flex items-center gap-3 rounded-lg border p-2 ${chatgpt ? "border-line" : "border-sun"}`}>
-          <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded border border-line bg-white">
-            {refThumb.url ? <img src={refThumb.url} alt="Character reference" className="max-h-full max-w-full object-contain" /> : <span className="text-[10px] text-muted">…</span>}
-          </div>
-          <div className="text-sm">
-            <p className="font-bold text-forest">{chatgpt ? "Character Lock is set, but not used by this engine" : "Character Lock Active"}</p>
-            <p className="hint">{chatgpt ? "ChatGPT models do not use Character Lock. Use Nano Banana 2.1 to match your uploaded character." : "Nano Banana will copy this character in every picture."}</p>
-          </div>
+      {lib.length > 0 ? (
+        <div className="space-y-2 rounded-lg border border-line p-2">
+          <label className="flex items-center gap-2 text-sm font-semibold text-forest"><input type="checkbox" checked={useRef} onChange={(e) => setUseRef(e.target.checked)} /> Use my Character Library ({provider === "nano-banana" ? "Nano Banana" : "ChatGPT"} copies the ones ticked)</label>
+          {useRef && (
+            <>
+              <ul className="flex flex-wrap gap-2">
+                {lib.map((c) => <RefChip key={c.id} c={c} on={chosen.includes(c.id)} onToggle={() => toggle(c.id)} />)}
+              </ul>
+              <p className="hint">{manual ? "Your own picks. " : "Auto: characters named in your prompt are ticked. "}{chosen.length > 6 ? "Only the first 6 are sent. " : ""}{manual && <button type="button" className="underline" onClick={() => setManual(null)}>Back to auto</button>}</p>
+            </>
+          )}
         </div>
-      )}
-      {chatgpt && !book.characterRefId && <p className="hint">ChatGPT models do not use Character Lock. Use Nano Banana 2.1 to match an uploaded character.</p>}
-      {provider === "nano-banana" && (
-        book.characterRefId ? (
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={useRef} onChange={(e) => setUseRef(e.target.checked)} /> Keep the saved character reference</label>
-        ) : (
-          <p className="hint">Character Lock: upload your character picture below, or generate one and press “Set as Character Reference” under it. Later Nano Banana pictures will copy that character.</p>
-        )
-      )}
-      {commit && <CharacterReference book={book} commit={commit} fail={fail} hideThumb />}
+      ) : <p className="hint">Add your characters and badges to the Character Library on the Details tab, or below, and both ChatGPT and Nano Banana will copy them.</p>}
+      {commit && <CharacterLibrary book={book} commit={commit} fail={fail} compact />}
       <div className="flex flex-wrap items-center gap-3">
         <button className="btn" onClick={run} disabled={busy}>{busy ? "Generating…" : "Generate image"}</button>
         <span className="hint">Uses Netlify credits. Save your free web-chat quota with the $0 prompt button.</span>
