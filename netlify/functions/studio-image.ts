@@ -45,8 +45,10 @@ export default async (req: Request): Promise<Response> => {
       if (book) {
         const before = book.images.length;
         book.images = book.images.filter((i) => i.id !== id);
+        const hadChars = book.characters.length;
+        book.characters = book.characters.filter((c) => c.id !== id);
         if (book.characterRefId === id) book.characterRefId = "";
-        if (book.images.length !== before || !book.characterRefId) {
+        if (book.images.length !== before || book.characters.length !== hadChars) {
           book.updatedAt = new Date().toISOString();
           await putBook(book);
         }

@@ -3,6 +3,15 @@ import { getStore } from "@netlify/blobs";
 export type Mode = "activity" | "storybook" | "nonfiction";
 export type JobStatus = "idle" | "running" | "done" | "error";
 
+/** A named character picture in the book's Character Library (the picture is in the image store). */
+export type RefKind = "character" | "badge" | "prop" | "cover" | "page";
+export interface CharacterRef {
+  id: string;
+  name: string;
+  /** Characters keep their look; badges and props are redrawn exactly as designed. */
+  kind: RefKind;
+}
+
 export interface Section {
   id: string;
   title: string;
@@ -67,6 +76,8 @@ export interface Book {
   /** Metadata only. The pictures themselves are in the kdp-book-images store. Written by the server. */
   images: GeneratedImage[];
   characterRefId: string;
+  /** Character Library: several named reference pictures sent to the image engines. */
+  characters: CharacterRef[];
   /** Markdown proposal from the Book Rescue Audit. Editable in the Studio. */
   rescueAudit: string;
   jobStatus: JobStatus;
@@ -129,6 +140,7 @@ export function newBook(partial: Partial<Book>): Book {
     kdp: partial.kdp ?? null,
     images: [],
     characterRefId: "",
+    characters: [],
     rescueAudit: "",
     jobStatus: "idle",
     jobAction: "",
@@ -148,6 +160,11 @@ function normalise(b: Book | null): Book | null {
   b.linkedBookIds ??= [];
   b.images ??= [];
   b.characterRefId ??= "";
+  b.characters ??= [];
+  // The old single reference becomes the first library entry.
+  if (b.characterRefId && !b.characters.some((c) => c.id === b.characterRefId)) b.characters.push({ id: b.characterRefId, name: "Main character", kind: "character" });
+  for (const c of b.characters) c.kind ??= "character";
+  b.characterRefId = "";
   b.rescueAudit ??= "";
   return b;
 }

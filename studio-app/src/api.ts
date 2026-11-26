@@ -74,7 +74,7 @@ export interface ImageJobRequest {
   aspect: ImageAspect;
   stylePreset: StylePreset;
   prompt: string;
-  referenceImageId?: string;
+  referenceImageIds?: string[];
   sectionId?: string;
 }
 export interface ImageJob { id: string; status: "queued" | "running" | "done" | "error"; imageId?: string; image?: GeneratedImage; notes?: string[]; error?: string }

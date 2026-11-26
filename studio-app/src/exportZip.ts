@@ -60,7 +60,7 @@ export async function exportBundle(book: Book, assets: ExportAssets): Promise<{ 
       const ext = blob.type === "image/jpeg" ? "jpg" : "png";
       const file = `${String(n).padStart(3, "0")}${section ? `-${section.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40)}` : ""}.${ext}`;
       gi.file(file, blob);
-      index.push({ file, section, prompt: img.prompt, engine: img.provider, model: img.modelUsed, style: img.stylePreset, aspect: img.aspect, quality: img.quality, createdAt: img.createdAt, characterReference: img.id === book.characterRefId });
+      index.push({ file, section, prompt: img.prompt, engine: img.provider, model: img.modelUsed, style: img.stylePreset, aspect: img.aspect, quality: img.quality, createdAt: img.createdAt, characterReference: (book.characters ?? []).some((c) => c.id === img.id) });
     }
     gi.file("index.json", JSON.stringify(index, null, 2));
   }

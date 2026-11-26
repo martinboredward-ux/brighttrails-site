@@ -1,14 +1,16 @@
-import type { Book, GeneratedImage } from "../types";
+import { useState } from "react";
+import type { Book, GeneratedImage, RefKind } from "../types";
 import { useBlobUrl } from "../blobUrl";
 import { fetchImageBlob, deleteImage } from "../api";
 import { download } from "../exportZip";
 
 function Thumb({ img, book, selected, onToggle, onCharacter, onRemoved, onUse, useLabel, fail }: {
   img: GeneratedImage; book: Book; selected?: boolean; onToggle?: () => void;
-  onCharacter: (id: string) => void; onRemoved: (id: string) => void; onUse?: (img: GeneratedImage) => void; useLabel?: string; fail: (e: unknown) => void;
+  onCharacter: (id: string, kind: RefKind, inLibrary: boolean) => void; onRemoved: (id: string) => void; onUse?: (img: GeneratedImage) => void; useLabel?: string; fail: (e: unknown) => void;
 }) {
   const { url, error } = useBlobUrl(img.id);
-  const isRef = book.characterRefId === img.id;
+  const isRef = (book.characters ?? []).some((c) => c.id === img.id);
+  const [kind, setKind] = useState<RefKind>("character");
   return (
     <li className="w-44 space-y-2 rounded-lg border border-line bg-surface p-2">
       <div className="grid aspect-square place-items-center overflow-hidden rounded bg-white">
@@ -21,7 +23,16 @@ function Thumb({ img, book, selected, onToggle, onCharacter, onRemoved, onUse, u
       )}
       <div className="flex flex-wrap gap-1">
         {onUse && <button className="btn !px-2 !py-1 !text-xs" onClick={() => onUse(img)}>{useLabel ?? "Use"}</button>}
-        <button className={`btn-alt !px-2 !py-1 !text-xs ${isRef ? "!border-sun" : ""}`} onClick={() => onCharacter(isRef ? "" : img.id)}>{isRef ? "Character reference ✓" : "Set as Character Reference"}</button>
+        {!isRef && (
+          <select className="field !w-auto !px-1 !py-1 !text-xs" value={kind} onChange={(e) => setKind(e.target.value as RefKind)} aria-label="Library type">
+            <option value="character">Character</option>
+            <option value="badge">Badge</option>
+            <option value="prop">Prop / place</option>
+            <option value="cover">Cover style</option>
+            <option value="page">Page design</option>
+          </select>
+        )}
+        <button className={`btn-alt !px-2 !py-1 !text-xs ${isRef ? "!border-sun" : ""}`} onClick={() => onCharacter(img.id, kind, isRef)}>{isRef ? "In library ✓ (remove)" : "Add to Library"}</button>
         <button className="btn-alt !px-2 !py-1 !text-xs" onClick={async () => { try { download(`${book.slug}-${img.id.slice(-8)}.png`, await fetchImageBlob(img.id)); } catch (e) { fail(e); } }}>Download</button>
         <button className="btn-alt !px-2 !py-1 !text-xs !text-accent" onClick={async () => { if (confirm("Delete this picture?")) { await deleteImage(img.id); onRemoved(img.id); } }}>Delete</button>
       </div>
@@ -31,7 +42,7 @@ function Thumb({ img, book, selected, onToggle, onCharacter, onRemoved, onUse, u
 
 export default function ImageGallery({ book, images, selected, onToggle, onCharacter, onRemoved, onUse, useLabel, fail }: {
   book: Book; images: GeneratedImage[]; selected?: Set<string>; onToggle?: (id: string) => void;
-  onCharacter: (id: string) => void; onRemoved: (id: string) => void; onUse?: (img: GeneratedImage) => void; useLabel?: string; fail: (e: unknown) => void;
+  onCharacter: (id: string, kind: RefKind, inLibrary: boolean) => void; onRemoved: (id: string) => void; onUse?: (img: GeneratedImage) => void; useLabel?: string; fail: (e: unknown) => void;
 }) {
   if (!images.length) return <p className="hint">No pictures yet.</p>;
   return (

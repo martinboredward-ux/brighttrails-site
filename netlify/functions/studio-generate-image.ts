@@ -10,6 +10,7 @@ const PROVIDERS = ["openai-mini", "openai-1.5", "nano-banana"];
 const QUALITIES = ["low", "medium"];
 const ASPECTS = ["portrait", "square", "landscape"];
 const PRESETS = ["coloring", "storybook", "cover", "aplus"];
+const MAX_REFS = 6;
 const JOB_ID_RE = /^[0-9a-f-]{36}$/;
 
 export default async (req: Request): Promise<Response> => {
@@ -42,9 +43,12 @@ export default async (req: Request): Promise<Response> => {
     if (!PRESETS.includes(stylePreset)) return json({ error: "Unknown style preset" }, 400);
     if (!prompt) return json({ error: "Write a prompt first" }, 400);
     if (prompt.length > 3000) return json({ error: "Prompt is too long (3000 characters max)" }, 400);
-    const referenceImageId = body.referenceImageId ? String(body.referenceImageId) : "";
-    if (referenceImageId && (!IMAGE_ID_RE.test(referenceImageId) || !referenceImageId.startsWith(`${bookId}__`))) {
-      return json({ error: "Reference image must belong to this book" }, 400);
+    // Character Library pictures (several allowed). The old single referenceImageId still works.
+    const rawRefs = Array.isArray(body.referenceImageIds) ? body.referenceImageIds : [];
+    if (body.referenceImageId) rawRefs.push(body.referenceImageId);
+    const referenceImageIds = [...new Set(rawRefs.map(String))].slice(0, MAX_REFS);
+    for (const r of referenceImageIds) {
+      if (!IMAGE_ID_RE.test(r) || !r.startsWith(`${bookId}__`)) return json({ error: "Reference images must belong to this book" }, 400);
     }
     const sectionId = body.sectionId ? String(body.sectionId).slice(0, 60) : undefined;
 
@@ -52,7 +56,7 @@ export default async (req: Request): Promise<Response> => {
     const job = { id: jobId, bookId, status: "queued", createdAt: new Date().toISOString() };
     await store.setJSON(`job__${jobId}`, job);
 
-    const payload = { jobId, bookId, provider, quality, aspect, stylePreset, prompt, referenceImageId: referenceImageId || undefined, sectionId };
+    const payload = { jobId, bookId, provider, quality, aspect, stylePreset, prompt, referenceImageIds, sectionId };
     const start = await fetch(new URL("/.netlify/functions/studio-generate-image-background", req.url), {
       method: "POST",
       headers: { "content-type": "application/json", "x-studio-password": req.headers.get("x-studio-password") ?? "" },

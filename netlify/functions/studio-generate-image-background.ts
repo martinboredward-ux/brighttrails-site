@@ -6,7 +6,8 @@ import { getBook, imageStore, putBook, type GeneratedImage } from "../lib/studio
 // Background function (15-minute limit): /.netlify/functions/studio-generate-image-background
 export const config: Config = {};
 
-interface Payload extends ImageRequest {
+interface Payload extends Omit<ImageRequest, "references"> {
+  referenceImageIds?: string[];
   jobId: string;
   bookId: string;
   sectionId?: string;
@@ -27,8 +28,10 @@ export default async (req: Request): Promise<Response> => {
 
   try {
     // Section pictures get a short style-bible summary so characters keep the same look across engines.
-    const bookNow = p.sectionId ? await getBook(p.bookId) : null;
-    const result = await generateImage({ ...p, styleBible: bookNow?.styleBible });
+    const bookNow = await getBook(p.bookId);
+    const lib = new Map((bookNow?.characters ?? []).map((c) => [c.id, c]));
+    const references = (p.referenceImageIds ?? []).map((id) => ({ id, name: lib.get(id)?.name, kind: lib.get(id)?.kind }));
+    const result = await generateImage({ ...p, references, styleBible: p.sectionId ? bookNow?.styleBible : undefined });
     const imageId = `${p.bookId}__${crypto.randomUUID()}`;
     await store.set(imageId, result.bytes, { metadata: { contentType: result.contentType, bookId: p.bookId, bytes: result.bytes.byteLength } });
 

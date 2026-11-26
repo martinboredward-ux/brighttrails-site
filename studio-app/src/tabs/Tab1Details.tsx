@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Book } from "../types";
-import CharacterReference from "../components/CharacterReference";
+import CharacterLibrary from "../components/CharacterLibrary";
 
 interface Props { book: Book; books: Book[]; update: (p: Partial<Book>) => void; commit: (p: Partial<Book>) => Promise<void>; fail: (e: unknown) => void; locked: boolean }
 
@@ -87,7 +87,7 @@ export default function Tab1Details({ book, books, update, commit, fail, locked 
           <div className="space-y-3">
             <div>
               <label className="label" htmlFor="series-name">Series name</label>
-              <input id="series-name" className="field" value={book.seriesName ?? ""} onChange={(e) => update({ seriesName: e.target.value })} placeholder="e.g. Barnaby, or Steady Under Pressure" />
+              <input id="series-name" className="field" value={book.seriesName ?? ""} onChange={(e) => update({ seriesName: e.target.value })} placeholder="e.g. Lanternside Mysteries, or Steady Under Pressure" />
             </div>
             <div>
               <label className="label">Link previous / reference books</label>
@@ -132,8 +132,13 @@ export default function Tab1Details({ book, books, update, commit, fail, locked 
       <section className="card space-y-2">
         <h2 className="text-base font-bold text-forest">Style Bible</h2>
         <p className="text-xs text-muted">Voice, visuals, characters and layout rules. The Book Builder sends this with every section it drafts. {locked && "Locked while an AI job is running."}</p>
-        <CharacterReference book={book} commit={commit} fail={fail} />
         <textarea className="field min-h-[26rem] font-mono" value={book.styleBible} readOnly={locked} onChange={(e) => update({ styleBible: e.target.value })} placeholder="Generate an outline in the Book Builder to draft this, or write your own." />
+      </section>
+
+      <section className="card space-y-2 lg:col-span-2">
+        <h2 className="text-base font-bold text-forest">Character Library</h2>
+        <p className="text-xs text-muted">Upload every character sheet, badge and prop once, with a name. When you generate a picture, ChatGPT and Nano Banana both receive the ones you pick (or the ones named in your prompt), so the cast and badges stay the same across the whole book.</p>
+        <CharacterLibrary book={book} commit={commit} fail={fail} />
       </section>
     </div>
   );
