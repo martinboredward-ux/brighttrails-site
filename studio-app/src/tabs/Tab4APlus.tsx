@@ -154,7 +154,7 @@ export default function Tab4APlus({ book, update, setBook, fail }: Props) {
     <div className="space-y-4">
       <section className="card text-sm">
         <h2 className="mb-1 text-base font-bold text-forest">A+ Content Builder</h2>
-        <p className="text-muted">Upload a cover or interior page for each module and edit the copy. The banner is drawn in your browser as a clean opaque RGB PNG at the exact pixel size. Pictures are shrunk to under 400 KB first and saved with the book, so they are still here next time. Press Save to keep your choices. Generate the starting copy on tab 3.</p>
+        <p className="text-muted">Upload a cover or interior page for each module and edit the copy. The banner is drawn in your browser as a clean opaque RGB PNG at the exact pixel size. Pictures are shrunk to under 400 KB first and saved with the book, so they are still here next time. Press Save to keep your choices. Generate the starting copy on tab 4.</p>
         {total.length > 0 && <p className="mt-2 font-semibold text-accent">Banned words across all modules: {total.join(", ")}</p>}
       </section>
       {SPECS.map((spec) => {

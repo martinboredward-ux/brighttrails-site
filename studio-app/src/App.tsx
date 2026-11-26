@@ -2,14 +2,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Book } from "./types";
 import { AuthError, clearPassword, createBook, getBook, getPassword, listBooks, removeBook, saveBook, setPassword } from "./api";
 import { exportBundle, download, type ExportAssets } from "./exportZip";
-import Tab1Details from "./tabs/Tab1Details";
+import Tab1Research from "./tabs/Tab1Research";
+import TabCover from "./tabs/TabCover";
 import Tab2Builder from "./tabs/Tab2Builder";
 import Tab3Kdp from "./tabs/Tab3Kdp";
 import Tab4APlus from "./tabs/Tab4APlus";
 import { ThemeToggle, useTheme } from "./theme";
 import { TooltipButton } from "./components/TooltipButton";
 
-const TABS = ["1 · Details & Style Bible", "2 · Book Builder", "3 · KDP Package", "4 · A+ Content"] as const;
+const TABS = ["1 · Research & Style Bible", "2 · Book Builder", "3 · Cover Studio", "4 · KDP Package", "5 · A+ Content"] as const;
 
 function Login({ onDone }: { onDone: () => void }) {
   const [theme, toggleTheme] = useTheme();
@@ -209,10 +210,11 @@ export default function App() {
                 <TooltipButton className="btn-alt" onClick={del}>Delete</TooltipButton>
               </div>
             </div>
-            {tab === 0 && <Tab1Details book={book} books={books} update={update} commit={commit} fail={fail} locked={running} />}
+            {tab === 0 && <Tab1Research book={book} books={books} update={update} commit={commit} save={save} setBook={setBook} fail={fail} locked={running} />}
             {tab === 1 && <Tab2Builder book={book} update={update} commit={commit} save={save} setBook={setBook} assets={assets} fail={fail} />}
-            {tab === 2 && <Tab3Kdp book={book} update={update} save={save} setBook={setBook} fail={fail} />}
-            {tab === 3 && <Tab4APlus book={book} update={update} setBook={setBook} fail={fail} />}
+            {tab === 2 && <TabCover book={book} update={update} commit={commit} fail={fail} />}
+            {tab === 3 && <Tab3Kdp book={book} update={update} save={save} setBook={setBook} fail={fail} />}
+            {tab === 4 && <Tab4APlus book={book} update={update} setBook={setBook} fail={fail} />}
           </>
         )}
       </main>

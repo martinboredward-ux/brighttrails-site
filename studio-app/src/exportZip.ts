@@ -7,6 +7,9 @@ import { buildPrintableBook } from "./printableBook";
 
 export interface ExportAssets {
   pdf: Blob | null;
+  ebookCover?: Blob | null;
+  wrapPng?: Blob | null;
+  wrapPdf?: Blob | null;
 }
 
 const manuscript = (b: Book) => b.sections.map((s) => `## ${s.title}\n\n${s.draft || s.summary}\n`).join("\n");
@@ -16,6 +19,7 @@ export async function exportBundle(book: Book, assets: ExportAssets): Promise<{ 
   const ws = zip.folder("01_Book_Workspace")!;
   const kdpDir = zip.folder("02_KDP_Package")!;
   const ap = zip.folder("03_A_Plus_Package")!;
+  const covers = zip.folder("06_Covers")!;
 
   ws.file("book.json", JSON.stringify({ ...book, jobStatus: undefined, jobAction: undefined, jobError: undefined }, null, 2));
   ws.file("style-bible.md", book.styleBible || "");
@@ -47,6 +51,19 @@ export async function exportBundle(book: Book, assets: ExportAssets): Promise<{ 
     drawBanner(canvas, spec, m.headline, m.body, img, { fit: m.fit ?? DEFAULT_OPTIONS.fit, textBar: m.textBar ?? DEFAULT_OPTIONS.textBar });
     ap.file(`module-${spec.size}.png`, await canvasToPng(canvas));
   }
+
+  if (book.cover && !assets.ebookCover) {
+    try {
+      const { coverDefaults, renderEbookCover, renderWrapPng, renderWrapPdf } = await import("./utils/coverComposer");
+      const { blobToImage } = await import("./imageTools");
+      const cs = coverDefaults(book);
+      const art = cs.frontArtId ? await fetchImageBlob(cs.frontArtId).then(blobToImage).catch(() => null) : null;
+      assets = { ...assets, ebookCover: await renderEbookCover(cs, art), wrapPng: await renderWrapPng(cs, book.trim, art), wrapPdf: renderWrapPdf(cs, book.trim, art) };
+    } catch { /* cover files are optional */ }
+  }
+  if (assets.ebookCover) covers.file(`${book.slug}-ebook-cover-1600x2560.png`, assets.ebookCover);
+  if (assets.wrapPng) covers.file(`${book.slug}-paperback-wrap.png`, assets.wrapPng);
+  if (assets.wrapPdf) covers.file(`${book.slug}-paperback-wrap.pdf`, assets.wrapPdf);
 
   if (book.images.length) {
     const gi = zip.folder("04_Generated_Images")!;
