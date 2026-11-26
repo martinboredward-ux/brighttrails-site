@@ -1,12 +1,14 @@
 import { useState, type Dispatch, type RefObject, type SetStateAction } from "react";
-import type { Action, Book, GeneratedImage, RefKind } from "../types";
+import type { Action, Book, GeneratedImage, RefKind, WidgetKind } from "../types";
 import { startJob } from "../api";
 import { PATTERNS, buildActivityPdf, type ImagePage, type Pattern } from "../activityPdf";
 import { fetchImageBlob } from "../api";
 import { blobToImage } from "../imageTools";
 import { buildPrintableBook, parseTagged } from "../printableBook";
 import { defaultScenePrompt } from "../imagePrompts";
-import { CLEAN_RULES, TAG_FORMAT, isTaggedMode } from "../draftFormat";
+import { CLEAN_RULES, formatFor, isTaggedMode } from "../draftFormat";
+import { WIDGETS, RANKS } from "../utils/activitySvgWidgets";
+import { buildDocx, buildPrintInterior } from "../utils/nonfictionExporter";
 import ImageEngine from "../components/ImageEngine";
 import ImageGallery from "../components/ImageGallery";
 import { download, type ExportAssets } from "../exportZip";
@@ -104,7 +106,7 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
     const head = `Book: ${book.title}${book.subtitle ? `: ${book.subtitle}` : ""}\nMode: ${book.mode}\nAudience: ${book.audience}\nTrim size: ${book.trim}\nNotes: ${book.notes}\n\nStyle Bible:\n${book.styleBible || "(none yet)"}\n`;
     if (kind === "outline") return `${head}\nCreate a style bible (200-400 words) and 8-16 sections with 1-3 sentence summaries for this book. Return Markdown.`;
     if (kind === "review") return `${head}\nManuscript:\n${manuscript}\n\nGive a developmental review: what works, structure and pacing, continuity, audience fit, and a prioritized fix list (max 10).`;
-    return `${head}\nWrite the content for this section, keeping to the style bible.\nSection: ${s?.title}\nSummary: ${s?.summary}${tagged ? `\n\n${TAG_FORMAT}\n\n${CLEAN_RULES}` : ""}`;
+    return `${head}\nWrite the content for this section, keeping to the style bible.\nSection: ${s?.title}\nSummary: ${s?.summary}${tagged ? `\n\n${formatFor(book.mode)}\n\n${CLEAN_RULES}` : ""}`;
   };
   const copy = async (id: string, text: string) => {
     try { await navigator.clipboard.writeText(text); setCopied(id); setTimeout(() => setCopied(""), 1500); } catch { /* clipboard blocked */ }
@@ -180,6 +182,20 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
               {open === s.id && (
                 <div className="space-y-2 border-t border-line p-3">
                   <input className="field" value={s.title} readOnly={running} onChange={(e) => setSection(s.id, { title: e.target.value })} />
+                  {book.mode === "activity" && (
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <label className="text-xs text-muted">Activity widget (worksheet page)
+                        <select className="field mt-1" value={s.widget ?? "wordbank"} onChange={(e) => setSection(s.id, { widget: e.target.value as WidgetKind })}>
+                          {WIDGETS.map((w) => <option key={w.id} value={w.id}>{w.label}</option>)}
+                        </select>
+                      </label>
+                      <label className="text-xs text-muted">Rank badge (corner stamp)
+                        <select className="field mt-1" value={s.rank ?? 0} onChange={(e) => setSection(s.id, { rank: Number(e.target.value) as 0 | 1 | 2 | 3 })}>
+                          {RANKS.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+                        </select>
+                      </label>
+                    </div>
+                  )}
                   <textarea className="field min-h-16" value={s.summary} readOnly={running} onChange={(e) => setSection(s.id, { summary: e.target.value })} placeholder="Summary" />
                   <textarea className="field min-h-48 font-mono" value={s.draft} readOnly={running} onChange={(e) => setSection(s.id, { draft: e.target.value })} placeholder="Draft spec (paste from your web chat or let the Draft button write it)" />
                   <h3 className="pt-1 text-sm font-bold text-forest">Pictures for this section</h3>
@@ -200,6 +216,18 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
         <ImageGallery book={book} images={book.images} selected={pdfPick} onToggle={togglePick} onCharacter={toggleLibrary} onRemoved={removeImage} fail={fail} />
       </section>
 
+      {book.mode === "nonfiction" && (
+        <section className="card space-y-3">
+          <h2 className="text-base font-bold text-forest">Manuscript exports <span className="text-xs font-normal text-green">· runs in your browser, $0</span></h2>
+          <p className="hint">Both exports use your chapters and the Companion Workbook, with a title page, copyright page and contents. The print interior uses the trim size from tab 1 ({book.trim.replace("x", " × ")} in).</p>
+          <div className="flex flex-wrap gap-2">
+            <TooltipButton className="btn" disabled={!book.sections.length || htmlBusy} onClick={async () => { try { setHtmlBusy(true); download(`${book.slug}.docx`, await buildDocx(book)); } catch (e) { fail(e); } finally { setHtmlBusy(false); } }}>Export Word (.DOCX)</TooltipButton>
+            <TooltipButton className="btn" disabled={!book.sections.length} onClick={() => { try { download(`${book.slug}-print-interior.html`, new Blob([buildPrintInterior(book)], { type: "text/html" })); } catch (e) { fail(e); } }}>Export Print Interior (.HTML)</TooltipButton>
+          </div>
+          <p className="hint">Print interior: open the HTML in Chrome or Edge, press Ctrl+P, Save as PDF, and set the paper size to your trim size. Page numbers and running headers appear in recent Chrome and Edge.</p>
+        </section>
+      )}
+
       {(book.mode === "activity" || book.mode === "storybook") && (
         <section className="card space-y-3">
           <h2 className="text-base font-bold text-forest">Printable book (8.5 × 11 in HTML)</h2>
@@ -210,6 +238,15 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
               <option value="inline">Small: picture shares the story page</option>
             </select>
           </label>
+          {book.mode === "activity" && (
+            <label className="flex items-center gap-2 text-sm">Corner prop (stamped on every section page)
+              <select className="field !w-auto" value={book.cornerPropId} onChange={(e) => update({ cornerPropId: e.target.value })}>
+                <option value="">None</option>
+                {(book.characters ?? []).filter((c) => c.kind === "prop").map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+              {!(book.characters ?? []).some((c) => c.kind === "prop") && <span className="hint">Add a Type: Prop item (for example a Compass Rose) to the Library on tab 1.</span>}
+            </label>
+          )}
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={backing} onChange={(e) => setBacking(e.target.checked)} /> Insert a blank backing page after every page (stops marker bleed-through)</label>
           {(untagged > 0 || empty > 0) && <p className="rounded-lg bg-sun/30 px-3 py-2 text-sm text-forest">{empty > 0 ? `${empty} section${empty === 1 ? " has" : "s have"} no draft yet. ` : ""}{untagged > 0 ? `${untagged} section${untagged === 1 ? " is" : "s are"} in the older draft format, so some boxes would print empty. ` : ""}Use “Draft all sections” above to fill them in.</p>}
           <div className="flex flex-wrap items-center gap-3">

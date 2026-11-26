@@ -101,6 +101,8 @@ export interface Book {
   reviewSelected: string[];
   lastApplied: { kind: "idea" | "qa"; at: string; changes: string[] } | null;
   approvedAt: string;
+  ignoredAssetNames: string[];
+  cornerPropId: string;
   jobStatus: JobStatus;
   jobAction: string;
   jobError: string;
@@ -179,6 +181,8 @@ export function newBook(partial: Partial<Book>): Book {
     reviewSelected: [],
     lastApplied: null,
     approvedAt: "",
+    ignoredAssetNames: [],
+    cornerPropId: "",
     jobStatus: "idle",
     jobAction: "",
     jobError: "",
@@ -214,6 +218,8 @@ function normalise(b: Book | null): Book | null {
   b.reviewSelected ??= [];
   b.lastApplied ??= null;
   b.approvedAt ??= "";
+  b.ignoredAssetNames ??= [];
+  b.cornerPropId ??= "";
   if (!["8.5x8.5", "8x10", "8.5x11", "6x9", "5.5x8.5"].includes(b.trim)) b.trim = "8.5x11";
   // The old single reference becomes the first library entry.
   if (b.characterRefId && !b.characters.some((c) => c.id === b.characterRefId)) b.characters.push({ id: b.characterRefId, name: "Main character", kind: "character" });

@@ -1,6 +1,7 @@
 import type { Book, Section } from "./types";
 import { fetchImageBlob } from "./api";
 import { trimDims, trimLabel } from "./utils/trims";
+import { rankText, widgetSvg } from "./utils/activitySvgWidgets";
 
 export interface PrintableOptions {
   /** Insert a blank page behind every printed page so markers do not bleed through. */
@@ -149,6 +150,8 @@ const words = (t: string) => new Set(t.toLowerCase().match(/[a-z]{4,}/g) ?? []);
 
 /** Picture for each section: its own newest one, else an orphan from an earlier outline whose prompt clearly matches. */
 function pickPictures(book: Book): Map<string, string> {
+  // A storybook page never borrows another page's picture: no picture of its own means a clear placeholder.
+  const strict = book.mode === "storybook";
   const byId = new Map<string, string>();
   const sectionIds = new Set(book.sections.map((s) => s.id));
   for (const s of book.sections) {
@@ -157,7 +160,7 @@ function pickPictures(book: Book): Map<string, string> {
   }
   const orphans = book.images.filter((i) => !i.sectionId || !sectionIds.has(i.sectionId));
   for (const s of book.sections) {
-    if (byId.has(s.id) || !orphans.length) continue;
+    if (strict || byId.has(s.id) || !orphans.length) continue;
     const parts = sectionParts(s);
     const want = words(`${s.title} ${s.summary} ${parts.IMAGE_PROMPT ?? ""}`);
     let best: { id: string; score: number } | null = null;
@@ -169,6 +172,35 @@ function pickPictures(book: Book): Map<string, string> {
   }
   return byId;
 }
+
+/** Splits a story into pages and picks a font size so STORY TIME and the Point, Count & Play box always fit inside the page. */
+export function fitStory(story: string, play: string, w: number, h: number): { paras: string[]; pt: number }[] {
+  const pad = w * h < 80 ? 0.45 : 0.6;
+  const innerW = w - 2 * pad, innerH = h - 2 * pad;
+  const paras = story.split(/\n+/).map((x) => x.replace(/^[-*•\s]+/, "").trim()).filter(Boolean);
+  if (!paras.length) return [{ paras: [""], pt: 15 }];
+  const LH = 1.42, GAP = 0.06, CHAR = 0.56, SAFETY = 1.1;
+  const lines = (t: string, pt: number) => Math.max(1, Math.ceil((t.length * pt * CHAR) / 72 / innerW));
+  const need = (ps: string[], pt: number) => (ps.reduce((n, x) => n + lines(x, pt), 0) * pt * LH) / 72 * SAFETY + Math.max(0, ps.length - 1) * GAP;
+  // Fixed parts: "STORY TIME" label + gaps, and the play box (label, text, padding, border).
+  const playH = (0.2 * 2 + 0.08 + 0.06) + (16 * 1.3) / 72 + (Math.ceil((play.length * 17 * CHAR) / 72 / (innerW - 0.7)) * 17 * 1.35) / 72;
+  const headH = (16 * 1.4) / 72 + 0.5;
+  const budget = (withPlay: boolean) => innerH - headH - (withPlay ? playH : 0);
+  const SIZES = [15, 14, 13, 12];
+  const fits = (ps: string[], withPlay: boolean) => SIZES.find((pt) => need(ps, pt) <= budget(withPlay));
+  const whole = fits(paras, true);
+  if (whole) return [{ paras, pt: whole }];
+  // Too long for one page: split into balanced pages (at most 4), the play box goes on the last one.
+  for (let n = 2; n <= 4; n++) {
+    const per = Math.ceil(paras.length / n);
+    const groups = Array.from({ length: n }, (_, k) => paras.slice(k * per, (k + 1) * per)).filter((g) => g.length);
+    const sizes = groups.map((g, k) => fits(g, k === groups.length - 1));
+    if (sizes.every(Boolean)) return groups.map((g) => ({ paras: g, pt: Math.min(...(sizes as number[])) }));
+  }
+  return [{ paras, pt: 12 }];
+}
+
+const WIDGET_TITLE: Record<string, string> = { compass: "Compass rose", mapgrid: "Map key grid", steps: "Step grid", dots: "Dot-to-dot", tracing: "Trace and count" };
 
 const cssFor = (w: number, h: number) => `
 @page { size: ${w}in ${h}in; margin: 0; }
@@ -230,13 +262,19 @@ h1, h2, h3, .label { font-family: 'Fredoka', 'Nunito', 'Segoe UI', Arial, sans-s
 .key { font-size: 11pt; line-height: 1.35; min-height: 0; }
 .key p, .key li { margin: 0 0 0.03in; }
 ${w * h < 90 ? `.story { font-size: 12pt; } .head h2 { font-size: 20pt; } .title-page h1 { font-size: 32pt; } .guide .blk, .ws, .instr { font-size: 11pt; } .words { grid-template-columns: repeat(3, 1fr); } .badges { grid-template-columns: repeat(2, 1fr); } .keys { grid-template-columns: 1fr; }` : ""}
+/* Corner prop and rank badge */
+.corner { position: absolute; top: 0.18in; right: 0.28in; display: flex; align-items: center; gap: 0.08in; }
+.corner img { width: 0.55in; height: 0.55in; object-fit: contain; }
+.corner .rk { font-family: 'Fredoka', sans-serif; font-size: 10pt; border: 2px solid #000; border-radius: 999px; padding: 0.02in 0.1in; background: #fff; }
+.widget { flex: 0 0 auto; padding: 0.1in 0.14in; }
+.widget svg { width: 100%; height: auto; max-height: 3.6in; }
 .sb-art { align-items: center; justify-content: center; }
 .sb-art .frame.pic { flex: 1 1 auto; width: 100%; border-width: 5px; border-radius: 0.3in; }
-.sb-story { gap: 0.25in; }
-.sb-story .big { font-family: 'Fredoka', sans-serif; font-size: 26pt; line-height: 1.35; flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; }
-.sb-story .big p { margin: 0 0 0.14in; }
+.sb-story { gap: 0.2in; }
+.sb-story .big { font-family: 'Fredoka', sans-serif; font-size: 15pt; line-height: 1.42; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; justify-content: center; }
+.sb-story .big p { margin: 0 0 0.06in; }
 .sb-story .stl { font-family: 'Fredoka', sans-serif; font-size: 16pt; letter-spacing: 2px; text-align: center; margin: 0; }
-.play { border: 4px dashed #000; border-radius: 0.3in; padding: 0.2in 0.28in; }
+.play { flex: 0 0 auto; border: 4px dashed #000; border-radius: 0.3in; padding: 0.2in 0.28in; }
 .play .ph { font-family: 'Fredoka', sans-serif; font-size: 16pt; letter-spacing: 1px; margin: 0 0 0.08in; }
 .play p { font-size: 17pt; line-height: 1.35; margin: 0; }
 @media print {
@@ -256,6 +294,13 @@ export async function buildPrintableBook(book: Book, opts: PrintableOptions): Pr
   }
 
   const storybook = book.mode === "storybook";
+  // Corner prop (a Library item of type Prop) and rank badge, stamped on every page of a section.
+  let propUrl = "";
+  if (book.mode === "activity" && book.cornerPropId) { try { propUrl = await blobToDataUrl(await fetchImageBlob(book.cornerPropId)); } catch { /* no corner prop */ } }
+  const corner = (rank?: number) => {
+    const r = rankText(rank);
+    return propUrl || r ? `<div class="corner">${propUrl ? `<img src="${propUrl}" alt="">` : ""}${r ? `<span class="rk">${r}</span>` : ""}</div>` : "";
+  };
   const pages: string[] = [];
   const add = (html: string) => {
     pages.push(html);
@@ -280,16 +325,21 @@ export async function buildPrintableBook(book: Book, opts: PrintableOptions): Pr
       const p = parts[i];
       const pic = pics.get(s.id);
       add(`<section class="page sb-art" aria-label="${esc(s.title)} illustration">
-  <div class="frame pic">${pic ? `<img src="${pic}" alt="${esc(s.title)}">` : `<div class="none">Picture for this page</div>`}</div>
+  <div class="frame pic">${pic ? `<img src="${pic}" alt="${esc(s.title)}">` : `<div class="none">Illustration not generated yet for: ${esc(s.title)}</div>`}</div>
 </section>`);
       const story = p.STORY_TEXT ?? s.summary;
       const firstLine = (t?: string) => (t ?? "").split("\n").map((l) => l.replace(/^[-*•\d.)\s]+/, "").trim()).find(Boolean);
       const play = firstLine(p.WHILE_YOU_LISTEN) ?? firstLine(p.GUIDE_DO) ?? PLAY[i % PLAY.length];
-      add(`<section class="page sb-story">
-  <p class="stl">STORY TIME</p>
-  <div class="big">${md(story)}</div>
-  <div class="play"><div class="ph">POINT, COUNT &amp; PLAY</div><p>${esc(play)}</p></div>
+      // Fit the text on its page: biggest toddler-friendly size that fits, else split onto a second page. Never clipped.
+      const chunks = fitStory(story, play, tw, th);
+      chunks.forEach((c, k) => {
+        const last = k === chunks.length - 1;
+        add(`<section class="page sb-story">
+  <p class="stl">STORY TIME${chunks.length > 1 ? ` (${k + 1} of ${chunks.length})` : ""}</p>
+  <div class="big" style="font-size:${c.pt}pt">${c.paras.map((x) => `<p>${md(x).replace(/^<p>|<\/p>$/g, "")}</p>`).join("")}</div>
+  ${last ? `<div class="play"><div class="ph">POINT, COUNT &amp; PLAY</div><p>${esc(play)}</p></div>` : ""}
 </section>`);
+      });
     });
   } else {
   book.sections.forEach((s, i) => {
@@ -300,7 +350,7 @@ export async function buildPrintableBook(book: Book, opts: PrintableOptions): Pr
 
     // Page 1: story time. A portrait picture is tiny when it shares a page with the text, so the
     // default gives it a page of its own and puts the story on the next page.
-    const picHtml = `<div class="frame pic">${pic ? `<img src="${pic}" alt="${esc(s.title)}">` : `<div class="none">Picture for this page</div>`}</div>`;
+    const picHtml = `<div class="frame pic">${pic ? `<img src="${pic}" alt="${esc(s.title)}">` : `<div class="none">Illustration not generated yet for: ${esc(s.title)}</div>`}</div>`;
     const textBlocks = `${story ? `<div class="frame story"><div class="label">Story time</div>${md(story)}</div>` : ""}
   ${p.WHILE_YOU_LISTEN ? frame("While you listen", `<div class="listen">${md(p.WHILE_YOU_LISTEN)}</div>`) : ""}`;
     if (opts.pictureLayout === "inline") {
@@ -308,16 +358,19 @@ export async function buildPrintableBook(book: Book, opts: PrintableOptions): Pr
   <div class="head">${num}<h2>${esc(s.title)}</h2></div>
   ${picHtml}
   ${textBlocks}
+  ${corner(s.rank)}
 </section>`);
     } else {
       add(`<section class="page">
   <div class="head">${num}<h2>${esc(s.title)}</h2></div>
   ${picHtml}
+  ${corner(s.rank)}
 </section>`);
       if (story || p.WHILE_YOU_LISTEN) {
         add(`<section class="page">
   <div class="head">${num}<h2>${esc(s.title)}</h2></div>
   ${textBlocks}
+  ${corner(s.rank)}
 </section>`);
       }
     }
@@ -336,18 +389,21 @@ export async function buildPrintableBook(book: Book, opts: PrintableOptions): Pr
   <div class="head">${num}<h2>${esc(s.title)}</h2></div>
   <div class="kicker">Parent &amp; Teacher Quick-Prep Guide</div>
   <div class="guide">${guide}</div>
+  ${corner(s.rank)}
 </section>`);
     }
 
     // Page 3: the child's explorer worksheet.
-    const bank = wordList(p.WORD_BANK);
-    if (p.WORKSHEET_BODY || p.WORKSHEET_INSTRUCTIONS || bank.length || p.BONUS_DOODLE) {
+    const svg = widgetSvg(s.widget, i);
+    const bank = svg ? [] : wordList(p.WORD_BANK);
+    if (p.WORKSHEET_BODY || p.WORKSHEET_INSTRUCTIONS || bank.length || svg || p.BONUS_DOODLE) {
       add(`<section class="page">
   <div class="head">${num}<h2>${esc(s.title)}: Explorer Worksheet</h2></div>
   <div class="namedate"><div>Name:</div><div>Date:</div></div>
+  ${corner(s.rank)}
   ${p.WORKSHEET_INSTRUCTIONS ? `<p class="instr">${esc(p.WORKSHEET_INSTRUCTIONS.replace(/\n+/g, " "))}</p>` : ""}
   ${p.WORKSHEET_BODY ? `<div class="frame ws">${md(p.WORKSHEET_BODY)}</div>` : ""}
-  ${bank.length ? `<div class="frame"><div class="label">Word bank</div><div class="words">${bank.map((w) => `<div class="word">${esc(w)}</div>`).join("")}</div></div>` : ""}
+  ${svg ? `<div class="frame widget"><div class="label">${esc(WIDGET_TITLE[s.widget as string] ?? "Activity")}</div>${svg}</div>` : bank.length ? `<div class="frame"><div class="label">Word bank</div><div class="words">${bank.map((w) => `<div class="word">${esc(w)}</div>`).join("")}</div></div>` : ""}
   ${p.BONUS_DOODLE ? `<div class="frame doodle"><div class="label">Bonus doodle</div><p class="prompt">${esc(p.BONUS_DOODLE.replace(/\n+/g, " "))}</p><div class="area"></div></div>` : ""}
 </section>`);
     }

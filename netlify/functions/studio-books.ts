@@ -22,7 +22,7 @@ const EDITABLE: (keyof Book)[] = [
   "styleBible", "sections", "review", "workbook", "kdp", "characterRefId", "characters", "rescueAudit",
   "research", "preReview", "reviewQuestion", "reviewDirection", "polishDirection", "previousNotesBackup",
   "previousStyleBibleBackup", "previousSectionsBackup", "nameplateLabel", "cover",
-  "preReviewFixes", "preReviewSelected", "reviewFixes", "reviewSelected", "lastApplied", "approvedAt",
+  "preReviewFixes", "preReviewSelected", "reviewFixes", "reviewSelected", "lastApplied", "approvedAt", "ignoredAssetNames", "cornerPropId",
 ];
 
 function idFromPath(req: Request): string | null {

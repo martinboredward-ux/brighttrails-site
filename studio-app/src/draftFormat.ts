@@ -2,6 +2,16 @@ import type { Book } from "./types";
 
 // Same wording as the drafting step on the server (netlify/functions/book-studio-background.ts),
 // so the free "$0 prompt" for a section produces text the printable-book exporter can read.
+export const STORYBOOK_FORMAT = `Return ONLY the tagged blocks below, in this order. Each tag goes on its own line, followed by its content. Do not add closing tags, headings, preambles or notes.
+
+[STORY_TEXT]
+The read-aloud text for this spread: 5 to 7 short punchy lines (never more than 7), one short sentence or sound-word line each, about 35-70 words in total, with rhythm a toddler can echo. No long paragraphs.
+[WHILE_YOU_LISTEN]
+ONE short "point, count and play" prompt for the child about the picture (for example "Point to the kite. Can you count the clouds?"), one line, no list.
+[IMAGE_PROMPT]
+ONE sentence describing the single illustration for this spread: the main character and the setting only (what they are doing, where). No text or lettering in the picture.`;
+export const formatFor = (mode: Book["mode"]) => (mode === "storybook" ? STORYBOOK_FORMAT : TAG_FORMAT);
+
 export const TAG_FORMAT = `Return ONLY the tagged blocks below, in this order. Each tag goes on its own line, followed by its content. Do not add closing tags, headings, preambles or notes.
 
 [STORY_TEXT]

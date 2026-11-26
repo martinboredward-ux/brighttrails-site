@@ -2,7 +2,8 @@ export type Mode = "activity" | "storybook" | "nonfiction";
 export type JobStatus = "idle" | "running" | "done" | "error";
 
 import type { Trim } from "./utils/trims";
-export interface Section { id: string; title: string; summary: string; draft: string }
+export type WidgetKind = "wordbank" | "compass" | "mapgrid" | "steps" | "dots" | "tracing";
+export interface Section { id: string; title: string; summary: string; draft: string; widget?: WidgetKind; rank?: 0 | 1 | 2 | 3 }
 export interface APlusModule {
   size: "970x600" | "970x300" | "300x300";
   headline: string;
@@ -50,6 +51,9 @@ export interface Book {
   reviewSelected: string[];
   lastApplied: AppliedLog | null;
   approvedAt: string;
+  ignoredAssetNames: string[];
+  /** Library item of type Prop stamped in the corner of printable pages (for example a Compass Rose). */
+  cornerPropId: string;
   jobStatus: JobStatus; jobAction: string; jobError: string; jobUpdatedAt: string;
   createdAt: string; updatedAt: string;
 }
@@ -69,6 +73,8 @@ export interface CoverSettings {
   fit?: "fill" | "fit"; padColor?: string; shift?: "top" | "center" | "bottom";
   titlePlacement?: "top" | "bottom" | "split"; scrim?: "none" | "softDark" | "softLight" | "pill";
   textColor?: string; textEffect?: "none" | "shadow" | "outline";
+  /** Extra sky above the picture for Top and Split titles: the art moves down and the top color blends into the header band. */
+  topSky?: "off" | "20" | "30";
   /** The settings snapshot the author approved. The cover counts as approved while it matches. */
   approvedSig?: string; approvedAt?: string; checkNotes?: string; checkedAt?: string;
 }

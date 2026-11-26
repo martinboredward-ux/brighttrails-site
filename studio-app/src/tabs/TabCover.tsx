@@ -103,7 +103,7 @@ export default function TabCover({ book, update, commit, setBook, fail }: Props)
     setChecking(true); setResult(null);
     try {
       const imageBase64 = await renderCheckJpeg(s, book.trim, art);
-      const r = await checkCover({ imageBase64, title: s.title, subtitle: s.subtitle, author: s.author, trim: s.trim, paper: s.paper, pageCount: s.pageCount, aiDisclosure: book.aiDisclosure, audience: book.audience, layout: { fit: s.fit, shift: s.shift, titlePlacement: s.titlePlacement, scrim: s.scrim, textEffect: s.textEffect } });
+      const r = await checkCover({ imageBase64, title: s.title, subtitle: s.subtitle, author: s.author, trim: s.trim, paper: s.paper, pageCount: s.pageCount, aiDisclosure: book.aiDisclosure, audience: book.audience, layout: { topSky: s.topSky, fit: s.fit, shift: s.shift, titlePlacement: s.titlePlacement, scrim: s.scrim, textEffect: s.textEffect } });
       setResult(r);
       await commit({ cover: { ...book.cover, ...s, checkNotes: r.summary, checkedAt: new Date().toISOString() } });
     } catch (e) { fail(e); } finally { setChecking(false); }
@@ -151,6 +151,7 @@ export default function TabCover({ book, update, commit, setBook, fail }: Props)
         {s.fit === "fit" && <div><label className="label">Pad color (sky)</label><input type="color" className="h-9 w-16 rounded border border-line" value={s.padColor} onChange={(e) => set({ padColor: e.target.value })} /></div>}
         <Seg label="Vertical image shift" value={s.shift ?? "center"} onPick={(v) => set({ shift: v })} opts={[["top", "Top"], ["center", "Center"], ["bottom", "Bottom"]]} />
         <Seg label="Title placement" value={s.titlePlacement ?? "top"} onPick={(v) => set({ titlePlacement: v })} opts={[["top", "Top"], ["bottom", "Bottom"], ["split", "Split"]]} />
+        {(s.titlePlacement ?? "top") !== "bottom" && <Seg label="Extra Top Sky Space (Shift Art Down)" value={s.topSky ?? "off"} onPick={(v) => set({ topSky: v })} opts={[["off", "Off"], ["20", "20%"], ["30", "30%"]]} />}
         <Seg label="Scrim behind text (never over the middle)" value={s.scrim ?? "softLight"} onPick={(v) => set({ scrim: v })} opts={[["none", "None"], ["softDark", "Soft Dark"], ["softLight", "Soft Light"], ["pill", "Banner Pill"]]} />
         <div className="flex flex-wrap items-end gap-4">
           <div><label className="label">Text color</label><input type="color" className="h-9 w-16 rounded border border-line" value={s.textColor} onChange={(e) => set({ textColor: e.target.value })} /></div>

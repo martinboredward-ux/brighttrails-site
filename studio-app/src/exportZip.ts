@@ -84,6 +84,13 @@ export async function exportBundle(book: Book, assets: ExportAssets): Promise<{ 
     gi.file("index.json", JSON.stringify(index, null, 2));
   }
 
+  if (book.mode === "nonfiction" && book.sections.length) {
+    const nf = await import("./utils/nonfictionExporter");
+    const dir = zip.folder("05_Printable_Book")!;
+    dir.file("print-interior.html", nf.buildPrintInterior(book));
+    try { dir.file(`${book.slug}.docx`, await nf.buildDocx(book)); } catch { /* the Word file is optional in the bundle */ }
+  }
+
   if ((book.mode === "activity" || book.mode === "storybook") && book.sections.length) {
     const html = await buildPrintableBook(book, { backingPages: false });
     zip.folder("05_Printable_Book")!.file("printable-book.html", html);

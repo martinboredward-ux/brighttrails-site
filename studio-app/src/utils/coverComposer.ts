@@ -38,13 +38,14 @@ export function coverDefaults(book: Book): CoverSettings {
     scrim: c.scrim ?? "softLight",
     textColor: c.textColor ?? "#15382a",
     textEffect: c.textEffect ?? "none",
+    topSky: c.topSky ?? "off",
     approvedSig: c.approvedSig, approvedAt: c.approvedAt, checkNotes: c.checkNotes, checkedAt: c.checkedAt,
   };
 }
 
 /** What the author approved: everything that changes how the cover looks. */
 export const coverSig = (s: CoverSettings) =>
-  JSON.stringify([s.title, s.subtitle, s.author, s.seriesPill, s.trim, s.frontArtId, s.fit, s.padColor, s.shift, s.titlePlacement, s.scrim, s.textColor, s.textEffect]);
+  JSON.stringify([s.title, s.subtitle, s.author, s.seriesPill, s.trim, s.frontArtId, s.fit, s.padColor, s.shift, s.titlePlacement, s.scrim, s.textColor, s.textEffect, s.topSky]);
 export const coverApproved = (s: CoverSettings) => !!s.approvedSig && s.approvedSig === coverSig(s);
 
 const FONT = '"Nunito","Poppins","Segoe UI",system-ui,sans-serif';
@@ -118,21 +119,39 @@ function scrimFor(ctx: Ctx, mode: CoverSettings["scrim"], rect: { x: number; y: 
   ctx.fillStyle = g; ctx.fillRect(artBox.x, rect.y, artBox.w, rect.h);
 }
 
-function paintArt(ctx: Ctx, s: CoverSettings, art: Img | null, x: number, y: number, w: number, h: number) {
+function paintArt(ctx: Ctx, s: CoverSettings, art: Img | null, x: number, y: number, w: number, h: number, skyShift = 0) {
   const focus = s.shift === "top" ? 0 : s.shift === "bottom" ? 1 : 0.5;
   ctx.save();
   ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
   if (!art) { ctx.fillStyle = "#15382a"; ctx.fillRect(x, y, w, h); ctx.restore(); return; }
+  const ay = y + skyShift, ah = h - skyShift; // the picture lives below the extra sky
+  ctx.save();
+  ctx.beginPath(); ctx.rect(x, ay, w, ah); ctx.clip();
   if (s.fit === "fit") {
-    // Whole picture visible; the spare space is filled with a sky/color pad.
-    ctx.fillStyle = s.padColor || "#bfe3f5"; ctx.fillRect(x, y, w, h);
-    const r = Math.min(w / art.width, h / art.height);
+    ctx.fillStyle = s.padColor || "#bfe3f5"; ctx.fillRect(x, ay, w, ah);
+    const r = Math.min(w / art.width, ah / art.height);
     const dw = art.width * r, dh = art.height * r;
-    ctx.drawImage(art, x + (w - dw) / 2, y + (h - dh) * focus, dw, dh);
+    ctx.drawImage(art, x + (w - dw) / 2, ay + (ah - dh) * focus, dw, dh);
   } else {
-    const r = Math.max(w / art.width, h / art.height);
+    const r = Math.max(w / art.width, ah / art.height);
     const dw = art.width * r, dh = art.height * r;
-    ctx.drawImage(art, x + (w - dw) / 2, y + (h - dh) * focus, dw, dh);
+    ctx.drawImage(art, x + (w - dw) / 2, ay + (ah - dh) * focus, dw, dh);
+  }
+  ctx.restore();
+  if (skyShift > 0) {
+    // Header band in the picture's own top-edge color, blended down into the art so there is no hard seam.
+    let color = s.padColor || "#bfe3f5";
+    try {
+      const row = ctx.getImageData(Math.floor(x), Math.floor(ay + 2), Math.max(1, Math.floor(w)), 1).data;
+      let r = 0, g = 0, b = 0, n = 0;
+      for (let i = 0; i < row.length; i += 4) { r += row[i]; g += row[i + 1]; b += row[i + 2]; n++; }
+      color = `rgb(${Math.round(r / n)},${Math.round(g / n)},${Math.round(b / n)})`;
+    } catch { /* keep the pad color */ }
+    ctx.fillStyle = color; ctx.fillRect(x, y, w, skyShift);
+    const fade = Math.min(ah * 0.12, h * 0.06);
+    const gr = ctx.createLinearGradient(0, ay, 0, ay + fade);
+    gr.addColorStop(0, color); gr.addColorStop(1, color.replace("rgb(", "rgba(").replace(")", ",0)"));
+    ctx.fillStyle = gr; ctx.fillRect(x, ay, w, fade);
   }
   ctx.restore();
 }
@@ -142,7 +161,9 @@ function paintArt(ctx: Ctx, s: CoverSettings, art: Img | null, x: number, y: num
  * Text is placed inside `trim`, art fills `rect`.
  */
 function drawFront(ctx: Ctx, s: CoverSettings, art: Img | null, rect: { x: number; y: number; w: number; h: number }, trim: { x: number; y: number; w: number; h: number }) {
-  paintArt(ctx, s, art, rect.x, rect.y, rect.w, rect.h);
+  const sky = s.topSky === "20" ? 0.2 : s.topSky === "30" ? 0.3 : 0;
+  const skyShift = sky && (s.titlePlacement === "top" || s.titlePlacement === "split" || !s.titlePlacement) ? rect.h * sky : 0;
+  paintArt(ctx, s, art, rect.x, rect.y, rect.w, rect.h, skyShift);
   const color = s.textColor || "#15382a";
   const effect = s.textEffect ?? "none";
   const place = s.titlePlacement ?? "top";
