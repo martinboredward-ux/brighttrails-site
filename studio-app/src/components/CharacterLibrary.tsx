@@ -3,6 +3,8 @@ import type { Book, CharacterRef, RefKind } from "../types";
 import { compressImage } from "../imageTools";
 import { deleteImage, uploadImage } from "../api";
 import { useBlobUrl } from "../blobUrl";
+import { TooltipButton } from "./TooltipButton";
+import LibraryGenerate from "./LibraryGenerate";
 
 export const KIND_LABEL: Record<RefKind, string> = { character: "Character", badge: "Badge", prop: "Prop / place", cover: "Cover style", page: "Page design (contents, certificate…)" };
 const MAX_LIBRARY = 40;
@@ -19,7 +21,7 @@ function Card({ c, book, onRename, onKind, onRemove }: { c: CharacterRef; book: 
       <select className="field !py-1 text-xs" value={c.kind} onChange={(e) => onKind(e.target.value as RefKind)} aria-label="Type">
         {(Object.keys(KIND_LABEL) as RefKind[]).map((k) => <option key={k} value={k}>{KIND_LABEL[k]}</option>)}
       </select>
-      <button className="btn-alt !px-2 !py-1 !text-xs !text-accent" onClick={onRemove}>Remove{book.images.some((i) => i.id === c.id) ? " from library" : ""}</button>
+      <TooltipButton className="btn-alt !px-2 !py-1 !text-xs !text-accent" onClick={onRemove}>Remove{book.images.some((i) => i.id === c.id) ? " from library" : ""}</TooltipButton>
     </li>
   );
 }
@@ -83,6 +85,7 @@ export default function CharacterLibrary({ book, commit, fail, compact }: Props)
         </label>
       </div>
       {note && <p className="text-xs font-semibold text-forest">{note}</p>}
+      {!compact && <LibraryGenerate book={book} commit={commit} fail={fail} />}
       {!compact && (
         lib.length ? (
           <ul className="flex flex-wrap gap-3">

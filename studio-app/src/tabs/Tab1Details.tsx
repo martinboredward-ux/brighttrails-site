@@ -35,7 +35,7 @@ export default function Tab1Details({ book, books, update, commit, fail, locked 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <section className="card space-y-3">
-        <h2 className="text-base font-bold text-forest">Book details</h2>
+        <h2 className="text-base font-bold text-forest">Core inputs</h2>
         <div>
           <label className="label">Title</label>
           <input className="field" value={book.title} onChange={(e) => update({ title: e.target.value })} />
@@ -75,8 +75,10 @@ export default function Tab1Details({ book, books, update, commit, fail, locked 
           <p className="mt-1 text-xs text-muted">KDP asks you to disclose AI-generated text, images or translations when you publish. Choose what applies and answer the question in KDP accordingly.</p>
         </div>
         <div>
-          <label className="label">Notes</label>
-          <textarea className="field min-h-24" value={book.notes} readOnly={locked} onChange={(e) => update({ notes: e.target.value })} />
+          <label className="label">Notes (scratchpad)</label>
+          <textarea className="field min-h-64" value={book.notes} readOnly={locked} onChange={(e) => update({ notes: e.target.value })}
+            placeholder={"Type messy ideas here. Or write storyline choices like:\nOption A: ...\nOption B: ...\nThen run the Pre-Outline Review below and ask which is stronger."} />
+          <p className="hint mt-1">Rough ideas are fine. Several storyline options are fine too: the review below compares them and recommends one.</p>
         </div>
       </section>
 

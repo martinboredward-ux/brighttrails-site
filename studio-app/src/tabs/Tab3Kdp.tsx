@@ -3,6 +3,7 @@ import type { Book, KdpPackage } from "../types";
 import { generateKdp, generateRescueAudit } from "../api";
 import { rescuePrompt } from "../rescuePrompt";
 import { checkKeywords } from "../kdpCheck";
+import { TooltipButton } from "../components/TooltipButton";
 
 interface Props {
   book: Book;
@@ -87,9 +88,9 @@ export default function Tab3Kdp({ book, update, save, setBook, fail }: Props) {
         <div className="mt-3 space-y-3">
           <p className="hint">Paste the struggling book&apos;s current Amazon blurb, price, page count and BSR into Notes on tab 1, set the title, subtitle and audience, then generate a one-page proposal.</p>
           <div className="flex flex-wrap items-center gap-2">
-            <button className="btn" onClick={rescue} disabled={rescueBusy}>{rescueBusy ? "Writing proposal…" : "Generate Book Rescue Audit (Gemini)"}</button>
-            <button className="btn-alt" onClick={() => copyText(rescuePrompt(book), "Rescue prompt copied. Paste it into a web chat.")}>$0 Copy Rescue Prompt</button>
-            {book.rescueAudit.trim() && <button className="btn-alt" onClick={() => copyText(book.rescueAudit, "Proposal copied.")}>Copy Proposal</button>}
+            <TooltipButton className="btn" onClick={rescue} disabled={rescueBusy}>{rescueBusy ? "Writing proposal…" : "Generate Book Rescue Audit (Gemini)"}</TooltipButton>
+            <TooltipButton className="btn-alt" onClick={() => copyText(rescuePrompt(book), "Rescue prompt copied. Paste it into a web chat.")}>$0 Copy Rescue Prompt</TooltipButton>
+            {book.rescueAudit.trim() && <TooltipButton className="btn-alt" onClick={() => copyText(book.rescueAudit, "Proposal copied.")}>Copy Proposal</TooltipButton>}
           </div>
           {rescueMsg && <p className="text-xs font-semibold text-forest">{rescueMsg}</p>}
           {book.rescueAudit.trim() || rescueBusy ? (
@@ -100,8 +101,8 @@ export default function Tab3Kdp({ book, update, save, setBook, fail }: Props) {
       </details>
 
       <section className="card flex flex-wrap items-center gap-2">
-        <button className="btn" onClick={generate} disabled={busy}>{busy ? "Generating…" : "Generate KDP package (Gemini Flash)"}</button>
-        <button className="btn-alt" onClick={copyPrompt}>$0 copy prompt for web chat</button>
+        <TooltipButton className="btn" onClick={generate} disabled={busy}>{busy ? "Generating…" : "Generate KDP package (Gemini Flash)"}</TooltipButton>
+        <TooltipButton className="btn-alt" onClick={copyPrompt}>$0 copy prompt for web chat</TooltipButton>
         <span className="text-xs text-muted">Fills titles, description, 7 keywords, categories and A+ copy. Edit everything below.</span>
       </section>
 
@@ -116,7 +117,7 @@ export default function Tab3Kdp({ book, update, save, setBook, fail }: Props) {
           {kdp.titleIdeas.map((t, i) => (
             <li key={i} className="flex items-center gap-2">
               <span className="flex-1">{t}</span>
-              <button className="btn-alt !px-3 !py-1" onClick={() => update({ title: t })}>Use as title</button>
+              <TooltipButton className="btn-alt !px-3 !py-1" onClick={() => update({ title: t })}>Use as title</TooltipButton>
             </li>
           ))}
         </ul>

@@ -10,7 +10,7 @@ import { seriesContext } from "../lib/series-context.ts";
 export const config: Config = {};
 
 const MODELS = { haiku: "claude-haiku-5-5", sonnet: "claude-sonnet-5-5" } as const;
-type Action = "generate_outline" | "draft_section" | "draft_all" | "review_book" | "extract_workbook";
+type Action = "generate_outline" | "draft_section" | "draft_all" | "review_book" | "extract_workbook" | "market_research" | "pre_review" | "apply_review" | "apply_polish";
 
 interface Payload {
   bookId: string;
@@ -211,6 +211,127 @@ ${manuscript || "(no sections yet)"}
 Give a developmental review as Markdown: 1) what works, 2) structure and pacing problems, 3) continuity or consistency issues, 4) audience fit and reading level, 5) a prioritized fix list of at most 10 items. Be specific and refer to sections by title.`,
       );
       return { review: text };
+    }
+
+    case "market_research": {
+      const text = await gemini(
+        `${ctx}
+
+NOTES AND IDEAS
+${book.notes || "(none yet)"}
+
+You are a KDP market analyst for a small publisher. Using general knowledge of the Amazon KDP market (you have no live Amazon data, so say plainly where something should be checked on Amazon), write a niche analysis as Markdown with exactly these headings:
+## Target Buyer
+## Positioning Angle
+## Market Fit
+## 5 Must-Include Features
+## Keyword Gaps
+Be specific and short. In "Market Fit" say what competing books in this niche usually do and where this book can be different. Under "Keyword Gaps" list phrases buyers may search that the notes do not yet use. Never invent sales numbers.`,
+      );
+      return { research: text };
+    }
+
+    case "pre_review": {
+      const text = await gemini(
+        `${ctx}
+
+NOTES (rough ideas, storyline options, or a finished plan)
+${book.notes || "(none yet)"}
+
+STYLE BIBLE
+${book.styleBible || "(none yet)"}
+
+AUTHOR'S QUESTION
+${book.reviewQuestion?.trim() || "(none)"}
+
+You are a story coach and developmental editor reviewing a book BEFORE it is outlined. Work only from the notes, style bible and series context above. Write Markdown.
+
+Step 1. Decide what the notes contain.
+- If they contain TWO OR MORE storyline options or rough alternatives (for example Option A and Option B, or "either ... or"), act as an interactive story coach: add a "## Head-to-head" section comparing the options on reader appeal, pacing, market fit, and illustration and activity potential (a short table is fine). Then "## Recommendation" naming the stronger storyline and exactly WHY, and what to borrow from the other one. Then suggest improvements to the winner.
+- If they contain ONE plan, add "## Continuity and style check": timeline conflicts, missing or unclear character roles, reading level versus the audience, and page-budget gaps for the trim size and mode. If an element is fine, say so in one line.
+- If the notes are messy rough ideas, first write "## What I understood" in 3-5 bullet points, then give the checks above.
+
+Step 2. If the author asked a question, answer it directly under "## Answer to your question".
+
+Step 3. Finish with "## Suggested fixes" as a numbered list of at most 10 concrete changes to the Notes or Style Bible. Each starts with a verb. Do not rewrite the whole notes.`,
+      );
+      return { preReview: text };
+    }
+
+    case "apply_review": {
+      const text = await gemini(
+        `${ctx}
+
+CURRENT NOTES
+${book.notes || "(none)"}
+
+CURRENT STYLE BIBLE
+${book.styleBible || "(none)"}
+
+PRE-OUTLINE REVIEW
+${book.preReview || "(none)"}
+
+AUTHOR'S FIXES AND DIRECTION TO APPLY (this overrides the review; items the author says to skip must be skipped; if it names a winning storyline, lock that storyline in)
+${book.reviewDirection?.trim() || "(none given: apply the review's numbered suggested fixes and its recommendation)"}
+
+Rewrite the NOTES and the STYLE BIBLE so they incorporate the accepted fixes and lock in the chosen storyline. Rules: keep every fact, name and detail the author wrote unless a fix changes it; remove the losing storyline options once one is chosen; do not invent new characters, places or plot; keep lists and headings readable; Notes under 7000 characters; Style Bible 200-400 words covering voice and reading level, visual style, recurring characters (with the exact names and details already given), layout rules, and things to avoid. Return ONLY JSON: {"notes": string, "styleBible": string}.`,
+        true,
+      );
+      const data = JSON.parse(text.replace(/^```(?:json)?|```$/g, "").trim()) as { notes?: string; styleBible?: string };
+      if (!data.notes?.trim() || !data.styleBible?.trim()) throw new Error("The AI returned an empty Notes or Style Bible. Nothing was changed.");
+      return {
+        previousNotesBackup: book.notes,
+        previousStyleBibleBackup: book.styleBible,
+        notes: String(data.notes).slice(0, 12000),
+        styleBible: String(data.styleBible).slice(0, 8000),
+      };
+    }
+
+    case "apply_polish": {
+      const todo = book.sections.map((s, i) => i).filter((i) => book.sections[i].draft.trim());
+      if (!todo.length) throw new Error("There are no drafted sections to polish.");
+      if (!book.review.trim()) throw new Error("Run Review manuscript first, then apply its fixes.");
+      const backup = book.sections.map((s) => ({ ...s }));
+      let done = 0;
+      for (const idx of todo) {
+        await setJob(book.id, { jobAction: `apply_polish:${done + 1}/${todo.length}` });
+        const sec = book.sections[idx];
+        const tagged = TAGGED_MODES.has(book.mode);
+        let text: string;
+        try {
+          text = await claude(
+            `${ctx}
+
+STYLE BIBLE
+${book.styleBible || "(none)"}
+
+MANUSCRIPT REVIEW
+${book.review.slice(0, 6000)}
+
+AUTHOR'S DIRECTION (overrides the review; skip anything the author says to skip)
+${book.polishDirection?.trim() || "(none: apply the review's fixes that concern this section)"}
+
+SECTION TO POLISH
+Title: ${sec.title}
+${sec.draft}
+
+Revise this section ONLY where the review or direction asks for a change that affects it. Keep everything else word for word. ${tagged ? `Return the same tagged blocks in the same order and format, nothing else.\n\n${TAG_FORMAT}\n\n${CLEAN_RULES}` : "Return the full revised section as Markdown."}`,
+            which,
+          );
+        } catch (err) {
+          throw new Error(`Stopped at section ${idx + 1} (${sec.title}) after ${done} of ${todo.length}: ${err instanceof Error ? err.message : String(err)}. Polished sections so far are saved; use Undo to restore the originals.`);
+        }
+        book.sections = book.sections.map((s, i) => (i === idx ? { ...s, draft: text } : s));
+        const fresh = await getBook(book.id);
+        if (fresh) {
+          fresh.sections = fresh.sections.map((s) => (s.id === sec.id ? { ...s, draft: text } : s));
+          fresh.previousSectionsBackup = backup;
+          fresh.updatedAt = new Date().toISOString();
+          await putBook(fresh);
+        }
+        done++;
+      }
+      return {};
     }
 
     case "extract_workbook": {

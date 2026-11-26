@@ -31,7 +31,7 @@ export default async (req: Request): Promise<Response> => {
     const bookNow = await getBook(p.bookId);
     const lib = new Map((bookNow?.characters ?? []).map((c) => [c.id, c]));
     const references = (p.referenceImageIds ?? []).map((id) => ({ id, name: lib.get(id)?.name, kind: lib.get(id)?.kind }));
-    const result = await generateImage({ ...p, references, styleBible: p.sectionId ? bookNow?.styleBible : undefined });
+    const result = await generateImage({ ...p, references, styleBible: p.sectionId || String(p.stylePreset).startsWith("library") ? bookNow?.styleBible : undefined });
     const imageId = `${p.bookId}__${crypto.randomUUID()}`;
     await store.set(imageId, result.bytes, { metadata: { contentType: result.contentType, bookId: p.bookId, bytes: result.bytes.byteLength } });
 

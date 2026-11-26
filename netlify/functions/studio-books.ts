@@ -20,6 +20,8 @@ export const config: Config = { path: ["/api/studio/books", "/api/studio/books/*
 const EDITABLE: (keyof Book)[] = [
   "title", "subtitle", "mode", "audience", "seriesName", "linkedBookIds", "trim", "aiDisclosure", "notes",
   "styleBible", "sections", "review", "workbook", "kdp", "characterRefId", "characters", "rescueAudit",
+  "research", "preReview", "reviewQuestion", "reviewDirection", "polishDirection", "previousNotesBackup",
+  "previousStyleBibleBackup", "previousSectionsBackup", "nameplateLabel", "cover",
 ];
 
 function idFromPath(req: Request): string | null {

@@ -2,13 +2,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Book } from "./types";
 import { AuthError, clearPassword, createBook, getBook, getPassword, listBooks, removeBook, saveBook, setPassword } from "./api";
 import { exportBundle, download, type ExportAssets } from "./exportZip";
-import Tab1Details from "./tabs/Tab1Details";
+import Tab1Research from "./tabs/Tab1Research";
+import TabCover from "./tabs/TabCover";
 import Tab2Builder from "./tabs/Tab2Builder";
 import Tab3Kdp from "./tabs/Tab3Kdp";
 import Tab4APlus from "./tabs/Tab4APlus";
 import { ThemeToggle, useTheme } from "./theme";
+import { TooltipButton } from "./components/TooltipButton";
 
-const TABS = ["1 · Details & Style Bible", "2 · Book Builder", "3 · KDP Package", "4 · A+ Content"] as const;
+const TABS = ["1 · Research & Style Bible", "2 · Book Builder", "3 · Cover Studio", "4 · KDP Package", "5 · A+ Content"] as const;
 
 function Login({ onDone }: { onDone: () => void }) {
   const [theme, toggleTheme] = useTheme();
@@ -45,7 +47,7 @@ function Login({ onDone }: { onDone: () => void }) {
           <input id="pw" type="password" autoFocus className="field" value={pw} onChange={(e) => setPw(e.target.value)} />
         </div>
         {err && <p className="text-sm text-accent">{err}</p>}
-        <button className="btn w-full" disabled={busy || !pw}>{busy ? "Checking…" : "Sign in"}</button>
+        <TooltipButton className="btn w-full" disabled={busy || !pw}>{busy ? "Checking…" : "Sign in"}</TooltipButton>
       </form>
     </div>
   );
@@ -172,15 +174,15 @@ export default function App() {
           <ul className="space-y-1">
             {books.map((b) => (
               <li key={b.id}>
-                <button onClick={() => pick(b.id)} className={`w-full rounded-lg px-3 py-2 text-left text-sm ${book?.id === b.id ? "bg-brand text-onbrand" : "hover:bg-forest/10"}`}>
+                <TooltipButton onClick={() => pick(b.id)} className={`w-full rounded-lg px-3 py-2 text-left text-sm ${book?.id === b.id ? "bg-brand text-onbrand" : "hover:bg-forest/10"}`}>
                   {b.title}
                   <span className="block text-xs opacity-70">{b.mode}</span>
-                </button>
+                </TooltipButton>
               </li>
             ))}
           </ul>
-          <button className="btn-alt w-full" onClick={add}>+ New book</button>
-          <button className="text-xs text-muted underline" onClick={() => { clearPassword(); setAuthed(false); }}>Sign out</button>
+          <TooltipButton className="btn-alt w-full" onClick={add}>+ New book</TooltipButton>
+          <TooltipButton className="text-xs text-muted underline" onClick={() => { clearPassword(); setAuthed(false); }}>Sign out</TooltipButton>
         </div>
       </aside>
 
@@ -188,7 +190,7 @@ export default function App() {
         {error && (
           <div className="card flex items-start justify-between gap-3 border-accent/40 text-sm text-accent">
             <span>{error}</span>
-            <button className="underline" onClick={() => setError("")}>Dismiss</button>
+            <TooltipButton className="underline" onClick={() => setError("")}>Dismiss</TooltipButton>
           </div>
         )}
         {!book ? (
@@ -198,20 +200,21 @@ export default function App() {
             <div className="card flex flex-wrap items-center gap-2">
               <nav className="flex flex-wrap gap-1">
                 {TABS.map((t, i) => (
-                  <button key={t} onClick={() => setTab(i)} className={`rounded-lg px-3 py-2 text-sm font-semibold ${tab === i ? "bg-sun text-onsun" : "hover:bg-forest/10"}`}>{t}</button>
+                  <TooltipButton key={t} onClick={() => setTab(i)} className={`rounded-lg px-3 py-2 text-sm font-semibold ${tab === i ? "bg-sun text-onsun" : "hover:bg-forest/10"}`}>{t}</TooltipButton>
                 ))}
               </nav>
               <div className="ml-auto flex items-center gap-2">
                 {dirty && <span className="text-xs text-accent">Unsaved changes</span>}
-                <button className="btn-alt" onClick={save} disabled={!dirty || saving || running}>{saving ? "Saving…" : "Save"}</button>
-                <button className="btn" onClick={exportZip}>Export .ZIP Bundle</button>
-                <button className="btn-alt" onClick={del}>Delete</button>
+                <TooltipButton className="btn-alt" onClick={save} disabled={!dirty || saving || running}>{saving ? "Saving…" : "Save"}</TooltipButton>
+                <TooltipButton className="btn" onClick={exportZip}>Export .ZIP Bundle</TooltipButton>
+                <TooltipButton className="btn-alt" onClick={del}>Delete</TooltipButton>
               </div>
             </div>
-            {tab === 0 && <Tab1Details book={book} books={books} update={update} commit={commit} fail={fail} locked={running} />}
+            {tab === 0 && <Tab1Research book={book} books={books} update={update} commit={commit} save={save} setBook={setBook} fail={fail} locked={running} />}
             {tab === 1 && <Tab2Builder book={book} update={update} commit={commit} save={save} setBook={setBook} assets={assets} fail={fail} />}
-            {tab === 2 && <Tab3Kdp book={book} update={update} save={save} setBook={setBook} fail={fail} />}
-            {tab === 3 && <Tab4APlus book={book} update={update} setBook={setBook} fail={fail} />}
+            {tab === 2 && <TabCover book={book} update={update} commit={commit} fail={fail} />}
+            {tab === 3 && <Tab3Kdp book={book} update={update} save={save} setBook={setBook} fail={fail} />}
+            {tab === 4 && <Tab4APlus book={book} update={update} setBook={setBook} fail={fail} />}
           </>
         )}
       </main>

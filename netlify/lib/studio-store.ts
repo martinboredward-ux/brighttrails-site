@@ -54,7 +54,7 @@ export interface GeneratedImage {
 
 export type ImageProvider = "openai-mini" | "openai-1.5" | "nano-banana";
 export type ImageAspect = "portrait" | "square" | "landscape";
-export type StylePreset = "coloring" | "storybook" | "cover" | "aplus";
+export type StylePreset = "coloring" | "storybook" | "cover" | "aplus" | "library_bw" | "library_color";
 
 export interface Book {
   id: string;
@@ -78,6 +78,19 @@ export interface Book {
   characterRefId: string;
   /** Character Library: several named reference pictures sent to the image engines. */
   characters: CharacterRef[];
+  /** Tab 1: market research, pre-outline review and the safe-undo backups. */
+  research: string;
+  preReview: string;
+  reviewQuestion: string;
+  reviewDirection: string;
+  polishDirection: string;
+  previousNotesBackup: string | null;
+  previousStyleBibleBackup: string | null;
+  previousSectionsBackup: Section[] | null;
+  /** Printable book: the small label on each page (for example "HAPPY TRAILS COLLECTION"). */
+  nameplateLabel: string;
+  /** Cover Studio settings (title, author, series pill, page count, picture ids). */
+  cover: Record<string, unknown>;
   /** Markdown proposal from the Book Rescue Audit. Editable in the Studio. */
   rescueAudit: string;
   jobStatus: JobStatus;
@@ -141,6 +154,16 @@ export function newBook(partial: Partial<Book>): Book {
     images: [],
     characterRefId: "",
     characters: [],
+    research: "",
+    preReview: "",
+    reviewQuestion: "",
+    reviewDirection: "",
+    polishDirection: "",
+    previousNotesBackup: null,
+    previousStyleBibleBackup: null,
+    previousSectionsBackup: null,
+    nameplateLabel: "",
+    cover: {},
     rescueAudit: "",
     jobStatus: "idle",
     jobAction: "",
@@ -161,6 +184,16 @@ function normalise(b: Book | null): Book | null {
   b.images ??= [];
   b.characterRefId ??= "";
   b.characters ??= [];
+  b.research ??= "";
+  b.preReview ??= "";
+  b.reviewQuestion ??= "";
+  b.reviewDirection ??= "";
+  b.polishDirection ??= "";
+  b.previousNotesBackup ??= null;
+  b.previousStyleBibleBackup ??= null;
+  b.previousSectionsBackup ??= null;
+  b.nameplateLabel ??= "";
+  b.cover ??= {};
   // The old single reference becomes the first library entry.
   if (b.characterRefId && !b.characters.some((c) => c.id === b.characterRefId)) b.characters.push({ id: b.characterRefId, name: "Main character", kind: "character" });
   for (const c of b.characters) c.kind ??= "character";

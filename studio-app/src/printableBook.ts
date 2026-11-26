@@ -218,6 +218,8 @@ h1, h2, h3, .label { font-family: 'Fredoka', 'Nunito', 'Segoe UI', Arial, sans-s
 .badges { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.14in; align-content: start; flex: 1; }
 .badge { text-align: center; padding: 0.12in; }
 .stamp { width: 0.95in; height: 0.95in; border: 3px dashed #000; border-radius: 50%; margin: 0 auto 0.08in; display: flex; align-items: center; justify-content: center; font-family: 'Fredoka', sans-serif; font-size: 20pt; }
+.stamp.art { border: none; width: 1.15in; height: 1.15in; }
+.stamp.art img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .bt { font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 11pt; line-height: 1.15; }
 .bs { font-size: 9pt; margin-top: 0.04in; }
 .keys { display: grid; grid-template-columns: 1fr 1fr; gap: 0.14in; align-content: start; }
@@ -249,7 +251,7 @@ export async function buildPrintableBook(book: Book, opts: PrintableOptions): Pr
   add(`<section class="page title-page">
   <h1>${esc(book.title || "Untitled")}</h1>
   ${book.subtitle ? `<p class="sub">${esc(book.subtitle)}</p>` : ""}
-  <div class="frame belongs"><div class="label">This Explorer Guide belongs to:</div><div class="line"></div></div>
+  <div class="frame belongs"><div class="label">This ${esc(book.nameplateLabel?.trim() || "Explorer Guide")} belongs to:</div><div class="line"></div></div>
   <div class="pub">Bright Trails Publishing</div>
 </section>`);
 
@@ -316,10 +318,15 @@ export async function buildPrintableBook(book: Book, opts: PrintableOptions): Pr
     }
   });
 
-  // Explorer Passport: one badge per section.
+  // Explorer Passport: one badge per section. Library badges (type Badge) fill the stamps in order.
+  const libBadges = new Map<number, string>();
+  const badgeRefs = (book.characters ?? []).filter((c) => c.kind === "badge");
+  for (let i = 0; i < Math.min(badgeRefs.length, book.sections.length); i++) {
+    try { libBadges.set(i, await blobToDataUrl(await fetchImageBlob(badgeRefs[i].id))); } catch { /* plain stamp */ }
+  }
   if (book.sections.length) {
-    const brand = /barnaby/i.test(`${book.title} ${book.seriesName ?? ""} ${book.styleBible}`) ? "Barnaby Explorer Passport" : "Explorer Passport";
-    const badges = book.sections.map((s, i) => `<div class="frame badge"><div class="stamp"><span>${i + 1}</span></div><div class="bt">${esc(s.title)}</div><div class="bs">${parts[i].GUIDE_SKILL ? esc(parts[i].GUIDE_SKILL!.replace(/\n+/g, " ")) : "Stamp when finished"}</div></div>`).join("");
+    const brand = book.nameplateLabel?.trim() ? book.nameplateLabel.trim() : /barnaby/i.test(`${book.title} ${book.seriesName ?? ""} ${book.styleBible}`) ? "Barnaby Explorer Passport" : "Explorer Passport";
+    const badges = book.sections.map((s, i) => `<div class="frame badge"><div class="stamp${libBadges.has(i) ? " art" : ""}">${libBadges.has(i) ? `<img src="${libBadges.get(i)}" alt="">` : `<span>${i + 1}</span>`}</div><div class="bt">${esc(s.title)}</div><div class="bs">${parts[i].GUIDE_SKILL ? esc(parts[i].GUIDE_SKILL!.replace(/\n+/g, " ")) : "Stamp when finished"}</div></div>`).join("");
     add(`<section class="page">
   <div class="head"><h2>${brand}</h2></div>
   <div class="kicker">${esc(book.title || "")}: collect a stamp for every adventure.</div>
