@@ -9,10 +9,12 @@ interface Props {
   commit: (p: Partial<Book>) => Promise<void>;
   fail: (e: unknown) => void;
   compact?: boolean;
+  /** The Character Lock panel above already shows the thumbnail. */
+  hideThumb?: boolean;
 }
 
 /** Upload (or clear) the picture Nano Banana copies when Character Lock is on. */
-export default function CharacterReference({ book, commit, fail, compact }: Props) {
+export default function CharacterReference({ book, commit, fail, compact, hideThumb }: Props) {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
   const { url, error } = useBlobUrl(book.characterRefId || undefined);
@@ -45,7 +47,7 @@ export default function CharacterReference({ book, commit, fail, compact }: Prop
 
   return (
     <div className={`flex flex-wrap items-center gap-3 rounded-lg border border-line bg-surface p-3 ${compact ? "" : ""}`}>
-      {book.characterRefId && (
+      {book.characterRefId && !hideThumb && (
         <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded border border-line bg-white">
           {url ? <img src={url} alt="Character reference" className="max-h-full max-w-full object-contain" /> : <span className="px-1 text-center text-[11px] text-muted">{error || "Loading…"}</span>}
         </div>

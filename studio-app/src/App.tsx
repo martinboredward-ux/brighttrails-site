@@ -116,7 +116,8 @@ export default function App() {
         if (fresh.jobStatus !== "running") {
           setBook((cur) => (cur && cur.id === bookId ? { ...cur, ...fresh, ...(dirtyRef.current ? { title: cur.title, subtitle: cur.subtitle, audience: cur.audience, notes: cur.notes } : {}) } : cur));
         } else {
-          setBook((cur) => (cur && cur.id === bookId ? { ...cur, jobStatus: fresh.jobStatus, jobAction: fresh.jobAction } : cur));
+          // Drafts arrive one by one during "Draft all"; the text boxes are read-only while a job runs, so this is safe.
+          setBook((cur) => (cur && cur.id === bookId ? { ...cur, jobStatus: fresh.jobStatus, jobAction: fresh.jobAction, sections: fresh.sections } : cur));
         }
       } catch (e) { fail(e); }
     }, 3000);

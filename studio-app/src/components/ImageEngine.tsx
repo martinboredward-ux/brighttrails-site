@@ -3,6 +3,7 @@ import type { Book, GeneratedImage, ImageAspect, ImageProvider, StylePreset } fr
 import { generateImage } from "../api";
 import { wrapPrompt } from "../imagePrompts";
 import CharacterReference from "./CharacterReference";
+import { useBlobUrl } from "../blobUrl";
 
 interface Props {
   book: Book;
@@ -34,6 +35,8 @@ export default function ImageEngine({ book, sectionId, initialPrompt = "", defau
   const [notes, setNotes] = useState<string[]>([]);
   const [copied, setCopied] = useState(false);
   const canLock = provider === "nano-banana" && !!book.characterRefId;
+  const refThumb = useBlobUrl(book.characterRefId || undefined);
+  const chatgpt = provider !== "nano-banana";
 
   const run = async () => {
     if (!prompt.trim()) { setStatus("Write a prompt first."); return; }
@@ -94,6 +97,18 @@ export default function ImageEngine({ book, sectionId, initialPrompt = "", defau
         </label>
       </div>
       <textarea className="field min-h-20" value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Describe the picture. The style wording above is added for you." />
+      {book.characterRefId && (
+        <div className={`flex items-center gap-3 rounded-lg border p-2 ${chatgpt ? "border-line" : "border-sun"}`}>
+          <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded border border-line bg-white">
+            {refThumb.url ? <img src={refThumb.url} alt="Character reference" className="max-h-full max-w-full object-contain" /> : <span className="text-[10px] text-muted">…</span>}
+          </div>
+          <div className="text-sm">
+            <p className="font-bold text-forest">{chatgpt ? "Character Lock is set, but not used by this engine" : "Character Lock Active"}</p>
+            <p className="hint">{chatgpt ? "ChatGPT models do not use Character Lock. Use Nano Banana 2.1 to match your uploaded character." : "Nano Banana will copy this character in every picture."}</p>
+          </div>
+        </div>
+      )}
+      {chatgpt && !book.characterRefId && <p className="hint">ChatGPT models do not use Character Lock. Use Nano Banana 2.1 to match an uploaded character.</p>}
       {provider === "nano-banana" && (
         book.characterRefId ? (
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={useRef} onChange={(e) => setUseRef(e.target.checked)} /> Keep the saved character reference</label>
@@ -101,7 +116,7 @@ export default function ImageEngine({ book, sectionId, initialPrompt = "", defau
           <p className="hint">Character Lock: upload your character picture below, or generate one and press “Set as Character Reference” under it. Later Nano Banana pictures will copy that character.</p>
         )
       )}
-      {commit && <CharacterReference book={book} commit={commit} fail={fail} />}
+      {commit && <CharacterReference book={book} commit={commit} fail={fail} hideThumb />}
       <div className="flex flex-wrap items-center gap-3">
         <button className="btn" onClick={run} disabled={busy}>{busy ? "Generating…" : "Generate image"}</button>
         <span className="hint">Uses Netlify credits. Save your free web-chat quota with the $0 prompt button.</span>
