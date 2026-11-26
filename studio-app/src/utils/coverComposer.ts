@@ -1,26 +1,25 @@
 import { jsPDF } from "jspdf";
-import type { Book, CoverSettings } from "../types";
+import type { Book, CoverSettings, PaperType } from "../types";
+import { trimDims, type Trim } from "./trims";
 
 /** KDP spine width per page, in inches, by paper type. */
-export const SPINE_PER_PAGE = { white: 0.002252, cream: 0.0025, color: 0.002347 } as const;
+export const SPINE_PER_PAGE: Record<PaperType, number> = { white: 0.002252, standardColor: 0.002252, cream: 0.0025, premiumColor: 0.002347 };
+export const PAPER_LABEL: Record<PaperType, string> = { standardColor: "Standard Color", premiumColor: "Premium Color", white: "White (black ink)", cream: "Cream (black ink)" };
 export const BLEED = 0.125;
 export const DPI = 300;
 
-export const trimSize = (t: "6x9" | "8.5x11") => (t === "6x9" ? { w: 6, h: 9 } : { w: 8.5, h: 11 });
-
-export function spineWidth(pages: number, paper: keyof typeof SPINE_PER_PAGE = "white"): number {
-  return Math.round(Math.max(0, pages) * SPINE_PER_PAGE[paper] * 1000) / 1000;
-}
+export const spineWidth = (pages: number, paper: PaperType = "white") => Math.round(Math.max(0, pages) * SPINE_PER_PAGE[paper] * 1000) / 1000;
 
 export interface WrapGeometry { trimW: number; trimH: number; spine: number; totalW: number; totalH: number }
-export function wrapGeometry(s: CoverSettings, fallbackTrim: "6x9" | "8.5x11"): WrapGeometry {
-  const t = trimSize(s.trim ?? fallbackTrim);
+export function wrapGeometry(s: CoverSettings, fallbackTrim: Trim): WrapGeometry {
+  const t = trimDims(s.trim ?? fallbackTrim);
   const spine = spineWidth(s.pageCount ?? 90, s.paper ?? "white");
   return { trimW: t.w, trimH: t.h, spine, totalW: 2 * t.w + spine + 2 * BLEED, totalH: t.h + 2 * BLEED };
 }
 
 export function coverDefaults(book: Book): CoverSettings {
-  const c = book.cover ?? {};
+  const c = (book.cover ?? {}) as CoverSettings & { paper?: string };
+  const paper = (c.paper as string) === "color" ? "premiumColor" : (c.paper ?? "white");
   return {
     title: c.title ?? book.title,
     subtitle: c.subtitle ?? book.subtitle,
@@ -28,16 +27,31 @@ export function coverDefaults(book: Book): CoverSettings {
     seriesPill: c.seriesPill ?? (book.nameplateLabel || (book.seriesName ? `${book.seriesName.toUpperCase()}` : "")),
     pageCount: c.pageCount ?? Math.max(24, book.sections.length * 4 + 20),
     trim: c.trim ?? book.trim,
-    paper: c.paper ?? "white",
+    paper: paper as PaperType,
     frontArtId: c.frontArtId,
     backBlurb: c.backBlurb ?? "",
     barcodeCorner: c.barcodeCorner ?? true,
+    fit: c.fit ?? "fill",
+    padColor: c.padColor ?? "#bfe3f5",
+    shift: c.shift ?? "center",
+    titlePlacement: c.titlePlacement ?? "top",
+    scrim: c.scrim ?? "softLight",
+    textColor: c.textColor ?? "#15382a",
+    textEffect: c.textEffect ?? "none",
+    approvedSig: c.approvedSig, approvedAt: c.approvedAt, checkNotes: c.checkNotes, checkedAt: c.checkedAt,
   };
 }
 
-const FONT = '"Nunito","Poppins","Segoe UI",system-ui,sans-serif';
+/** What the author approved: everything that changes how the cover looks. */
+export const coverSig = (s: CoverSettings) =>
+  JSON.stringify([s.title, s.subtitle, s.author, s.seriesPill, s.trim, s.frontArtId, s.fit, s.padColor, s.shift, s.titlePlacement, s.scrim, s.textColor, s.textEffect]);
+export const coverApproved = (s: CoverSettings) => !!s.approvedSig && s.approvedSig === coverSig(s);
 
-function wrapText(ctx: CanvasRenderingContext2D, text: string, maxW: number): string[] {
+const FONT = '"Nunito","Poppins","Segoe UI",system-ui,sans-serif';
+type Ctx = CanvasRenderingContext2D;
+type Img = CanvasImageSource & { width: number; height: number };
+
+function wrapLines(ctx: Ctx, text: string, maxW: number): string[] {
   const out: string[] = [];
   for (const para of text.split("\n")) {
     let line = "";
@@ -50,108 +64,203 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, maxW: number): st
   return out;
 }
 
-/** Draws text that shrinks to fit a box. Returns the y below the last line. */
-function fitText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxW: number, maxLines: number, startPx: number, weight = 800, lh = 1.12): number {
-  let px = startPx;
-  let lines: string[] = [];
-  for (; px >= 20; px -= 4) {
+interface Block { lines: string[]; px: number; weight: number; lh: number; height: number; width: number }
+function layout(ctx: Ctx, text: string, maxW: number, maxLines: number, startPx: number, weight = 800, lh = 1.12, maxH = Infinity): Block {
+  let px = startPx, lines: string[] = [];
+  for (; px >= 18; px -= 3) {
     ctx.font = `${weight} ${px}px ${FONT}`;
-    lines = wrapText(ctx, text, maxW);
-    if (lines.length <= maxLines) break;
+    lines = wrapLines(ctx, text, maxW);
+    if (lines.length <= maxLines && lines.length * px * lh <= maxH) break;
   }
-  lines.forEach((l, i) => ctx.fillText(l, x, y + i * px * lh));
-  return y + lines.length * px * lh;
+  ctx.font = `${weight} ${px}px ${FONT}`;
+  return { lines, px, weight, lh, height: lines.length * px * lh, width: Math.max(...lines.map((l) => ctx.measureText(l).width), 0) };
 }
 
-function pill(ctx: CanvasRenderingContext2D, text: string, cx: number, cy: number, px: number, bg: string, fg: string) {
-  ctx.font = `800 ${px}px ${FONT}`;
-  const w = ctx.measureText(text).width + px * 1.6;
-  const h = px * 1.9;
-  ctx.fillStyle = bg;
-  ctx.beginPath();
-  ctx.roundRect(cx - w / 2, cy - h / 2, w, h, h / 2);
-  ctx.fill();
-  ctx.fillStyle = fg;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(text, cx, cy + px * 0.04);
+const lum = (hex: string) => {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return 0;
+  const n = parseInt(m[1], 16);
+  return (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+};
+
+function drawBlock(ctx: Ctx, b: Block, cx: number, y: number, color: string, effect: CoverSettings["textEffect"]) {
+  ctx.font = `${b.weight} ${b.px}px ${FONT}`;
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  b.lines.forEach((l, i) => {
+    const yy = y + i * b.px * b.lh;
+    if (effect === "outline") {
+      ctx.lineJoin = "round"; ctx.lineWidth = Math.max(3, b.px * 0.14);
+      ctx.strokeStyle = lum(color) > 0.55 ? "#102a20" : "#ffffff";
+      ctx.strokeText(l, cx, yy);
+    }
+    if (effect === "shadow") { ctx.shadowColor = lum(color) > 0.55 ? "rgba(0,0,0,0.75)" : "rgba(255,255,255,0.85)"; ctx.shadowBlur = b.px * 0.2; ctx.shadowOffsetY = b.px * 0.05; }
+    ctx.fillStyle = color;
+    ctx.fillText(l, cx, yy);
+    ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+  });
 }
 
-function coverFit(ctx: CanvasRenderingContext2D, img: CanvasImageSource & { width: number; height: number }, x: number, y: number, w: number, h: number) {
-  const r = Math.max(w / img.width, h / img.height);
-  const dw = img.width * r, dh = img.height * r;
+/** A soft band behind ONE text block only, so art in the middle (faces) is never washed. */
+function scrimFor(ctx: Ctx, mode: CoverSettings["scrim"], rect: { x: number; y: number; w: number; h: number }, color: string, edge: "top" | "bottom" | "mid", artBox: { x: number; w: number }) {
+  if (!mode || mode === "none") return;
+  const light = lum(color) <= 0.55; // dark text wants a light scrim
+  const rgb = mode === "softDark" ? "10,25,20" : mode === "softLight" ? "255,255,255" : light ? "255,255,255" : "10,25,20";
+  if (mode === "pill") {
+    ctx.fillStyle = `rgba(${rgb},0.86)`;
+    ctx.beginPath(); ctx.roundRect(rect.x, rect.y, rect.w, rect.h, Math.min(rect.h / 2, 60)); ctx.fill();
+    return;
+  }
+  const a = mode === "softDark" ? 0.6 : 0.88;
+  const g = ctx.createLinearGradient(0, rect.y, 0, rect.y + rect.h);
+  if (edge === "top") { g.addColorStop(0, `rgba(${rgb},${a})`); g.addColorStop(0.7, `rgba(${rgb},${a * 0.7})`); g.addColorStop(1, `rgba(${rgb},0)`); }
+  else if (edge === "bottom") { g.addColorStop(0, `rgba(${rgb},0)`); g.addColorStop(0.3, `rgba(${rgb},${a * 0.7})`); g.addColorStop(1, `rgba(${rgb},${a})`); }
+  else { g.addColorStop(0, `rgba(${rgb},0)`); g.addColorStop(0.25, `rgba(${rgb},${a})`); g.addColorStop(0.75, `rgba(${rgb},${a})`); g.addColorStop(1, `rgba(${rgb},0)`); }
+  ctx.fillStyle = g; ctx.fillRect(artBox.x, rect.y, artBox.w, rect.h);
+}
+
+function paintArt(ctx: Ctx, s: CoverSettings, art: Img | null, x: number, y: number, w: number, h: number) {
+  const focus = s.shift === "top" ? 0 : s.shift === "bottom" ? 1 : 0.5;
   ctx.save();
   ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
-  ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+  if (!art) { ctx.fillStyle = "#15382a"; ctx.fillRect(x, y, w, h); ctx.restore(); return; }
+  if (s.fit === "fit") {
+    // Whole picture visible; the spare space is filled with a sky/color pad.
+    ctx.fillStyle = s.padColor || "#bfe3f5"; ctx.fillRect(x, y, w, h);
+    const r = Math.min(w / art.width, h / art.height);
+    const dw = art.width * r, dh = art.height * r;
+    ctx.drawImage(art, x + (w - dw) / 2, y + (h - dh) * focus, dw, dh);
+  } else {
+    const r = Math.max(w / art.width, h / art.height);
+    const dw = art.width * r, dh = art.height * r;
+    ctx.drawImage(art, x + (w - dw) / 2, y + (h - dh) * focus, dw, dh);
+  }
   ctx.restore();
 }
 
-function canvasOf(w: number, h: number): [HTMLCanvasElement, CanvasRenderingContext2D] {
+/**
+ * Draws the front cover. `rect` is the whole painted area (it may include bleed); `trim` is the trimmed page inside it.
+ * Text is placed inside `trim`, art fills `rect`.
+ */
+function drawFront(ctx: Ctx, s: CoverSettings, art: Img | null, rect: { x: number; y: number; w: number; h: number }, trim: { x: number; y: number; w: number; h: number }) {
+  paintArt(ctx, s, art, rect.x, rect.y, rect.w, rect.h);
+  const color = s.textColor || "#15382a";
+  const effect = s.textEffect ?? "none";
+  const place = s.titlePlacement ?? "top";
+  const cx = trim.x + trim.w / 2;
+  const padX = trim.w * 0.09, maxW = trim.w - padX * 2;
+  const safeTop = trim.y + trim.h * 0.045, safeBottom = trim.y + trim.h - trim.h * 0.04;
+  const artBox = { x: rect.x, w: rect.w };
+
+  const title = layout(ctx, s.title ?? "", maxW, 3, trim.w * 0.115, 900, 1.12, trim.h * 0.26);
+  const sub = s.subtitle?.trim() ? layout(ctx, s.subtitle, maxW, 3, trim.w * 0.05, 700, 1.2, trim.h * 0.09) : null;
+  const author = (s.author ?? "").trim() ? layout(ctx, (s.author ?? "").trim(), maxW, 1, trim.w * 0.055, 800) : null;
+  const gap = trim.h * 0.012, pad = trim.h * 0.018;
+
+  const topBlocks: { b: Block; weight: "t" | "s" | "a" }[] = [];
+  const botBlocks: { b: Block; weight: "t" | "s" | "a" }[] = [];
+  if (place === "top") { topBlocks.push({ b: title, weight: "t" }); if (sub) topBlocks.push({ b: sub, weight: "s" }); }
+  else if (place === "bottom") { botBlocks.push({ b: title, weight: "t" }); if (sub) botBlocks.push({ b: sub, weight: "s" }); }
+  else { topBlocks.push({ b: title, weight: "t" }); if (sub) botBlocks.push({ b: sub, weight: "s" }); }
+  if (author) botBlocks.push({ b: author, weight: "a" });
+
+  const stack = (blocks: typeof topBlocks) => blocks.reduce((h, x, i) => h + x.b.height + (i ? gap : 0), 0);
+  const drawStack = (blocks: typeof topBlocks, top: number) => {
+    let y = top;
+    for (const x of blocks) { drawBlock(ctx, x.b, cx, y, color, effect); y += x.b.height + gap; }
+  };
+
+  if (topBlocks.length) {
+    const h = stack(topBlocks);
+    const w = Math.max(...topBlocks.map((x) => x.b.width));
+    if (s.scrim === "pill") scrimFor(ctx, "pill", { x: cx - w / 2 - pad * 1.5, y: safeTop - pad, w: w + pad * 3, h: h + pad * 2 }, color, "top", artBox);
+    else scrimFor(ctx, s.scrim, { x: trim.x, y: trim.y, w: trim.w, h: safeTop - trim.y + h + pad * 2.2 }, color, "top", artBox);
+    drawStack(topBlocks, safeTop);
+  }
+  if (botBlocks.length) {
+    const h = stack(botBlocks);
+    const top = safeBottom - h;
+    const w = Math.max(...botBlocks.map((x) => x.b.width));
+    if (s.scrim === "pill") scrimFor(ctx, "pill", { x: cx - w / 2 - pad * 1.5, y: top - pad, w: w + pad * 3, h: h + pad * 2 }, color, "bottom", artBox);
+    else scrimFor(ctx, s.scrim, { x: trim.x, y: top - pad * 2.2, w: trim.w, h: safeBottom - top + pad * 2.2 + (trim.y + trim.h - safeBottom) + (rect.y + rect.h - (trim.y + trim.h)) }, color, "bottom", artBox);
+    drawStack(botBlocks, top);
+  }
+  // Series pill sits just above the bottom stack.
+  if (s.seriesPill?.trim()) {
+    const px = trim.w * 0.03;
+    ctx.font = `800 ${px}px ${FONT}`;
+    const t = s.seriesPill.trim();
+    const w = ctx.measureText(t).width + px * 1.8, h = px * 1.9;
+    const bottomH = botBlocks.length ? stack(botBlocks) + pad * 2.5 : 0;
+    const py = safeBottom - bottomH - h / 2 - gap;
+    ctx.fillStyle = "#ffc94d"; ctx.beginPath(); ctx.roundRect(cx - w / 2, py - h / 2, w, h, h / 2); ctx.fill();
+    ctx.fillStyle = "#15382a"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(t, cx, py + px * 0.04);
+  }
+}
+
+function canvasOf(w: number, h: number): [HTMLCanvasElement, Ctx] {
   const c = document.createElement("canvas");
   c.width = Math.round(w); c.height = Math.round(h);
   const ctx = c.getContext("2d")!;
   ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, c.width, c.height);
   return [c, ctx];
 }
+const toBlob = (c: HTMLCanvasElement, type = "image/png", q?: number) => new Promise<Blob>((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error("Could not make the picture"))), type, q));
 
-const toBlob = (c: HTMLCanvasElement) => new Promise<Blob>((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error("Could not make the picture"))), "image/png"));
-
-/** Title, subtitle and author drawn on top of the front art. */
-function drawFront(ctx: CanvasRenderingContext2D, s: CoverSettings, x: number, y: number, w: number, h: number, art: (CanvasImageSource & { width: number; height: number }) | null) {
-  if (art) coverFit(ctx, art, x, y, w, h);
-  else { ctx.fillStyle = "#15382a"; ctx.fillRect(x, y, w, h); }
-  const pad = w * 0.08;
-  // Soft white panel behind the title so it stays readable on any art.
-  const topH = h * 0.27;
-  const g = ctx.createLinearGradient(0, y, 0, y + topH);
-  g.addColorStop(0, "rgba(255,255,255,0.94)"); g.addColorStop(0.8, "rgba(255,255,255,0.86)"); g.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.fillStyle = g; ctx.fillRect(x, y, w, topH);
-  ctx.fillStyle = "#15382a"; ctx.textAlign = "center"; ctx.textBaseline = "top";
-  let yy = fitText(ctx, s.title ?? "", x + w / 2, y + h * 0.04, w - pad * 2, 3, w * 0.115, 900);
-  if (s.subtitle?.trim()) { ctx.fillStyle = "#1f5a43"; fitText(ctx, s.subtitle, x + w / 2, yy + h * 0.008, w - pad * 2, 3, w * 0.05, 700, 1.2); }
-  if (s.seriesPill?.trim()) pill(ctx, s.seriesPill.trim(), x + w / 2, y + h * 0.935 - w * 0.075, w * 0.032, "#ffc94d", "#15382a");
-  // Author on a soft panel at the bottom.
-  const botH = h * 0.1;
-  const g2 = ctx.createLinearGradient(0, y + h - botH, 0, y + h);
-  g2.addColorStop(0, "rgba(255,255,255,0)"); g2.addColorStop(0.35, "rgba(255,255,255,0.88)"); g2.addColorStop(1, "rgba(255,255,255,0.95)");
-  ctx.fillStyle = g2; ctx.fillRect(x, y + h - botH, w, botH);
-  ctx.fillStyle = "#15382a"; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
-  ctx.font = `800 ${w * 0.052}px ${FONT}`;
-  ctx.fillText((s.author ?? "").trim(), x + w / 2, y + h - h * 0.032, w - pad * 2);
-}
-
-export async function renderEbookCover(s: CoverSettings, art: HTMLImageElement | null): Promise<Blob> {
+export function renderEbookCanvas(s: CoverSettings, art: Img | null): HTMLCanvasElement {
   const [c, ctx] = canvasOf(1600, 2560);
-  drawFront(ctx, s, 0, 0, 1600, 2560, art);
-  return toBlob(c);
+  const r = { x: 0, y: 0, w: 1600, h: 2560 };
+  drawFront(ctx, s, art, r, r);
+  return c;
+}
+export const renderEbookCover = (s: CoverSettings, art: Img | null) => toBlob(renderEbookCanvas(s, art));
+
+/** Print front cover at exactly the trim size (no bleed), 300 dpi: 2550 x 2550 for 8.5 x 8.5. */
+export function renderPrintFrontCanvas(s: CoverSettings, fallbackTrim: Trim, art: Img | null): HTMLCanvasElement {
+  const t = trimDims(s.trim ?? fallbackTrim);
+  const [c, ctx] = canvasOf(t.w * DPI, t.h * DPI);
+  const r = { x: 0, y: 0, w: c.width, h: c.height };
+  drawFront(ctx, s, art, r, r);
+  return c;
+}
+export const renderPrintFront = (s: CoverSettings, fallbackTrim: Trim, art: Img | null) => toBlob(renderPrintFrontCanvas(s, fallbackTrim, art));
+
+/** A small JPEG of the print front, for the AI cover check. */
+export async function renderCheckJpeg(s: CoverSettings, fallbackTrim: Trim, art: Img | null): Promise<string> {
+  const big = renderPrintFrontCanvas(s, fallbackTrim, art);
+  const scale = 1100 / Math.max(big.width, big.height);
+  const [c, ctx] = canvasOf(big.width * scale, big.height * scale);
+  ctx.drawImage(big, 0, 0, c.width, c.height);
+  const blob = await toBlob(c, "image/jpeg", 0.85);
+  const buf = new Uint8Array(await blob.arrayBuffer());
+  let bin = ""; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+  return btoa(bin);
 }
 
 export interface WrapOptions { guides?: boolean }
 
 /** Full paperback wrap at 300 dpi: back (blurb) + spine + front, with bleed. */
-export function renderWrapCanvas(s: CoverSettings, fallbackTrim: "6x9" | "8.5x11", art: HTMLImageElement | null, opts: WrapOptions = {}): HTMLCanvasElement {
+export function renderWrapCanvas(s: CoverSettings, fallbackTrim: Trim, art: Img | null, opts: WrapOptions = {}): HTMLCanvasElement {
   const g = wrapGeometry(s, fallbackTrim);
   const [c, ctx] = canvasOf(g.totalW * DPI, g.totalH * DPI);
   const bleed = BLEED * DPI, tw = g.trimW * DPI, th = g.trimH * DPI, sp = g.spine * DPI;
-  const backX = 0, spineX = bleed + tw, frontX = bleed + tw + sp;
-  // Back cover: warm cream panel with blurb.
+  const spineX = bleed + tw, frontX = bleed + tw + sp;
   ctx.fillStyle = "#fbf4e4"; ctx.fillRect(0, 0, bleed + tw, c.height);
-  // Spine
   ctx.fillStyle = "#15382a"; ctx.fillRect(spineX, 0, sp, c.height);
-  // Front (extends into the right bleed)
-  drawFront(ctx, s, frontX, 0, bleed + tw, c.height, art);
-  // Back content
+  drawFront(ctx, s, art, { x: frontX, y: 0, w: bleed + tw, h: c.height }, { x: frontX, y: bleed, w: tw, h: th });
   const safe = bleed + 0.25 * DPI;
   ctx.fillStyle = "#15382a"; ctx.textAlign = "left"; ctx.textBaseline = "top";
-  let y = bleed + 0.55 * DPI;
-  y = fitText(ctx, s.title ?? "", backX + safe, y, tw - 0.5 * DPI, 2, tw * 0.1, 900) + 0.18 * DPI;
-  ctx.fillStyle = "#1f2f28";
-  if (s.backBlurb?.trim()) fitText(ctx, s.backBlurb, backX + safe, y, tw - 0.5 * DPI, 14, tw * 0.045, 600, 1.35);
-  if (s.seriesPill?.trim()) pill(ctx, s.seriesPill.trim(), backX + bleed + tw / 2, c.height - bleed - th * 0.2, tw * 0.03, "#ffc94d", "#15382a");
-  // Barcode corner stays empty: KDP prints the barcode here.
+  const maxW = tw - 0.5 * DPI;
+  const t = layout(ctx, s.title ?? "", maxW, 2, tw * 0.1, 900);
+  ctx.fillStyle = "#15382a"; ctx.textAlign = "left";
+  t.lines.forEach((l, i) => ctx.fillText(l, safe, bleed + 0.55 * DPI + i * t.px * t.lh));
+  if (s.backBlurb?.trim()) {
+    const b = layout(ctx, s.backBlurb, maxW, 14, tw * 0.045, 600, 1.35);
+    ctx.fillStyle = "#1f2f28"; ctx.textAlign = "left"; ctx.textBaseline = "top";
+    const y0 = bleed + 0.55 * DPI + t.height + 0.18 * DPI;
+    b.lines.forEach((l, i) => ctx.fillText(l, safe, y0 + i * b.px * b.lh));
+  }
   const bw = 2 * DPI, bh = 1.2 * DPI, bx = bleed + tw - 0.25 * DPI - bw, by = c.height - bleed - 0.25 * DPI - bh;
   if (s.barcodeCorner !== false) { ctx.fillStyle = "#ffffff"; ctx.fillRect(bx, by, bw, bh); }
-  // Spine text only when KDP allows it (more than 79 pages).
   if ((s.pageCount ?? 0) > 79 && sp > 0.25 * DPI) {
     ctx.save();
     ctx.translate(spineX + sp / 2, c.height / 2);
@@ -165,19 +274,16 @@ export function renderWrapCanvas(s: CoverSettings, fallbackTrim: "6x9" | "8.5x11
   if (opts.guides) {
     ctx.save();
     ctx.lineWidth = 3; ctx.setLineDash([18, 12]);
-    ctx.strokeStyle = "#e0245e"; ctx.strokeRect(bleed, bleed, c.width - 2 * bleed, c.height - 2 * bleed);         // trim line
-    ctx.strokeStyle = "#1f8fff"; ctx.strokeRect(safe, safe, c.width - 2 * safe, c.height - 2 * safe);               // safe zone
+    ctx.strokeStyle = "#e0245e"; ctx.strokeRect(bleed, bleed, c.width - 2 * bleed, c.height - 2 * bleed);
+    ctx.strokeStyle = "#1f8fff"; ctx.strokeRect(safe, safe, c.width - 2 * safe, c.height - 2 * safe);
     ctx.strokeStyle = "#ff9d00"; ctx.beginPath(); ctx.moveTo(spineX, 0); ctx.lineTo(spineX, c.height); ctx.moveTo(frontX, 0); ctx.lineTo(frontX, c.height); ctx.stroke();
     ctx.restore();
   }
   return c;
 }
+export const renderWrapPng = (s: CoverSettings, fallbackTrim: Trim, art: Img | null) => toBlob(renderWrapCanvas(s, fallbackTrim, art));
 
-export async function renderWrapPng(s: CoverSettings, fallbackTrim: "6x9" | "8.5x11", art: HTMLImageElement | null): Promise<Blob> {
-  return toBlob(renderWrapCanvas(s, fallbackTrim, art));
-}
-
-export function renderWrapPdf(s: CoverSettings, fallbackTrim: "6x9" | "8.5x11", art: HTMLImageElement | null): Blob {
+export function renderWrapPdf(s: CoverSettings, fallbackTrim: Trim, art: Img | null): Blob {
   const g = wrapGeometry(s, fallbackTrim);
   const c = renderWrapCanvas(s, fallbackTrim, art);
   const pdf = new jsPDF({ orientation: g.totalW > g.totalH ? "landscape" : "portrait", unit: "in", format: [g.totalW, g.totalH] });

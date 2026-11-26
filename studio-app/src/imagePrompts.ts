@@ -1,3 +1,4 @@
+export const COVER_SAFE = "Bright, appealing children's book COVER artwork, no lettering of any kind. Composition for title typography: keep the TOP 30% of the picture as open sky or plain negative space with no characters, objects or detail; put the main characters and their faces in the middle and lower-middle, large and clearly visible, well away from the top and bottom edges; keep the bottom 12% a simple calm ground area; the scene must still work if the edges are trimmed.";
 import type { Section, StylePreset } from "./types";
 import { parseTagged } from "./printableBook";
 
@@ -23,7 +24,7 @@ function wrapCore(preset: StylePreset, prompt: string): string {
     case "coloring": return `${COLORING_WRAPPER} ${COLORING_GUARDRAIL} Subject: ${p}`;
     case "library_bw": return `Black-and-white children's book art on a PURE WHITE background: clean uniform black outlines, hollow shapes ready for coloring, no gray shading, no stippling, no solid black fills, no lettering or numbers. Subject: ${p}`;
     case "library_color": return `Warm, friendly children's picture-book art on a plain white background: flat storybook colors, clean outlines, no lettering or numbers. Subject: ${p}`;
-    case "cover": return `Bright, appealing book cover artwork with a clear focal subject and space for a title, no lettering. Subject: ${p}`;
+    case "cover": return `${COVER_SAFE} Subject: ${p}`;
     case "aplus": return `Clean marketing illustration for an online book listing, uncluttered, friendly, no text or lettering. Subject: ${p}`;
     default: return `Warm, friendly children's picture book illustration, soft colors, clear simple shapes, no text or lettering. Scene: ${p}`;
   }
@@ -53,7 +54,7 @@ export function libraryPrompt(kind: LibKind, name: string, detail = ""): { promp
     case "prop":
       return { preset: "library_bw", prompt: `One simple prop or corner emblem for the book: ${n}. Centered, bold outline, plenty of white space around it, readable when small (for example a compass rose with a blank circle at each point).${d}` };
     case "cover":
-      return { preset: "library_color", prompt: `Cover style sample for "${n}": a bright, appealing cover scene with a calm area at the top for the title and at the bottom for the author name.${d}` };
+      return { preset: "library_color", prompt: `Cover style sample for "${n}": a bright, appealing cover scene with open sky or plain space across the top 30% for the title and a calm band at the bottom for the author name.${d}` };
     default:
       return { preset: "library_bw", prompt: `Page design for "${n}": a decorative full-page border or layout with an EMPTY center for text added later (for example a contents page or certificate).${d}` };
   }

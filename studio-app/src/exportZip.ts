@@ -4,6 +4,7 @@ import { DEFAULT_OPTIONS, SPECS, canvasToPng, drawBanner } from "./aplus";
 import { getImage } from "./imageCache";
 import { fetchImageBlob } from "./api";
 import { buildPrintableBook } from "./printableBook";
+import { certificateText } from "./utils/readiness";
 
 export interface ExportAssets {
   pdf: Blob | null;
@@ -21,6 +22,7 @@ export async function exportBundle(book: Book, assets: ExportAssets): Promise<{ 
   const ap = zip.folder("03_A_Plus_Package")!;
   const covers = zip.folder("06_Covers")!;
 
+  if (book.approvedAt) zip.file("approval-certificate.txt", certificateText(book));
   ws.file("book.json", JSON.stringify({ ...book, jobStatus: undefined, jobAction: undefined, jobError: undefined }, null, 2));
   ws.file("style-bible.md", book.styleBible || "");
   ws.file("manuscript.md", `# ${book.title}\n\n${manuscript(book)}`);

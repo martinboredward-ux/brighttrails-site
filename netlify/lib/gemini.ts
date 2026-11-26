@@ -22,7 +22,7 @@ function isModelNotFound(err: unknown): boolean {
   return /NOT_FOUND|\b404\b|is not found|not supported for generateContent/i.test(e?.message ?? "");
 }
 
-export async function geminiGenerate(prompt: string, opts: { json?: boolean; temperature?: number } = {}): Promise<string> {
+export async function geminiGenerate(prompt: string, opts: { json?: boolean; temperature?: number; image?: { mimeType: string; data: string } } = {}): Promise<string> {
   const ai = new GoogleGenAI({});
   const config: Record<string, unknown> = {};
   if (opts.json) config.responseMimeType = "application/json";
@@ -32,7 +32,8 @@ export async function geminiGenerate(prompt: string, opts: { json?: boolean; tem
   let lastError: unknown;
   for (const model of candidates()) {
     try {
-      const res = await ai.models.generateContent({ model, contents: prompt, config });
+      const contents = opts.image ? [{ role: "user", parts: [{ text: prompt }, { inlineData: { mimeType: opts.image.mimeType, data: opts.image.data } }] }] : prompt;
+      const res = await ai.models.generateContent({ model, contents, config });
       working = model;
       return (res.text ?? "").trim();
     } catch (err) {

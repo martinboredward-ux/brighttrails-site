@@ -1,3 +1,4 @@
+import { trimDims } from "./utils/trims";
 import { jsPDF } from "jspdf";
 
 export type Pattern = "dotted" | "wavy" | "alphabet" | "numbers" | "counting" | "grid" | "images";
@@ -19,10 +20,12 @@ export interface PdfOptions {
   pages: number;
   blankReverse: boolean;
   title: string;
+  trim?: string;
 }
 
-const W = 8.5;
-const H = 11;
+// Page size in inches. Set from the book's trim size each time a PDF is built.
+let W = 8.5;
+let H = 11;
 const M = 0.6; // safe margin in inches, well inside KDP's minimum for no-bleed interiors
 const GRAY = 150;
 
@@ -178,6 +181,8 @@ function imagePage(doc: jsPDF, img: ImagePage) {
 }
 
 export function buildActivityPdf(opts: PdfOptions, imagePages: ImagePage[] = []): Blob {
+  const dim = trimDims(opts.trim);
+  W = dim.w; H = dim.h;
   const doc = new jsPDF({ unit: "in", format: [W, H], orientation: "portrait" });
   const pages = opts.pattern === "images" ? 0 : Math.max(1, Math.min(200, Math.floor(opts.pages)));
   for (let i = 0; i < pages; i++) {

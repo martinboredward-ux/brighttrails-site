@@ -1,3 +1,4 @@
+import { TRIMS } from "../utils/trims";
 import { useState } from "react";
 import type { Book } from "../types";
 import CharacterLibrary from "../components/CharacterLibrary";
@@ -56,8 +57,7 @@ export default function Tab1Details({ book, books, update, commit, fail, locked 
           <div>
             <label className="label">Trim size</label>
             <select className="field" value={book.trim} onChange={(e) => update({ trim: e.target.value as Book["trim"] })}>
-              <option value="8.5x11">8.5 × 11 in</option>
-              <option value="6x9">6 × 9 in</option>
+              {TRIMS.map((t) => <option key={t.id} value={t.id}>{t.label} ({t.use})</option>)}
             </select>
           </div>
         </div>

@@ -1,6 +1,7 @@
 export type Mode = "activity" | "storybook" | "nonfiction";
 export type JobStatus = "idle" | "running" | "done" | "error";
 
+import type { Trim } from "./utils/trims";
 export interface Section { id: string; title: string; summary: string; draft: string }
 export interface APlusModule {
   size: "970x600" | "970x300" | "300x300";
@@ -24,7 +25,7 @@ export interface CharacterRef { id: string; name: string; kind: RefKind }
 export interface Book {
   id: string; slug: string; title: string; subtitle: string; mode: Mode; audience: string;
   seriesName: string; linkedBookIds: string[];
-  trim: "8.5x11" | "6x9"; aiDisclosure: "none" | "assisted" | "generated";
+  trim: Trim; aiDisclosure: "none" | "assisted" | "generated";
   notes: string; styleBible: string; sections: Section[]; review: string; workbook: string;
   kdp: KdpPackage | null;
   images: GeneratedImage[];
@@ -42,6 +43,13 @@ export interface Book {
   nameplateLabel: string;
   cover: CoverSettings;
   rescueAudit: string;
+  /** Review #1 (idea, market, age fit) and Review #2 (proofread QA): structured fixes, picked ids and the last change log. */
+  preReviewFixes: ReviewFix[];
+  preReviewSelected: string[];
+  reviewFixes: ReviewFix[];
+  reviewSelected: string[];
+  lastApplied: AppliedLog | null;
+  approvedAt: string;
   jobStatus: JobStatus; jobAction: string; jobError: string; jobUpdatedAt: string;
   createdAt: string; updatedAt: string;
 }
@@ -55,6 +63,15 @@ export interface GeneratedImage {
 export type Action = "generate_outline" | "draft_section" | "draft_all" | "review_book" | "extract_workbook" | "market_research" | "pre_review" | "apply_review" | "apply_polish";
 export interface CoverSettings {
   title?: string; subtitle?: string; author?: string; seriesPill?: string;
-  pageCount?: number; trim?: "6x9" | "8.5x11"; paper?: "white" | "cream" | "color";
+  pageCount?: number; trim?: Trim; paper?: PaperType;
   frontArtId?: string; backBlurb?: string; barcodeCorner?: boolean;
+  /** Framing and contrast controls. */
+  fit?: "fill" | "fit"; padColor?: string; shift?: "top" | "center" | "bottom";
+  titlePlacement?: "top" | "bottom" | "split"; scrim?: "none" | "softDark" | "softLight" | "pill";
+  textColor?: string; textEffect?: "none" | "shadow" | "outline";
+  /** The settings snapshot the author approved. The cover counts as approved while it matches. */
+  approvedSig?: string; approvedAt?: string; checkNotes?: string; checkedAt?: string;
 }
+export type PaperType = "standardColor" | "premiumColor" | "white" | "cream";
+export interface ReviewFix { id: string; title: string; detail: string; target: "notes" | "styleBible" | "sections" }
+export interface AppliedLog { kind: "idea" | "qa"; at: string; changes: string[] }

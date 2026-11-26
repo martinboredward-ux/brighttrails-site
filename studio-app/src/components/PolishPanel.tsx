@@ -1,33 +1,48 @@
 import type { Action, Book } from "../types";
 import { TooltipButton } from "./TooltipButton";
 import JobStatus from "./JobStatus";
+import ReviewFixPicker, { type CompareItem } from "./ReviewFixPicker";
 
 interface Props { book: Book; update: (p: Partial<Book>) => void; commit: (p: Partial<Book>) => Promise<void>; run: (a: Action) => Promise<void> }
 
-/** Optional: review the drafted sections, then apply the fixes you accept. Undo restores the originals. */
+/** Review #2: Pre-Cover Proofread & Formatting QA. Runs after drafting and pictures, just before the Cover Studio. */
 export default function PolishPanel({ book, update, commit, run }: Props) {
   const running = book.jobStatus === "running";
   const drafted = book.sections.filter((s) => s.draft.trim()).length;
-  const canUndo = !!book.previousSectionsBackup;
+  const backup = book.previousSectionsBackup;
+  const applied = book.lastApplied?.kind === "qa" ? book.lastApplied : null;
+  const compare: CompareItem[] = [];
+  if (applied && backup) {
+    book.sections.forEach((s, i) => {
+      const old = backup.find((b) => b.id === s.id);
+      if (old && old.draft !== s.draft) compare.push({ label: `Section ${i + 1}: ${s.title}`, before: old.draft, after: s.draft });
+    });
+  }
   return (
     <section className="card space-y-3">
-      <h2 className="text-base font-bold text-forest">Post-draft polish (optional)</h2>
-      <p className="hint">Runs on your drafted sections. Review first, then apply the fixes you accept. Only sections the fixes affect change, and a backup lets you undo. {drafted} of {book.sections.length} sections drafted.</p>
+      <h2 className="text-base font-bold text-forest">Review #2: Pre-Cover Proofread &amp; Formatting QA</h2>
+      <p className="hint">Run this after drafting and pictures, just before the Cover Studio. It checks only spelling, grammar and typos, Tagalog and special-term consistency, broken [ brackets or missing tags, Answer Key vs Worksheet accuracy, missing section artwork, and reading level. A toddler Storybook should have no Word Bank drills. {drafted} of {book.sections.length} sections drafted.</p>
       <div className="flex flex-wrap gap-2">
-        <TooltipButton className="btn" disabled={running || !drafted} onClick={() => run("review_book")}>Review manuscript</TooltipButton>
+        <TooltipButton className="btn" disabled={running || !drafted} onClick={() => run("review_book")}>Run Proofread &amp; Formatting QA</TooltipButton>
       </div>
       <JobStatus book={book} only={["review_book", "apply_polish"]} />
       {book.review.trim() && (
         <>
-          <textarea className="field min-h-56 font-mono" value={book.review} readOnly={running} onChange={(e) => update({ review: e.target.value })} aria-label="Developmental review" />
-          <div>
-            <label className="label" htmlFor="pd">Fixes to apply / skip (optional)</label>
-            <textarea id="pd" className="field min-h-20" value={book.polishDirection} readOnly={running} onChange={(e) => update({ polishDirection: e.target.value })} placeholder="e.g. Apply fixes 1, 3 and 5. Skip 2. Keep the ending as it is." />
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <TooltipButton className="btn" disabled={running || !drafted} onClick={() => run("apply_polish")}>Apply Polish to drafted sections</TooltipButton>
-            {canUndo && <TooltipButton className="btn-alt" disabled={running} onClick={() => commit({ sections: book.previousSectionsBackup ?? book.sections, previousSectionsBackup: null })}>Undo polish (restore sections)</TooltipButton>}
-          </div>
+          <textarea className="field min-h-56 font-mono" value={book.review} readOnly aria-label="Proofread and formatting QA" />
+          <ReviewFixPicker
+            fixes={book.reviewFixes ?? []}
+            selected={book.reviewSelected ?? []}
+            onSelect={(ids) => update({ reviewSelected: ids })}
+            extra={book.polishDirection}
+            onExtra={(t) => update({ polishDirection: t })}
+            extraPlaceholder="e.g. Also change every 'Mama' to 'Nanay'. Do not touch section 4."
+            busy={running}
+            onApply={() => run("apply_polish")}
+            applied={applied}
+            compare={compare}
+            canUndo={!!backup}
+            onUndo={() => void commit({ sections: backup ?? book.sections, previousSectionsBackup: null, lastApplied: null })}
+          />
         </>
       )}
       {book.workbook && (<><h3 className="text-sm font-bold text-forest">Companion workbook</h3><textarea className="field min-h-48 font-mono" value={book.workbook} onChange={(e) => update({ workbook: e.target.value })} /></>)}

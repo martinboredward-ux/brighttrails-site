@@ -1,5 +1,6 @@
 import type { Book, Section } from "./types";
 import { fetchImageBlob } from "./api";
+import { trimDims, trimLabel } from "./utils/trims";
 
 export interface PrintableOptions {
   /** Insert a blank page behind every printed page so markers do not bleed through. */
@@ -63,7 +64,9 @@ export type Tag =
   | "STORY_TEXT" | "WHILE_YOU_LISTEN" | "GUIDE_TIME" | "GUIDE_SKILL" | "GUIDE_MATERIALS" | "GUIDE_SAY" | "GUIDE_DO"
   | "GUIDE_CHECK" | "GUIDE_TIP" | "WORKSHEET_INSTRUCTIONS" | "WORKSHEET_BODY" | "WORD_BANK" | "BONUS_DOODLE" | "ANSWER_KEY" | "IMAGE_PROMPT";
 export const TAGS: Tag[] = ["STORY_TEXT", "WHILE_YOU_LISTEN", "GUIDE_TIME", "GUIDE_SKILL", "GUIDE_MATERIALS", "GUIDE_SAY", "GUIDE_DO", "GUIDE_CHECK", "GUIDE_TIP", "WORKSHEET_INSTRUCTIONS", "WORKSHEET_BODY", "WORD_BANK", "BONUS_DOODLE", "ANSWER_KEY", "IMAGE_PROMPT"];
-const TAG_RE = /^\s*(?:#{1,6}\s*)?\[([A-Z_]+)\]\s*(.*)$/;
+/** Tolerant tag line: "[TAG] text", "[TAG", "[[TAG]]", "**[TAG]**", "TAG:" and "## [TAG]" all count. Only real tag names match. */
+const TAG_RE = /^\s*(?:#{1,6}\s*)?(?:[*_]{1,3})?\s*\[{0,2}\s*([A-Z][A-Z_]{3,})\s*(?:\]{1,2})?\s*(?:[*_]{1,3})?\s*:?\s*(.*)$/;
+const STRAY = /^\s*[[\]]+\s*$/;
 
 /** Reads the [TAG] blocks written by the drafting step. Returns null when the draft has none (an older draft). */
 export function parseTagged(draft: string): Partial<Record<Tag, string>> | null {
@@ -72,14 +75,15 @@ export function parseTagged(draft: string): Partial<Record<Tag, string>> | null 
   let found = false;
   for (const line of (draft || "").split("\n")) {
     const m = TAG_RE.exec(line);
-    if (m && (TAGS as string[]).includes(m[1])) {
+    const delimited = !!m && (/\[/.test(line.slice(0, line.indexOf(m[1]))) || /[\]:]/.test(line.slice(line.indexOf(m[1]) + m[1].length)) || !m[2].trim());
+    if (m && delimited && (TAGS as string[]).includes(m[1])) {
       cur = m[1] as Tag;
       found = true;
       (out[cur] ??= []);
       if (m[2].trim()) out[cur]!.push(m[2].trim());
       continue;
     }
-    if (cur) out[cur]!.push(line);
+    if (cur && !STRAY.test(line)) out[cur]!.push(line);
   }
   if (!found) return null;
   const res: Partial<Record<Tag, string>> = {};
@@ -166,14 +170,14 @@ function pickPictures(book: Book): Map<string, string> {
   return byId;
 }
 
-const CSS = `
-@page { size: 8.5in 11in; margin: 0; }
+const cssFor = (w: number, h: number) => `
+@page { size: ${w}in ${h}in; margin: 0; }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; background: #e9e9e9; }
 body { font-family: 'Nunito', 'Segoe UI', Arial, Helvetica, sans-serif; color: #000; }
 h1, h2, h3, .label { font-family: 'Fredoka', 'Nunito', 'Segoe UI', Arial, sans-serif; }
-.tip { max-width: 8.5in; margin: 12px auto; padding: 10px 14px; background: #fff8dc; border: 1px solid #c9a400; border-radius: 8px; font: 14px/1.4 Arial, sans-serif; }
-.page { width: 8.5in; height: 11in; padding: 0.6in; margin: 0 auto 12px; background: #fff; position: relative; overflow: hidden; page-break-after: always; break-after: page; display: flex; flex-direction: column; gap: 0.18in; }
+.tip { max-width: ${w}in; margin: 12px auto; padding: 10px 14px; background: #fff8dc; border: 1px solid #c9a400; border-radius: 8px; font: 14px/1.4 Arial, sans-serif; }
+.page { width: ${w}in; height: ${h}in; padding: ${w * h < 80 ? "0.45" : "0.6"}in; margin: 0 auto 12px; background: #fff; position: relative; overflow: hidden; page-break-after: always; break-after: page; display: flex; flex-direction: column; gap: 0.18in; }
 .page.blank { background: #fff; }
 .frame { border: 3px solid #000; border-radius: 0.22in; padding: 0.16in 0.2in; background: #fff; }
 .pic { flex: 1 1 auto; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 0.1in; }
@@ -225,6 +229,16 @@ h1, h2, h3, .label { font-family: 'Fredoka', 'Nunito', 'Segoe UI', Arial, sans-s
 .keys { display: grid; grid-template-columns: 1fr 1fr; gap: 0.14in; align-content: start; }
 .key { font-size: 11pt; line-height: 1.35; min-height: 0; }
 .key p, .key li { margin: 0 0 0.03in; }
+${w * h < 90 ? `.story { font-size: 12pt; } .head h2 { font-size: 20pt; } .title-page h1 { font-size: 32pt; } .guide .blk, .ws, .instr { font-size: 11pt; } .words { grid-template-columns: repeat(3, 1fr); } .badges { grid-template-columns: repeat(2, 1fr); } .keys { grid-template-columns: 1fr; }` : ""}
+.sb-art { align-items: center; justify-content: center; }
+.sb-art .frame.pic { flex: 1 1 auto; width: 100%; border-width: 5px; border-radius: 0.3in; }
+.sb-story { gap: 0.25in; }
+.sb-story .big { font-family: 'Fredoka', sans-serif; font-size: 26pt; line-height: 1.35; flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; }
+.sb-story .big p { margin: 0 0 0.14in; }
+.sb-story .stl { font-family: 'Fredoka', sans-serif; font-size: 16pt; letter-spacing: 2px; text-align: center; margin: 0; }
+.play { border: 4px dashed #000; border-radius: 0.3in; padding: 0.2in 0.28in; }
+.play .ph { font-family: 'Fredoka', sans-serif; font-size: 16pt; letter-spacing: 1px; margin: 0 0 0.08in; }
+.play p { font-size: 17pt; line-height: 1.35; margin: 0; }
 @media print {
   html, body { background: #fff; }
   .page { margin: 0; }
@@ -232,14 +246,16 @@ h1, h2, h3, .label { font-family: 'Fredoka', 'Nunito', 'Segoe UI', Arial, sans-s
 }
 `;
 
-/** Builds a self-contained 8.5 x 11 in HTML book from the drafted sections and generated pictures. */
+/** Builds a self-contained HTML book at the book's trim size from the drafted sections and generated pictures. */
 export async function buildPrintableBook(book: Book, opts: PrintableOptions): Promise<string> {
+  const { w: tw, h: th } = trimDims(book.trim);
   const chosen = pickPictures(book);
   const pics = new Map<string, string>();
   for (const [sectionId, imageId] of chosen) {
     try { pics.set(sectionId, await blobToDataUrl(await fetchImageBlob(imageId))); } catch { /* leave the frame empty */ }
   }
 
+  const storybook = book.mode === "storybook";
   const pages: string[] = [];
   const add = (html: string) => {
     pages.push(html);
@@ -251,12 +267,31 @@ export async function buildPrintableBook(book: Book, opts: PrintableOptions): Pr
   add(`<section class="page title-page">
   <h1>${esc(book.title || "Untitled")}</h1>
   ${book.subtitle ? `<p class="sub">${esc(book.subtitle)}</p>` : ""}
-  <div class="frame belongs"><div class="label">This ${esc(book.nameplateLabel?.trim() || "Explorer Guide")} belongs to:</div><div class="line"></div></div>
+  ${storybook ? "" : `<div class="frame belongs"><div class="label">This ${esc(book.nameplateLabel?.trim() || "Explorer Guide")} belongs to:</div><div class="line"></div></div>`}
   <div class="pub">Bright Trails Publishing</div>
 </section>`);
 
   const parts = book.sections.map((s) => sectionParts(s));
 
+  if (storybook) {
+    // Toddler picture book: one picture page and one big-print story page per section. No worksheets, word banks, answer keys or Name/Date lines.
+    const PLAY = ["Point to the happy faces. Can you count them?", "Can you find something round? Point and say what it is!", "Point to something blue. How many can you count?", "Can you wave hello to the picture?"];
+    book.sections.forEach((s, i) => {
+      const p = parts[i];
+      const pic = pics.get(s.id);
+      add(`<section class="page sb-art" aria-label="${esc(s.title)} illustration">
+  <div class="frame pic">${pic ? `<img src="${pic}" alt="${esc(s.title)}">` : `<div class="none">Picture for this page</div>`}</div>
+</section>`);
+      const story = p.STORY_TEXT ?? s.summary;
+      const firstLine = (t?: string) => (t ?? "").split("\n").map((l) => l.replace(/^[-*•\d.)\s]+/, "").trim()).find(Boolean);
+      const play = firstLine(p.WHILE_YOU_LISTEN) ?? firstLine(p.GUIDE_DO) ?? PLAY[i % PLAY.length];
+      add(`<section class="page sb-story">
+  <p class="stl">STORY TIME</p>
+  <div class="big">${md(story)}</div>
+  <div class="play"><div class="ph">POINT, COUNT &amp; PLAY</div><p>${esc(play)}</p></div>
+</section>`);
+    });
+  } else {
   book.sections.forEach((s, i) => {
     const p = parts[i];
     const pic = pics.get(s.id);
@@ -345,15 +380,17 @@ export async function buildPrintableBook(book: Book, opts: PrintableOptions): Pr
 </section>`);
   }
 
+  }
+
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
-<title>${esc(book.title || "Printable book")} (8.5 x 11 in interior)</title>
+<title>${esc(book.title || "Printable book")} (${esc(trimLabel(book.trim).split(" (")[0])} interior)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Nunito:wght@400;700&display=swap" rel="stylesheet">
-<style>${CSS}</style></head>
+<style>${cssFor(tw, th)}</style></head>
 <body>
-<div class="tip">Press Ctrl+P (Cmd+P on Mac), choose Save as PDF, set Paper size to Letter and Margins to None, and turn Background graphics on. This note does not print.</div>
+<div class="tip">Press Ctrl+P (Cmd+P on Mac), choose Save as PDF, set the paper size to ${tw} × ${th} in (Custom, or the closest) and Margins to None, and turn Background graphics on. This note does not print.</div>
 ${pages.join("\n")}
 </body></html>`;
 }

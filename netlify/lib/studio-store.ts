@@ -56,6 +56,8 @@ export type ImageProvider = "openai-mini" | "openai-1.5" | "nano-banana";
 export type ImageAspect = "portrait" | "square" | "landscape";
 export type StylePreset = "coloring" | "storybook" | "cover" | "aplus" | "library_bw" | "library_color";
 
+export interface ReviewFix { id: string; title: string; detail: string; target: "notes" | "styleBible" | "sections" }
+
 export interface Book {
   id: string;
   slug: string;
@@ -65,7 +67,7 @@ export interface Book {
   audience: string;
   seriesName: string;
   linkedBookIds: string[];
-  trim: "8.5x11" | "6x9";
+  trim: "8.5x8.5" | "8x10" | "8.5x11" | "6x9" | "5.5x8.5";
   aiDisclosure: "none" | "assisted" | "generated";
   notes: string;
   styleBible: string;
@@ -93,6 +95,12 @@ export interface Book {
   cover: Record<string, unknown>;
   /** Markdown proposal from the Book Rescue Audit. Editable in the Studio. */
   rescueAudit: string;
+  preReviewFixes: ReviewFix[];
+  preReviewSelected: string[];
+  reviewFixes: ReviewFix[];
+  reviewSelected: string[];
+  lastApplied: { kind: "idea" | "qa"; at: string; changes: string[] } | null;
+  approvedAt: string;
   jobStatus: JobStatus;
   jobAction: string;
   jobError: string;
@@ -165,6 +173,12 @@ export function newBook(partial: Partial<Book>): Book {
     nameplateLabel: "",
     cover: {},
     rescueAudit: "",
+    preReviewFixes: [],
+    preReviewSelected: [],
+    reviewFixes: [],
+    reviewSelected: [],
+    lastApplied: null,
+    approvedAt: "",
     jobStatus: "idle",
     jobAction: "",
     jobError: "",
@@ -194,6 +208,13 @@ function normalise(b: Book | null): Book | null {
   b.previousSectionsBackup ??= null;
   b.nameplateLabel ??= "";
   b.cover ??= {};
+  b.preReviewFixes ??= [];
+  b.preReviewSelected ??= [];
+  b.reviewFixes ??= [];
+  b.reviewSelected ??= [];
+  b.lastApplied ??= null;
+  b.approvedAt ??= "";
+  if (!["8.5x8.5", "8x10", "8.5x11", "6x9", "5.5x8.5"].includes(b.trim)) b.trim = "8.5x11";
   // The old single reference becomes the first library entry.
   if (b.characterRefId && !b.characters.some((c) => c.id === b.characterRefId)) b.characters.push({ id: b.characterRefId, name: "Main character", kind: "character" });
   for (const c of b.characters) c.kind ??= "character";
