@@ -55,7 +55,7 @@ Subtitle: ${book.subtitle || "(none yet)"}
 Mode: ${book.mode} (activity = coloring/tracing/activity books, storybook = picture books, nonfiction = guides and workbooks)
 Audience: ${book.audience || "(not set)"}
 Trim size: ${book.trim}
-Notes: ${book.notes || "(none)"}
+Notes: ${book.notes || "(none)"}${book.research ? `\nMarket positioning (from research): ${book.research.slice(0, 2500)}` : ""}
 Style bible / outline summary: ${(book.styleBible || "").slice(0, 3000)}
 Sections: ${book.sections.map((s) => s.title).join("; ").slice(0, 1500) || "(none yet)"}
 ${series}

@@ -8,6 +8,7 @@ import { download } from "../exportZip";
 import { compressImage, blobToImage } from "../imageTools";
 import { getImage, primeImage } from "../imageCache";
 import { uploadImage } from "../api";
+import { TooltipButton } from "../components/TooltipButton";
 
 interface Props {
   book: Book;
@@ -83,7 +84,7 @@ function Module({ spec, mod, onChange, book, onGenerated, fail }: {
               {busy ? "Uploading…" : "Upload Cover / Page Image"}
               <input type="file" accept="image/*" className="sr-only" disabled={busy} onChange={(e) => { void pick(e.target.files?.[0]); e.target.value = ""; }} />
             </label>
-            {mod.imageId && <button className="btn-alt" onClick={() => { onChange({ imageId: undefined }); setImg(null); setMsg(""); }}>Remove image</button>}
+            {mod.imageId && <TooltipButton className="btn-alt" onClick={() => { onChange({ imageId: undefined }); setImg(null); setMsg(""); }}>Remove image</TooltipButton>}
           </div>
           {msg && <p className="hint">Shrunk in your browser before saving: {msg}</p>}
           {err && <p className="text-xs text-accent">{err}</p>}
@@ -108,7 +109,7 @@ function Module({ spec, mod, onChange, book, onGenerated, fail }: {
             {fit === "fit" ? "Fit shows the whole picture with padding, so nothing is cut off." : "Fill covers the whole frame and may crop the edges."}
             {square && (img ? (textBar ? " The headline sits in a bar under the picture." : " Picture only; turn on Show Text Bar for a caption.") : " Upload a picture to switch this tile to picture-only.")}
           </p>
-          <button className="btn-alt" onClick={png}>Download {spec.size} PNG</button>
+          <TooltipButton className="btn-alt" onClick={png}>Download {spec.size} PNG</TooltipButton>
 
           <details className="rounded-lg border border-line p-2">
             <summary className="cursor-pointer text-sm font-semibold text-forest">Generate this picture with AI</summary>

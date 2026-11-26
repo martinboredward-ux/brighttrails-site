@@ -55,3 +55,12 @@ select.field option { background: var(--c-surface); color: var(--c-ink); }
 .btn-alt { @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-line bg-surface px-4 py-2 text-sm font-semibold text-forest transition hover:bg-forest/10 disabled:cursor-not-allowed disabled:opacity-50; }
 .card { @apply rounded-xl border border-line bg-surface p-4 shadow-sm; }
 .hint { @apply text-xs text-muted; }
+
+/* Hover and focus help on buttons. Crisp in both light and dark. */
+.tipwrap { position: relative; display: inline-flex; }
+.tipwrap .tip { position: absolute; left: 0; top: calc(100% + 6px); z-index: 60; width: max-content; max-width: 17rem; pointer-events: none; visibility: hidden; opacity: 0; transform: translateY(-2px); transition: opacity 0.12s ease, transform 0.12s ease; border-radius: 0.5rem; padding: 0.45rem 0.65rem; font-size: 0.75rem; line-height: 1.25rem; text-align: left; background: var(--c-ink); color: var(--c-bg); box-shadow: 0 6px 18px rgb(0 0 0 / 0.28); }
+.tipwrap .tip-what { display: block; font-weight: 600; }
+.tipwrap .tip-engine { display: block; margin-top: 0.15rem; opacity: 0.8; font-size: 0.6875rem; }
+.tipwrap:hover .tip, .tipwrap:focus-within .tip { visibility: visible; opacity: 1; transform: translateY(0); transition-delay: 0.15s; }
+.tipwrap:has(button:disabled):hover .tip { transition-delay: 0.15s; }
+@media (max-width: 640px) { .tipwrap .tip { max-width: 13rem; } }

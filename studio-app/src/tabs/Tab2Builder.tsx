@@ -10,6 +10,11 @@ import { CLEAN_RULES, TAG_FORMAT, isTaggedMode } from "../draftFormat";
 import ImageEngine from "../components/ImageEngine";
 import ImageGallery from "../components/ImageGallery";
 import { download, type ExportAssets } from "../exportZip";
+import AssetDetector from "../components/AssetDetector";
+import PolishPanel from "../components/PolishPanel";
+import JobStatus from "../components/JobStatus";
+import { useRunJob } from "../hooks/useRunJob";
+import { TooltipButton } from "../components/TooltipButton";
 
 interface Props {
   book: Book;
@@ -21,14 +26,6 @@ interface Props {
   fail: (e: unknown) => void;
 }
 
-const LABEL: Record<string, string> = {
-  generate_outline: "Generating outline (Gemini)",
-  draft_section: "Drafting section (Claude)",
-  draft_all: "Drafting all sections (Claude)",
-  review_book: "Reviewing manuscript (Gemini)",
-  extract_workbook: "Extracting workbook (Claude)",
-};
-
 export default function Tab2Builder({ book, update, commit, save, setBook, assets, fail }: Props) {
   const [model, setModel] = useState<"haiku" | "sonnet">("haiku");
   const [pattern, setPattern] = useState<Pattern>("dotted");
@@ -37,6 +34,8 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
   const [pdfTitle, setPdfTitle] = useState("");
   const [pdfMsg, setPdfMsg] = useState("");
   const [open, setOpen] = useState<string | null>(null);
+  const [pins, setPins] = useState<Record<string, string[]>>({});
+  const pin = (sid: string, id: string) => setPins((p) => ({ ...p, [sid]: [...new Set([...(p[sid] ?? []), id])] }));
   const [copied, setCopied] = useState("");
   const running = book.jobStatus === "running";
   const [pdfPick, setPdfPick] = useState<Set<string>>(new Set());
@@ -82,6 +81,8 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
     }
   };
 
+  const runJob = useRunJob({ book, save, setBook, fail });
+  const run2 = (a: Action) => runJob(a, { model });
   const tagged = isTaggedMode(book.mode);
   const untagged = book.sections.filter((s) => s.draft.trim() && !parseTagged(s.draft)).length;
   const empty = book.sections.filter((s) => !s.draft.trim()).length;
@@ -137,7 +138,7 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
     <div className="space-y-4">
       <section className="card space-y-3">
         <div className="flex flex-wrap items-center gap-3">
-          <h2 className="text-base font-bold text-forest">AI Builder</h2>
+          <h2 className="text-base font-bold text-forest">Outline &amp; draft</h2>
           <label className="ml-auto flex items-center gap-2 text-sm">
             Claude model
             <select className="field !w-auto" value={model} onChange={(e) => setModel(e.target.value as "haiku" | "sonnet")}>
@@ -146,36 +147,35 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
             </select>
           </label>
         </div>
-        <p className="text-xs text-muted">Outline and review use Gemini Flash. Section drafts and workbook extraction use the Claude model you pick. These run on Netlify AI Gateway and use Netlify credits. The “copy prompt” buttons cost nothing: paste into your Claude or Gemini web chat.</p>
+        <p className="text-xs text-muted">Outline uses Gemini Flash and builds from your reviewed Notes + Style Bible. Section drafts, polish and workbook extraction use the Claude model you pick. These run on Netlify AI Gateway and use Netlify credits. The “copy prompt” buttons cost nothing: paste into your Claude or Gemini web chat.</p>
         <div className="flex flex-wrap gap-2">
-          <button className="btn" disabled={running} onClick={() => run("generate_outline")}>Generate outline + style bible</button>
-          <button className="btn" disabled={running || !book.sections.length} onClick={draftAll}>Draft all sections</button>
-          <button className="btn" disabled={running || !book.sections.length} onClick={() => run("review_book")}>Review manuscript</button>
-          {book.mode === "nonfiction" && <button className="btn" disabled={running || !book.sections.length} onClick={() => run("extract_workbook")}>Extract companion workbook</button>}
-          <button className="btn-alt" onClick={() => copy("outline", hybridPrompt("outline"))}>{copied === "outline" ? "Copied" : "$0 copy outline prompt"}</button>
-          <button className="btn-alt" disabled={!book.sections.length} onClick={() => copy("review", hybridPrompt("review"))}>{copied === "review" ? "Copied" : "$0 copy review prompt"}</button>
+          <TooltipButton className="btn" disabled={running} onClick={() => run("generate_outline")}>Generate outline + style bible</TooltipButton>
+          <TooltipButton className="btn" disabled={running || !book.sections.length} onClick={draftAll}>Draft all sections</TooltipButton>
+          {book.mode === "nonfiction" && <TooltipButton className="btn" disabled={running || !book.sections.length} onClick={() => run("extract_workbook")}>Extract companion workbook</TooltipButton>}
+          <TooltipButton className="btn-alt" onClick={() => copy("outline", hybridPrompt("outline"))}>{copied === "outline" ? "Copied" : "$0 copy outline prompt"}</TooltipButton>
+          <TooltipButton className="btn-alt" disabled={!book.sections.length} onClick={() => copy("review", hybridPrompt("review"))}>{copied === "review" ? "Copied" : "$0 copy review prompt"}</TooltipButton>
         </div>
-        {running && <p className="rounded-lg bg-sun/30 px-3 py-2 text-sm font-semibold text-forest">{book.jobAction.startsWith("draft_all:") ? `${LABEL.draft_all}, section ${book.jobAction.split(":")[1]}` : (LABEL[book.jobAction] ?? "Working")}… checking every 3 seconds. You can leave this page open.</p>}
-        {book.jobStatus === "error" && <p className="rounded-lg bg-accent/10 px-3 py-2 text-sm text-accent">Job failed: {book.jobError}</p>}
-        {book.jobStatus === "done" && <p className="text-xs text-green">Last job finished: {LABEL[book.jobAction.split(":")[0]]?.split(" (")[0] ?? book.jobAction}.</p>}
+        <JobStatus book={book} only={["generate_outline", "draft_section", "draft_all", "extract_workbook"]} />
       </section>
+
+      <AssetDetector book={book} commit={commit} fail={fail} pins={pins} onPin={pin} />
 
       <section className="card space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-bold text-forest">Sections ({book.sections.length})</h2>
-          <button className="btn-alt" disabled={running} onClick={() => update({ sections: [...book.sections, { id: `s${Date.now().toString(36)}`, title: "New section", summary: "", draft: "" }] })}>+ Add section</button>
+          <TooltipButton className="btn-alt" disabled={running} onClick={() => update({ sections: [...book.sections, { id: `s${Date.now().toString(36)}`, title: "New section", summary: "", draft: "" }] })}>+ Add section</TooltipButton>
         </div>
         {!book.sections.length && <p className="text-sm text-muted">No sections yet. Generate an outline or add sections by hand.</p>}
         <ul className="space-y-2">
           {book.sections.map((s, i) => (
             <li key={s.id} className="rounded-lg border border-line">
               <div className="flex flex-wrap items-center gap-2 p-2">
-                <button className="flex-1 text-left text-sm font-semibold" onClick={() => setOpen(open === s.id ? null : s.id)}>
+                <TooltipButton className="flex-1 text-left text-sm font-semibold" onClick={() => setOpen(open === s.id ? null : s.id)}>
                   {i + 1}. {s.title} {s.draft ? <span className="text-xs font-normal text-green">· drafted</span> : null}
-                </button>
-                <button className="btn-alt !px-3 !py-1" disabled={running} onClick={() => run("draft_section", s.id)}>Draft</button>
-                <button className="btn-alt !px-3 !py-1" onClick={() => copy(s.id, hybridPrompt("section", s))}>{copied === s.id ? "Copied" : "$0 prompt"}</button>
-                <button className="text-xs text-accent underline" disabled={running} onClick={() => update({ sections: book.sections.filter((x) => x.id !== s.id) })}>Remove</button>
+                </TooltipButton>
+                <TooltipButton className="btn-alt !px-3 !py-1" disabled={running} onClick={() => run("draft_section", s.id)}>Draft</TooltipButton>
+                <TooltipButton className="btn-alt !px-3 !py-1" onClick={() => copy(s.id, hybridPrompt("section", s))}>{copied === s.id ? "Copied" : "$0 prompt"}</TooltipButton>
+                <TooltipButton className="text-xs text-accent underline" disabled={running} onClick={() => update({ sections: book.sections.filter((x) => x.id !== s.id) })}>Remove</TooltipButton>
               </div>
               {open === s.id && (
                 <div className="space-y-2 border-t border-line p-3">
@@ -183,7 +183,7 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
                   <textarea className="field min-h-16" value={s.summary} readOnly={running} onChange={(e) => setSection(s.id, { summary: e.target.value })} placeholder="Summary" />
                   <textarea className="field min-h-48 font-mono" value={s.draft} readOnly={running} onChange={(e) => setSection(s.id, { draft: e.target.value })} placeholder="Draft spec (paste from your web chat or let the Draft button write it)" />
                   <h3 className="pt-1 text-sm font-bold text-forest">Pictures for this section</h3>
-                  <ImageEngine key={`${s.id}:${defaultScenePrompt(s)}`} book={book} sectionId={s.id} initialPrompt={defaultScenePrompt(s)} defaultAspect={book.mode === "activity" ? "portrait" : "landscape"} defaultPreset={book.mode === "activity" ? "coloring" : "storybook"} onDone={addImage} fail={fail} commit={commit} />
+                  <ImageEngine key={`${s.id}:${defaultScenePrompt(s)}`} book={book} sectionId={s.id} initialPrompt={defaultScenePrompt(s)} defaultAspect={book.mode === "activity" ? "portrait" : "landscape"} defaultPreset={book.mode === "activity" ? "coloring" : "storybook"} onDone={addImage} fail={fail} commit={commit} pinned={pins[s.id]} />
                   <ImageGallery book={book} images={book.images.filter((i) => i.sectionId === s.id)} selected={pdfPick} onToggle={togglePick} onCharacter={toggleLibrary} onRemoved={removeImage} fail={fail} />
                 </div>
               )}
@@ -192,12 +192,7 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
         </ul>
       </section>
 
-      {(book.review || book.workbook) && (
-        <section className="card space-y-3">
-          {book.review && (<><h2 className="text-base font-bold text-forest">Developmental review</h2><textarea className="field min-h-48 font-mono" value={book.review} onChange={(e) => update({ review: e.target.value })} /></>)}
-          {book.workbook && (<><h2 className="text-base font-bold text-forest">Companion workbook</h2><textarea className="field min-h-48 font-mono" value={book.workbook} onChange={(e) => update({ workbook: e.target.value })} /></>)}
-        </section>
-      )}
+      <PolishPanel book={book} update={update} commit={commit} run={(a) => run2(a)} />
 
       <section className="card space-y-3">
         <h2 className="text-base font-bold text-forest">Book images ({book.images.length})</h2>
@@ -218,7 +213,7 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={backing} onChange={(e) => setBacking(e.target.checked)} /> Insert a blank backing page after every page (stops marker bleed-through)</label>
           {(untagged > 0 || empty > 0) && <p className="rounded-lg bg-sun/30 px-3 py-2 text-sm text-forest">{empty > 0 ? `${empty} section${empty === 1 ? " has" : "s have"} no draft yet. ` : ""}{untagged > 0 ? `${untagged} section${untagged === 1 ? " is" : "s are"} in the older draft format, so some boxes would print empty. ` : ""}Use “Draft all sections” above to fill them in.</p>}
           <div className="flex flex-wrap items-center gap-3">
-            <button className="btn" onClick={makeHtml} disabled={htmlBusy || !book.sections.length}>{htmlBusy ? "Building…" : "Export Printable Book (.HTML)"}</button>
+            <TooltipButton className="btn" onClick={makeHtml} disabled={htmlBusy || !book.sections.length}>{htmlBusy ? "Building…" : "Export Printable Book (.HTML)"}</TooltipButton>
             <span className="hint">Open the downloaded HTML in Chrome/Edge and press Ctrl+P → Save as PDF (Margins: None, Size: Letter) for a print-ready KDP interior!</span>
           </div>
         </section>
@@ -249,7 +244,7 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
             Insert a blank reverse page after every activity page (stops marker bleed-through)
           </label>
           <div className="flex items-center gap-3">
-            <button className="btn" onClick={makePdf} disabled={pdfBusy}>{pdfBusy ? "Building…" : "Build 8.5 × 11 in PDF"}</button>
+            <TooltipButton className="btn" onClick={makePdf} disabled={pdfBusy}>{pdfBusy ? "Building…" : "Build 8.5 × 11 in PDF"}</TooltipButton>
             {pdfMsg && <span className="text-xs text-green">{pdfMsg} Included in the ZIP export.</span>}
           </div>
           <p className="text-xs text-muted">KDP needs at least 24 pages, an even page count works best, and the interior must be 8.5 × 11 in without bleed. Add your own cover and run KDP’s previewer before ordering a proof.</p>

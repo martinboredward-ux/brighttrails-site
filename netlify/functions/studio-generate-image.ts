@@ -9,7 +9,7 @@ export const config: Config = { path: "/api/studio/generate-image" };
 const PROVIDERS = ["openai-mini", "openai-1.5", "nano-banana"];
 const QUALITIES = ["low", "medium"];
 const ASPECTS = ["portrait", "square", "landscape"];
-const PRESETS = ["coloring", "storybook", "cover", "aplus"];
+const PRESETS = ["coloring", "storybook", "cover", "aplus", "library_bw", "library_color"];
 const MAX_REFS = 6;
 const JOB_ID_RE = /^[0-9a-f-]{36}$/;
 

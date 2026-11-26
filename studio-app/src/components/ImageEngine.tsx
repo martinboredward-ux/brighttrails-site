@@ -4,6 +4,7 @@ import { generateImage } from "../api";
 import { wrapPrompt } from "../imagePrompts";
 import CharacterLibrary, { KIND_LABEL } from "./CharacterLibrary";
 import { useBlobUrl } from "../blobUrl";
+import { TooltipButton } from "./TooltipButton";
 
 interface Props {
   book: Book;
@@ -15,6 +16,8 @@ interface Props {
   fail: (e: unknown) => void;
   /** When given, an upload box for the Character Library is shown under the picture options. */
   commit?: (p: Partial<Book>) => Promise<void>;
+  /** Library items ticked from the asset detector. */
+  pinned?: string[];
 }
 
 const ENGINES: { id: ImageProvider; label: string; sub: string }[] = [
@@ -36,7 +39,7 @@ function RefChip({ c, on, onToggle }: { c: CharacterRef; on: boolean; onToggle: 
   );
 }
 
-export default function ImageEngine({ book, sectionId, initialPrompt = "", defaultAspect = "portrait", defaultPreset = "coloring", onDone, fail, commit }: Props) {
+export default function ImageEngine({ book, sectionId, initialPrompt = "", defaultAspect = "portrait", defaultPreset = "coloring", onDone, fail, commit, pinned }: Props) {
   const [provider, setProvider] = useState<ImageProvider>("openai-mini");
   const [quality, setQuality] = useState<"low" | "medium">("low");
   const [aspect, setAspect] = useState<ImageAspect>(defaultAspect);
@@ -54,7 +57,7 @@ export default function ImageEngine({ book, sectionId, initialPrompt = "", defau
     const first = c.name.trim().split(/\s+/)[0] ?? "";
     return new RegExp(`\\b${esc(c.name.trim())}\\b`, "i").test(prompt) || (first.length > 2 && new RegExp(`\\b${esc(first)}\\b`, "i").test(prompt));
   };
-  const auto = new Set(lib.filter(mentioned).map((c) => c.id));
+  const auto = new Set([...lib.filter(mentioned).map((c) => c.id), ...(pinned ?? [])]);
   const chosen = useRef ? [...(manual ?? auto)].filter((id) => lib.some((c) => c.id === id)) : [];
   const toggle = (id: string) => { const n = new Set(manual ?? auto); if (n.has(id)) n.delete(id); else n.add(id); setManual(n); };
 
@@ -85,13 +88,13 @@ export default function ImageEngine({ book, sectionId, initialPrompt = "", defau
     <div className="space-y-3 rounded-lg border border-line p-3">
       <div role="group" aria-label="Image engine" className="flex flex-wrap items-stretch gap-2">
         {ENGINES.map((e) => (
-          <button key={e.id} type="button" onClick={() => setProvider(e.id)} aria-pressed={provider === e.id}
+          <TooltipButton key={e.id} type="button" onClick={() => setProvider(e.id)} aria-pressed={provider === e.id}
             className={`rounded-lg border px-3 py-2 text-left text-sm font-semibold transition ${provider === e.id ? "border-sun bg-sun text-onsun" : "border-line text-forest hover:bg-forest/10"}`}>
             {e.label}
             <span className="block text-xs font-normal opacity-80">{e.sub}</span>
-          </button>
+          </TooltipButton>
         ))}
-        <button type="button" className="btn-alt" onClick={copyPrompt}>{copied ? "Copied" : "$0 Copy Image Prompt"}</button>
+        <TooltipButton type="button" className="btn-alt" onClick={copyPrompt}>{copied ? "Copied" : "$0 Copy Image Prompt"}</TooltipButton>
       </div>
       <div className="grid gap-2 sm:grid-cols-3">
         <label className="text-xs text-muted">Style
@@ -125,14 +128,14 @@ export default function ImageEngine({ book, sectionId, initialPrompt = "", defau
               <ul className="flex flex-wrap gap-2">
                 {lib.map((c) => <RefChip key={c.id} c={c} on={chosen.includes(c.id)} onToggle={() => toggle(c.id)} />)}
               </ul>
-              <p className="hint">{manual ? "Your own picks. " : "Auto: characters named in your prompt are ticked. "}{chosen.length > 6 ? "Only the first 6 are sent. " : ""}{manual && <button type="button" className="underline" onClick={() => setManual(null)}>Back to auto</button>}</p>
+              <p className="hint">{manual ? "Your own picks. " : "Auto: characters named in your prompt are ticked. "}{chosen.length > 6 ? "Only the first 6 are sent. " : ""}{manual && <TooltipButton type="button" className="underline" onClick={() => setManual(null)}>Back to auto</TooltipButton>}</p>
             </>
           )}
         </div>
       ) : <p className="hint">Add your characters and badges to the Character Library on the Details tab, or below, and both ChatGPT and Nano Banana will copy them.</p>}
       {commit && <CharacterLibrary book={book} commit={commit} fail={fail} compact />}
       <div className="flex flex-wrap items-center gap-3">
-        <button className="btn" onClick={run} disabled={busy}>{busy ? "Generating…" : "Generate image"}</button>
+        <TooltipButton className="btn" onClick={run} disabled={busy}>{busy ? "Generating…" : "Generate image"}</TooltipButton>
         <span className="hint">Uses Netlify credits. Save your free web-chat quota with the $0 prompt button.</span>
       </div>
       {status && <p className="text-sm font-semibold text-forest">{status}</p>}

@@ -3,6 +3,7 @@ import type { Book, GeneratedImage, RefKind } from "../types";
 import { useBlobUrl } from "../blobUrl";
 import { fetchImageBlob, deleteImage } from "../api";
 import { download } from "../exportZip";
+import { TooltipButton } from "./TooltipButton";
 
 function Thumb({ img, book, selected, onToggle, onCharacter, onRemoved, onUse, useLabel, fail }: {
   img: GeneratedImage; book: Book; selected?: boolean; onToggle?: () => void;
@@ -22,7 +23,7 @@ function Thumb({ img, book, selected, onToggle, onCharacter, onRemoved, onUse, u
         <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={!!selected} onChange={onToggle} /> Use in PDF</label>
       )}
       <div className="flex flex-wrap gap-1">
-        {onUse && <button className="btn !px-2 !py-1 !text-xs" onClick={() => onUse(img)}>{useLabel ?? "Use"}</button>}
+        {onUse && <TooltipButton className="btn !px-2 !py-1 !text-xs" onClick={() => onUse(img)}>{useLabel ?? "Use"}</TooltipButton>}
         {!isRef && (
           <select className="field !w-auto !px-1 !py-1 !text-xs" value={kind} onChange={(e) => setKind(e.target.value as RefKind)} aria-label="Library type">
             <option value="character">Character</option>
@@ -32,9 +33,9 @@ function Thumb({ img, book, selected, onToggle, onCharacter, onRemoved, onUse, u
             <option value="page">Page design</option>
           </select>
         )}
-        <button className={`btn-alt !px-2 !py-1 !text-xs ${isRef ? "!border-sun" : ""}`} onClick={() => onCharacter(img.id, kind, isRef)}>{isRef ? "In library ✓ (remove)" : "Add to Library"}</button>
-        <button className="btn-alt !px-2 !py-1 !text-xs" onClick={async () => { try { download(`${book.slug}-${img.id.slice(-8)}.png`, await fetchImageBlob(img.id)); } catch (e) { fail(e); } }}>Download</button>
-        <button className="btn-alt !px-2 !py-1 !text-xs !text-accent" onClick={async () => { if (confirm("Delete this picture?")) { await deleteImage(img.id); onRemoved(img.id); } }}>Delete</button>
+        <TooltipButton className={`btn-alt !px-2 !py-1 !text-xs ${isRef ? "!border-sun" : ""}`} onClick={() => onCharacter(img.id, kind, isRef)}>{isRef ? "In library ✓ (remove)" : "Add to Library"}</TooltipButton>
+        <TooltipButton className="btn-alt !px-2 !py-1 !text-xs" onClick={async () => { try { download(`${book.slug}-${img.id.slice(-8)}.png`, await fetchImageBlob(img.id)); } catch (e) { fail(e); } }}>Download</TooltipButton>
+        <TooltipButton className="btn-alt !px-2 !py-1 !text-xs !text-accent" onClick={async () => { if (confirm("Delete this picture?")) { await deleteImage(img.id); onRemoved(img.id); } }}>Delete</TooltipButton>
       </div>
     </li>
   );
