@@ -20,7 +20,7 @@ export default async (req: Request): Promise<Response> => {
       const hit = await store.getWithMetadata(id, { type: "arrayBuffer" });
       if (!hit) return json({ error: "Not found" }, 404);
       const type = String((hit.metadata as { contentType?: string } | null)?.contentType ?? "image/png");
-      return new Response(hit.data, { headers: { "content-type": type, "cache-control": "private, max-age=3600" } });
+      return new Response(hit.data, { headers: { "content-type": type, "cache-control": "private, max-age=86400" } });
     }
 
     if (req.method === "POST") {
