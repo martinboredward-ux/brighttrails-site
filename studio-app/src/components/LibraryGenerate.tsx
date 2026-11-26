@@ -28,10 +28,11 @@ export default function LibraryGenerate({ book, commit, fail, initial, compact, 
   const [kind, setKind] = useState<RefKind>(initial?.kind ?? "character");
   const [detail, setDetail] = useState(initial?.detail ?? "");
   const [provider, setProvider] = useState<ImageProvider>("openai-mini");
+  const [color, setColor] = useState(book.mode === "storybook");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
   const lib = book.characters ?? [];
-  const spec = libraryPrompt(kind, name, detail);
+  const spec = libraryPrompt(kind, name, detail, color);
 
   const run = async () => {
     if (!name.trim()) { setStatus("Type a name first."); return; }
@@ -71,6 +72,12 @@ export default function LibraryGenerate({ book, commit, fail, initial, compact, 
             </label>
           </>
         )}
+        <label className="text-xs text-muted">Color style
+          <select className="field mt-1 !w-auto" value={color ? "color" : "bw"} onChange={(e) => setColor(e.target.value === "color")}>
+            <option value="color">Full Color Storybook</option>
+            <option value="bw">B&amp;W Coloring Line Art</option>
+          </select>
+        </label>
         <label className="text-xs text-muted">Engine
           <select className="field mt-1 !w-auto" value={provider} onChange={(e) => setProvider(e.target.value as ImageProvider)}>
             {ENGINES.map((e) => <option key={e.id} value={e.id}>{e.label}</option>)}

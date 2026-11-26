@@ -1,43 +1,8 @@
 import { useMemo } from "react";
-import type { Book, RefKind } from "../types";
-import { parseTagged } from "../printableBook";
+import type { Book } from "../types";
+import { findCandidates, mentions, sectionText, type Candidate } from "../utils/assetDetector";
 import { TooltipButton } from "./TooltipButton";
 import LibraryGenerate from "./LibraryGenerate";
-
-const STOP = new Set(["Series", "Setting", "Cast", "Tone", "Format", "Book", "Ages", "Supporting", "Visual", "Voice", "Layout", "Notes", "Option", "Style", "Mode", "Audience", "Skill", "Trim", "Page", "Pages", "Chapter", "Part", "Never", "Avoid", "Story", "Case"]);
-const esc = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-export interface Candidate { name: string; kind: RefKind; detail: string }
-
-/** Characters are names followed by a bracket (Mika Reyes (10, leader…)); badges end in Badge, Award, Stamp… */
-export function findCandidates(book: Book): Candidate[] {
-  const src = `${book.styleBible}\n${book.notes}`;
-  const out = new Map<string, Candidate>();
-  const chars = src.matchAll(/(?:^|[\s,.;:])((?:Mr|Mrs|Ms|Dr)\.? [A-Z][a-z]+(?: [A-Z][a-z]+)?|[A-Z][a-z]+(?: [A-Z][a-z]+)?) \(([^)]{0,200})\)/g);
-  for (const m of chars) {
-    const name = m[1].trim();
-    if (STOP.has(name.split(" ")[0]) || name.length < 3) continue;
-    if (!out.has(name.toLowerCase())) out.set(name.toLowerCase(), { name, kind: "character", detail: m[2].trim() });
-  }
-  const sections = book.sections.map((s) => `${s.title} ${s.summary} ${s.draft}`).join("\n");
-  const badges = `${src}\n${sections}`.matchAll(/\b((?:[A-Z][a-z]+ ){1,2}(?:Badge|Award|Stamp|Patch|Emblem|Medal))\b/g);
-  for (const m of badges) {
-    const name = m[1].trim();
-    if (!out.has(name.toLowerCase())) out.set(name.toLowerCase(), { name, kind: "badge", detail: "" });
-  }
-  return [...out.values()];
-}
-
-function sectionText(book: Book, i: number): string {
-  const s = book.sections[i];
-  const t = parseTagged(s.draft);
-  return `${s.title}\n${s.summary}\n${t ? Object.values(t).join("\n") : s.draft}`;
-}
-
-const mentions = (text: string, name: string) => {
-  const first = name.replace(/^(Mr|Mrs|Ms|Dr)\.? /, "").split(" ")[0];
-  return new RegExp(`\\b${esc(name)}\\b`, "i").test(text) || (first.length > 2 && new RegExp(`\\b${esc(first)}\\b`, "i").test(text));
-};
 
 interface Props {
   book: Book;
@@ -50,7 +15,7 @@ interface Props {
 /** Scans every section against the Library: unchecked items get a 1-click pill, missing ones get a ready prompt. */
 export default function AssetDetector({ book, commit, fail, pins, onPin }: Props) {
   const lib = book.characters ?? [];
-  const cands = useMemo(() => findCandidates(book), [book.styleBible, book.notes, book.sections]); // eslint-disable-line react-hooks/exhaustive-deps
+  const cands = useMemo(() => findCandidates(book), [book.styleBible, book.notes, book.sections, book.ignoredAssetNames]); // eslint-disable-line react-hooks/exhaustive-deps
   const inLib = (name: string) => lib.find((c) => c.name.toLowerCase() === name.toLowerCase() || mentions(c.name, name) && mentions(name, c.name));
 
   const rows = book.sections.map((s, i) => {
@@ -101,13 +66,20 @@ export default function AssetDetector({ book, commit, fail, pins, onPin }: Props
           <div className="grid gap-3 lg:grid-cols-2">
             {[...allMissing.values()].map((c) => (
               <div key={c.name} className="space-y-2 rounded-lg border border-accent/40 p-3">
-                <p className="text-sm font-semibold">{c.name} <span className="text-xs font-normal text-muted">({c.kind === "badge" ? "badge" : "character"})</span></p>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm font-semibold">{c.name} <span className="text-xs font-normal text-muted">({c.kind === "badge" ? "badge" : "character"})</span></p>
+                  <TooltipButton type="button" className="btn-alt !px-2 !py-1 text-xs" tip="Not a character or badge (for example a place). Hides it from this list for this book." engine="$0 Free · Runs in your browser" onClick={() => void commit({ ignoredAssetNames: [...(book.ignoredAssetNames ?? []), c.name] })}>Ignore / Dismiss</TooltipButton>
+                </div>
                 <p className="hint">Named in your text but not in the Library, so pictures may invent it differently each time.</p>
                 <LibraryGenerate book={book} commit={commit} fail={fail} compact initial={{ name: c.name, kind: c.kind, detail: c.detail }} />
               </div>
             ))}
           </div>
         </div>
+      )}
+
+      {(book.ignoredAssetNames ?? []).length > 0 && (
+        <p className="hint">Dismissed: {(book.ignoredAssetNames ?? []).join(", ")}. <TooltipButton type="button" className="underline" onClick={() => void commit({ ignoredAssetNames: [] })}>Show them again</TooltipButton></p>
       )}
 
       {passportMissing > 0 && book.sections.length > 0 && (

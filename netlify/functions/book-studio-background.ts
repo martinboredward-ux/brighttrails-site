@@ -26,7 +26,7 @@ const MODE_GUIDE: Record<Book["mode"], string> = {
   activity:
     "An activity book (coloring, line tracing, dot markers, STEM counting). Each section is a themed set of pages. A page spec says what is drawn, the instruction line for the child, and difficulty. No stickers claims.",
   storybook:
-    "A picture book. Sections are spreads. A spread spec gives the story text (short, read-aloud rhythm), what the illustration shows, the camera/composition, and any interactive prompt for the reader.",
+    "A picture book. Sections are spreads. A spread spec gives the story text (short, read-aloud rhythm), what the illustration shows, the camera/composition, and any interactive prompt for the reader. For ages 1-4 each spread has only 5-7 punchy lines of text (never 12+), so it breathes on a square page.",
   nonfiction:
     "A nonfiction guide. Sections are chapters. A chapter spec gives the chapter promise, key points, one real-world scenario, and an end-of-chapter takeaway.",
 };
@@ -94,6 +94,17 @@ The answers for the worksheet, numbered to match, one per line.
 [IMAGE_PROMPT]
 ONE sentence describing a single story coloring scene: the main character and the setting only (what they are doing, where). Do NOT mention a dot-to-dot, maze, sequencing chart, world map, black background or inverted coloring, labels or text.`;
 
+const STORYBOOK_FORMAT = `Return ONLY the tagged blocks below, in this order. Each tag goes on its own line, followed by its content. Do not add closing tags, headings, preambles or notes.
+
+[STORY_TEXT]
+The read-aloud text for this spread: 5 to 7 short punchy lines (never more than 7), one short sentence or sound-word line each, about 35-70 words in total, with rhythm a toddler can echo. No long paragraphs.
+[WHILE_YOU_LISTEN]
+ONE short "point, count and play" prompt for the child about the picture (for example "Point to the kite. Can you count the clouds?"), one line, no list.
+[IMAGE_PROMPT]
+ONE sentence describing the single illustration for this spread: the main character and the setting only (what they are doing, where). No text or lettering in the picture.`;
+
+const formatFor = (mode: Book["mode"]) => (mode === "storybook" ? STORYBOOK_FORMAT : TAG_FORMAT);
+
 const CLEAN_RULES = `STRICT RULES
 - Never write internal layout or print specifications into any block (no stroke widths such as "2 pt", no "8 mm track width", no gutter or margin sizes, no trim size). The style bible may mention layout rules; those are for the designer and must not be copied.
 - Do not invent costume, gear or props (for example goggles, hats or backpacks) unless they are written in the style bible.
@@ -120,7 +131,7 @@ WRITE THIS SECTION
 Title: ${section.title}
 Summary: ${section.summary}
 
-${tagged ? `${TAG_FORMAT}\n\n${CLEAN_RULES}` : "Write the full spec for this section as clean Markdown, following the mode guidance above. Keep to the style bible. Do not mention these instructions."}`,
+${tagged ? `${formatFor(book.mode)}\n\n${CLEAN_RULES}` : "Write the full spec for this section as clean Markdown, following the mode guidance above. Keep to the style bible. Do not mention these instructions."}`,
     which,
   );
 }
@@ -344,7 +355,7 @@ SECTION ${idx + 1} TO FIX
 Title: ${sec.title}
 ${sec.draft}
 
-Change this section ONLY where a checked fix or the extra instructions affects it. If none affects it, return it exactly as it is. Keep everything else word for word. ${tagged ? `Return the same tagged blocks in the same order and format, nothing else.\n\n${TAG_FORMAT}\n\n${CLEAN_RULES}` : "Return the full revised section as Markdown."}`,
+Change this section ONLY where a checked fix or the extra instructions affects it. If none affects it, return it exactly as it is. Keep everything else word for word. ${tagged ? `Return the same tagged blocks in the same order and format, nothing else.\n\n${formatFor(book.mode)}\n\n${CLEAN_RULES}` : "Return the full revised section as Markdown."}`,
             which,
           );
         } catch (err) {
