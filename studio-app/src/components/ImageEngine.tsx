@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Book, GeneratedImage, ImageAspect, ImageProvider, StylePreset } from "../types";
 import { generateImage } from "../api";
 import { wrapPrompt } from "../imagePrompts";
+import CharacterReference from "./CharacterReference";
 
 interface Props {
   book: Book;
@@ -11,6 +12,8 @@ interface Props {
   defaultPreset?: StylePreset;
   onDone: (image: GeneratedImage) => void;
   fail: (e: unknown) => void;
+  /** When given, the character reference uploader is shown next to the Character Lock note. */
+  commit?: (p: Partial<Book>) => Promise<void>;
 }
 
 const ENGINES: { id: ImageProvider; label: string; sub: string }[] = [
@@ -19,7 +22,7 @@ const ENGINES: { id: ImageProvider; label: string; sub: string }[] = [
   { id: "nano-banana", label: "Nano Banana 2.1", sub: "Character Lock" },
 ];
 
-export default function ImageEngine({ book, sectionId, initialPrompt = "", defaultAspect = "portrait", defaultPreset = "coloring", onDone, fail }: Props) {
+export default function ImageEngine({ book, sectionId, initialPrompt = "", defaultAspect = "portrait", defaultPreset = "coloring", onDone, fail, commit }: Props) {
   const [provider, setProvider] = useState<ImageProvider>("openai-mini");
   const [quality, setQuality] = useState<"low" | "medium">("low");
   const [aspect, setAspect] = useState<ImageAspect>(defaultAspect);
@@ -52,7 +55,7 @@ export default function ImageEngine({ book, sectionId, initialPrompt = "", defau
   };
 
   const copyPrompt = async () => {
-    try { await navigator.clipboard.writeText(wrapPrompt(preset, prompt)); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* clipboard blocked */ }
+    try { await navigator.clipboard.writeText(wrapPrompt(preset, prompt, sectionId ? book.styleBible : undefined)); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* clipboard blocked */ }
   };
 
   return (
@@ -95,9 +98,10 @@ export default function ImageEngine({ book, sectionId, initialPrompt = "", defau
         book.characterRefId ? (
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={useRef} onChange={(e) => setUseRef(e.target.checked)} /> Keep the saved character reference</label>
         ) : (
-          <p className="hint">Character Lock: generate a picture of your character, then press “Set as Character Reference” under it. Later Nano Banana pictures will copy that character.</p>
+          <p className="hint">Character Lock: upload your character picture below, or generate one and press “Set as Character Reference” under it. Later Nano Banana pictures will copy that character.</p>
         )
       )}
+      {commit && <CharacterReference book={book} commit={commit} fail={fail} />}
       <div className="flex flex-wrap items-center gap-3">
         <button className="btn" onClick={run} disabled={busy}>{busy ? "Generating…" : "Generate image"}</button>
         <span className="hint">Uses Netlify credits. Save your free web-chat quota with the $0 prompt button.</span>

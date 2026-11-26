@@ -67,6 +67,8 @@ export interface Book {
   /** Metadata only. The pictures themselves are in the kdp-book-images store. Written by the server. */
   images: GeneratedImage[];
   characterRefId: string;
+  /** Markdown proposal from the Book Rescue Audit. Editable in the Studio. */
+  rescueAudit: string;
   jobStatus: JobStatus;
   jobAction: string;
   jobError: string;
@@ -127,6 +129,7 @@ export function newBook(partial: Partial<Book>): Book {
     kdp: partial.kdp ?? null,
     images: [],
     characterRefId: "",
+    rescueAudit: "",
     jobStatus: "idle",
     jobAction: "",
     jobError: "",
@@ -145,6 +148,7 @@ function normalise(b: Book | null): Book | null {
   b.linkedBookIds ??= [];
   b.images ??= [];
   b.characterRefId ??= "";
+  b.rescueAudit ??= "";
   return b;
 }
 

@@ -1,11 +1,12 @@
 import { useState } from "react";
 import type { Book } from "../types";
+import CharacterReference from "../components/CharacterReference";
 
-interface Props { book: Book; books: Book[]; update: (p: Partial<Book>) => void; locked: boolean }
+interface Props { book: Book; books: Book[]; update: (p: Partial<Book>) => void; commit: (p: Partial<Book>) => Promise<void>; fail: (e: unknown) => void; locked: boolean }
 
 const MAX_IMPORT = 300_000; // characters; keeps the saved book comfortably small
 
-export default function Tab1Details({ book, books, update, locked }: Props) {
+export default function Tab1Details({ book, books, update, commit, fail, locked }: Props) {
   const [target, setTarget] = useState<"notes" | "styleBible">("notes");
   const [importMsg, setImportMsg] = useState("");
   const others = books.filter((b) => b.id !== book.id);
@@ -131,6 +132,7 @@ export default function Tab1Details({ book, books, update, locked }: Props) {
       <section className="card space-y-2">
         <h2 className="text-base font-bold text-forest">Style Bible</h2>
         <p className="text-xs text-muted">Voice, visuals, characters and layout rules. The Book Builder sends this with every section it drafts. {locked && "Locked while an AI job is running."}</p>
+        <CharacterReference book={book} commit={commit} fail={fail} />
         <textarea className="field min-h-[26rem] font-mono" value={book.styleBible} readOnly={locked} onChange={(e) => update({ styleBible: e.target.value })} placeholder="Generate an outline in the Book Builder to draft this, or write your own." />
       </section>
     </div>

@@ -18,7 +18,7 @@ export const config: Config = { path: ["/api/studio/books", "/api/studio/books/*
 // Fields the browser may change. Job fields are owned by the background function.
 const EDITABLE: (keyof Book)[] = [
   "title", "subtitle", "mode", "audience", "seriesName", "linkedBookIds", "trim", "aiDisclosure", "notes",
-  "styleBible", "sections", "review", "workbook", "kdp", "characterRefId",
+  "styleBible", "sections", "review", "workbook", "kdp", "characterRefId", "rescueAudit",
 ];
 
 function idFromPath(req: Request): string | null {

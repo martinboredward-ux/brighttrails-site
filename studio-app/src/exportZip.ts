@@ -3,6 +3,7 @@ import type { Book } from "./types";
 import { DEFAULT_OPTIONS, SPECS, canvasToPng, drawBanner } from "./aplus";
 import { getImage } from "./imageCache";
 import { fetchImageBlob } from "./api";
+import { buildPrintableBook } from "./printableBook";
 
 export interface ExportAssets {
   pdf: Blob | null;
@@ -34,6 +35,7 @@ export async function exportBundle(book: Book, assets: ExportAssets): Promise<{ 
     "### Categories", ...(k?.categories ?? []).map((x) => `- ${x}`),
   ].join("\n"));
   kdpDir.file("description.html", k?.htmlDescription ?? "");
+  if (book.rescueAudit?.trim()) kdpDir.file("book-rescue-audit.md", book.rescueAudit);
   kdpDir.file("keywords.txt", (k?.keywords ?? []).join("\n"));
 
   ap.file("a-plus-copy.json", JSON.stringify(k?.aPlusModules ?? [], null, 2));
@@ -61,6 +63,11 @@ export async function exportBundle(book: Book, assets: ExportAssets): Promise<{ 
       index.push({ file, section, prompt: img.prompt, engine: img.provider, model: img.modelUsed, style: img.stylePreset, aspect: img.aspect, quality: img.quality, createdAt: img.createdAt, characterReference: img.id === book.characterRefId });
     }
     gi.file("index.json", JSON.stringify(index, null, 2));
+  }
+
+  if ((book.mode === "activity" || book.mode === "storybook") && book.sections.length) {
+    const html = await buildPrintableBook(book, { backingPages: false });
+    zip.folder("05_Printable_Book")!.file("printable-book.html", html);
   }
 
   return { name: `${book.slug}-kdp-aplus-bundle.zip`, blob: await zip.generateAsync({ type: "blob" }) };

@@ -9,6 +9,8 @@ export interface ImageRequest {
   stylePreset: StylePreset;
   prompt: string;
   referenceImageId?: string;
+  /** Book style bible. Only sent for section pictures, so characters stay the same animal. */
+  styleBible?: string;
 }
 
 export interface ImageResult {
@@ -20,22 +22,32 @@ export interface ImageResult {
 
 export const COLORING_WRAPPER =
   "Clean black and white coloring book page, thick bold closed outlines, pure white background, no gray shading, no text, generous margins";
+export const COLORING_GUARDRAIL =
+  "One single full-page children's coloring scene ONLY. NO comic panels, NO multi-box grids, NO charts, NO maps with small labels, NO text.";
 
 const WRAPPERS: Record<StylePreset, (p: string) => string> = {
-  coloring: (p) => `${COLORING_WRAPPER}. Subject: ${p}`,
+  coloring: (p) => `${COLORING_WRAPPER}. ${COLORING_GUARDRAIL} Subject: ${p}`,
   storybook: (p) => `Warm, friendly children's picture book illustration, soft colors, clear simple shapes, no text or lettering. Scene: ${p}`,
   cover: (p) => `Bright, appealing book cover artwork with a clear focal subject and space for a title, no lettering. Subject: ${p}`,
   aplus: (p) => `Clean marketing illustration for an online book listing, uncluttered, friendly, no text or lettering. Subject: ${p}`,
 };
 
-export function wrapPrompt(preset: StylePreset, prompt: string): string {
-  return (WRAPPERS[preset] ?? WRAPPERS.storybook)(prompt.trim());
+/** A short, one-paragraph version of the style bible (about 500 characters). */
+export function bibleSummary(bible: string | undefined): string {
+  const flat = (bible ?? "").replace(/[#*_`>|]/g, " ").replace(/\s+/g, " ").trim();
+  if (!flat) return "";
+  const cut = flat.length > 500 ? `${flat.slice(0, 500).replace(/\s+\S*$/, "")}…` : flat;
+  return `Book style and characters (follow exactly, never change a character's species or look): ${cut}\n\n`;
+}
+
+export function wrapPrompt(preset: StylePreset, prompt: string, styleBible?: string): string {
+  return bibleSummary(styleBible) + (WRAPPERS[preset] ?? WRAPPERS.storybook)(prompt.trim());
 }
 
 // Models tried in order. An environment variable is always tried first, so a model can be
 // changed in Netlify without a deploy. Only "model not found" moves on to the next one.
 const OPENAI_MODELS: Record<"openai-mini" | "openai-1.5", string[]> = {
-  "openai-mini": ["gpt-image-1-mini", "gpt-image-2.5-flare", "gpt-image-1"],
+  "openai-mini": ["gpt-image-2.5-flare", "gpt-image-1-mini", "gpt-image-1"],
   "openai-1.5": ["gpt-image-1.5", "gpt-image-2", "gpt-image-1"],
 };
 const GEMINI_IMAGE_MODELS = ["gemini-nano-banana-2.1", "gemini-3.1-flash-image", "gemini-3.1-flash-lite-image"];
@@ -131,6 +143,6 @@ async function viaNanoBanana(req: ImageRequest, prompt: string): Promise<ImageRe
 }
 
 export async function generateImage(req: ImageRequest): Promise<ImageResult> {
-  const prompt = wrapPrompt(req.stylePreset, req.prompt);
+  const prompt = wrapPrompt(req.stylePreset, req.prompt, req.styleBible);
   return req.provider === "nano-banana" ? viaNanoBanana(req, prompt) : viaOpenAI(req, prompt);
 }

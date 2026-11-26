@@ -65,3 +65,11 @@ Optional environment variables (all fall back to built-in model lists if "model 
 - `GEMINI_MODEL` (text), `GEMINI_IMAGE_MODEL` (default `gemini-nano-banana-2.1`)
 - `OPENAI_IMAGE_MODEL` (default `gpt-image-1-mini` for Mini, `gpt-image-1.5` for 1.5)
 - `APP_PASSWORD` (required)
+
+
+### Studio: character reference, printable book, rescue audit
+
+- Upload a character picture (e.g. `barnaby_head.png`) on tab 1 or tab 2; Nano Banana uses it automatically when Character Lock is on.
+- Section pictures get a short style-bible summary; coloring pictures get a single-scene guardrail. ChatGPT Mini tries `gpt-image-2.5-flare` first.
+- Tab 2 exports an 8.5 x 11 in printable HTML book (also in the ZIP as `05_Printable_Book/`). Open it in Chrome/Edge, Ctrl+P, Save as PDF, Margins None, Size Letter.
+- Tab 3 has a Book Rescue Audit (Gemini) saved on the book and exported as `02_KDP_Package/book-rescue-audit.md`.

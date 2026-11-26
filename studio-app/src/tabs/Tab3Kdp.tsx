@@ -1,6 +1,7 @@
 import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import type { Book, KdpPackage } from "../types";
-import { generateKdp } from "../api";
+import { generateKdp, generateRescueAudit } from "../api";
+import { rescuePrompt } from "../rescuePrompt";
 import { checkKeywords } from "../kdpCheck";
 
 interface Props {
@@ -35,6 +36,8 @@ function previewHtml(html: string): string {
 
 export default function Tab3Kdp({ book, update, save, setBook, fail }: Props) {
   const [busy, setBusy] = useState(false);
+  const [rescueBusy, setRescueBusy] = useState(false);
+  const [rescueMsg, setRescueMsg] = useState("");
   const kdp = book.kdp ?? EMPTY;
   const set = (patch: Partial<KdpPackage>) => update({ kdp: { ...kdp, ...patch } });
 
@@ -56,6 +59,22 @@ export default function Tab3Kdp({ book, update, save, setBook, fail }: Props) {
     } catch (e) { fail(e); } finally { setBusy(false); }
   };
 
+  const rescue = async () => {
+    if (book.rescueAudit.trim() && !confirm("Replace the current Book Rescue Audit with a new AI draft?")) return;
+    setRescueBusy(true);
+    setRescueMsg("");
+    try {
+      const saved = await save();
+      if (!saved) return;
+      const text = await generateRescueAudit(book.id);
+      setBook((b) => (b ? { ...b, rescueAudit: text } : b));
+    } catch (e) { fail(e); } finally { setRescueBusy(false); }
+  };
+
+  const copyText = async (text: string, msg: string) => {
+    try { await navigator.clipboard.writeText(text); setRescueMsg(msg); } catch { setRescueMsg("Your browser blocked copying. Select the text and copy it by hand."); }
+  };
+
   const copyPrompt = async () => {
     const text = `Create an Amazon KDP listing for: ${book.title}${book.subtitle ? `: ${book.subtitle}` : ""}. Mode: ${book.mode}. Audience: ${book.audience}. Notes: ${book.notes}.\nReturn: 3 title ideas; an HTML description using only <b>, <i>, <br>, <p>, <ul>, <li>, <h4>; exactly 7 keyword boxes (50 characters or fewer each, no duplicates, no words already in the title); 3 categories; whether it is low-content (coloring, tracing, activity books, storybooks and workbooks are not); 3 A+ content modules (970x600, 970x300, 300x300) with headline and body and none of: free, bonus, affordable, cheap, discount, sale, buy now, order now, add to cart, best seller, #1, guarantee, new, latest, review, 5 star.`;
     try { await navigator.clipboard.writeText(text); } catch { /* clipboard blocked */ }
@@ -63,6 +82,23 @@ export default function Tab3Kdp({ book, update, save, setBook, fail }: Props) {
 
   return (
     <div className="space-y-4">
+      <details className="card" open={!!book.rescueAudit.trim()}>
+        <summary className="cursor-pointer text-base font-bold text-forest">Book Rescue Audit (listing makeovers and client proposals)</summary>
+        <div className="mt-3 space-y-3">
+          <p className="hint">Paste the struggling book&apos;s current Amazon blurb, price, page count and BSR into Notes on tab 1, set the title, subtitle and audience, then generate a one-page proposal.</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <button className="btn" onClick={rescue} disabled={rescueBusy}>{rescueBusy ? "Writing proposal…" : "Generate Book Rescue Audit (Gemini)"}</button>
+            <button className="btn-alt" onClick={() => copyText(rescuePrompt(book), "Rescue prompt copied. Paste it into a web chat.")}>$0 Copy Rescue Prompt</button>
+            {book.rescueAudit.trim() && <button className="btn-alt" onClick={() => copyText(book.rescueAudit, "Proposal copied.")}>Copy Proposal</button>}
+          </div>
+          {rescueMsg && <p className="text-xs font-semibold text-forest">{rescueMsg}</p>}
+          {book.rescueAudit.trim() || rescueBusy ? (
+            <textarea className="field min-h-[24rem] font-mono" value={book.rescueAudit} onChange={(e) => update({ rescueAudit: e.target.value })} aria-label="Book Rescue Proposal (Markdown)" />
+          ) : null}
+          {book.rescueAudit.trim() && <p className="hint">Edit freely, then press Save. It is included in the ZIP bundle as 02_KDP_Package/book-rescue-audit.md.</p>}
+        </div>
+      </details>
+
       <section className="card flex flex-wrap items-center gap-2">
         <button className="btn" onClick={generate} disabled={busy}>{busy ? "Generating…" : "Generate KDP package (Gemini Flash)"}</button>
         <button className="btn-alt" onClick={copyPrompt}>$0 copy prompt for web chat</button>

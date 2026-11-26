@@ -20,17 +20,17 @@ export function blobToImage(blob: Blob): Promise<HTMLImageElement> {
  * A small PNG/JPEG that is already within limits is kept as is. Anything else becomes a JPEG on a
  * white background, lowering quality and then size until it fits.
  */
-export async function compressImage(file: File): Promise<{ blob: Blob; width: number; height: number; note: string }> {
+export async function compressImage(file: File, maxDim: number = MAX_DIM): Promise<{ blob: Blob; width: number; height: number; note: string }> {
   const img = await blobToImage(file);
   const w0 = img.naturalWidth;
   const h0 = img.naturalHeight;
   if (!w0 || !h0) throw new Error("That image has no size");
 
-  if (file.size <= MAX_BYTES && Math.max(w0, h0) <= MAX_DIM && (file.type === "image/png" || file.type === "image/jpeg")) {
+  if (file.size <= MAX_BYTES && Math.max(w0, h0) <= maxDim && (file.type === "image/png" || file.type === "image/jpeg")) {
     return { blob: file, width: w0, height: h0, note: `${Math.round(file.size / 1024)} KB, kept as is` };
   }
 
-  let scale = Math.min(1, MAX_DIM / Math.max(w0, h0));
+  let scale = Math.min(1, maxDim / Math.max(w0, h0));
   const canvas = document.createElement("canvas");
   let last: Blob | null = null;
   for (let attempt = 0; attempt < 8; attempt++) {

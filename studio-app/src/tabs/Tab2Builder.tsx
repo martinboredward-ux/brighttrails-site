@@ -4,6 +4,7 @@ import { startJob } from "../api";
 import { PATTERNS, buildActivityPdf, type ImagePage, type Pattern } from "../activityPdf";
 import { fetchImageBlob } from "../api";
 import { blobToImage } from "../imageTools";
+import { buildPrintableBook } from "../printableBook";
 import ImageEngine from "../components/ImageEngine";
 import ImageGallery from "../components/ImageGallery";
 import { download, type ExportAssets } from "../exportZip";
@@ -37,6 +38,15 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
   const running = book.jobStatus === "running";
   const [pdfPick, setPdfPick] = useState<Set<string>>(new Set());
   const [pdfBusy, setPdfBusy] = useState(false);
+  const [htmlBusy, setHtmlBusy] = useState(false);
+  const [backing, setBacking] = useState(false);
+  const makeHtml = async () => {
+    setHtmlBusy(true);
+    try {
+      const html = await buildPrintableBook(book, { backingPages: backing });
+      download(`${book.slug}-printable-book.html`, new Blob([html], { type: "text/html" }));
+    } catch (e) { fail(e); } finally { setHtmlBusy(false); }
+  };
 
   // New pictures arrive from the server (already saved there), so they are added without marking the book unsaved.
   const addImage = (img: GeneratedImage) => {
@@ -145,7 +155,7 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
                   <textarea className="field min-h-16" value={s.summary} readOnly={running} onChange={(e) => setSection(s.id, { summary: e.target.value })} placeholder="Summary" />
                   <textarea className="field min-h-48 font-mono" value={s.draft} readOnly={running} onChange={(e) => setSection(s.id, { draft: e.target.value })} placeholder="Draft spec (paste from your web chat or let the Draft button write it)" />
                   <h3 className="pt-1 text-sm font-bold text-forest">Pictures for this section</h3>
-                  <ImageEngine book={book} sectionId={s.id} initialPrompt={`${s.title}. ${s.summary}`.trim()} defaultAspect={book.mode === "activity" ? "portrait" : "landscape"} defaultPreset={book.mode === "activity" ? "coloring" : "storybook"} onDone={addImage} fail={fail} />
+                  <ImageEngine book={book} sectionId={s.id} initialPrompt={`${s.title}. ${s.summary}`.trim()} defaultAspect={book.mode === "activity" ? "portrait" : "landscape"} defaultPreset={book.mode === "activity" ? "coloring" : "storybook"} onDone={addImage} fail={fail} commit={commit} />
                   <ImageGallery book={book} images={book.images.filter((i) => i.sectionId === s.id)} selected={pdfPick} onToggle={togglePick} onCharacter={(id) => void commit({ characterRefId: id })} onRemoved={removeImage} fail={fail} />
                 </div>
               )}
@@ -166,6 +176,18 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
         <p className="hint">Every picture you generate is kept here, saved separately from the book text. Pick a character reference for Nano Banana, tick pictures for the PDF, or download them.</p>
         <ImageGallery book={book} images={book.images} selected={pdfPick} onToggle={togglePick} onCharacter={(id) => void commit({ characterRefId: id })} onRemoved={removeImage} fail={fail} />
       </section>
+
+      {(book.mode === "activity" || book.mode === "storybook") && (
+        <section className="card space-y-3">
+          <h2 className="text-base font-bold text-forest">Printable book (8.5 × 11 in HTML)</h2>
+          <p className="hint">Turns your drafted sections and their pictures into a title page, then a story page and an activity page for each section. {book.sections.length ? `${book.sections.length} section${book.sections.length === 1 ? "" : "s"} ready.` : "Add sections first."}</p>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={backing} onChange={(e) => setBacking(e.target.checked)} /> Insert a blank backing page after every page (stops marker bleed-through)</label>
+          <div className="flex flex-wrap items-center gap-3">
+            <button className="btn" onClick={makeHtml} disabled={htmlBusy || !book.sections.length}>{htmlBusy ? "Building…" : "Export Printable Book (.HTML)"}</button>
+            <span className="hint">Open the downloaded HTML in Chrome/Edge and press Ctrl+P → Save as PDF (Margins: None, Size: Letter) for a print-ready KDP interior!</span>
+          </div>
+        </section>
+      )}
 
       {book.mode === "activity" && (
         <section className="card space-y-3">

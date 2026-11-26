@@ -27,6 +27,7 @@ export interface Book {
   kdp: KdpPackage | null;
   images: GeneratedImage[];
   characterRefId: string;
+  rescueAudit: string;
   jobStatus: JobStatus; jobAction: string; jobError: string; jobUpdatedAt: string;
   createdAt: string; updatedAt: string;
 }

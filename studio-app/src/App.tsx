@@ -207,7 +207,7 @@ export default function App() {
                 <button className="btn-alt" onClick={del}>Delete</button>
               </div>
             </div>
-            {tab === 0 && <Tab1Details book={book} books={books} update={update} locked={running} />}
+            {tab === 0 && <Tab1Details book={book} books={books} update={update} commit={commit} fail={fail} locked={running} />}
             {tab === 1 && <Tab2Builder book={book} update={update} commit={commit} save={save} setBook={setBook} assets={assets} fail={fail} />}
             {tab === 2 && <Tab3Kdp book={book} update={update} save={save} setBook={setBook} fail={fail} />}
             {tab === 3 && <Tab4APlus book={book} update={update} setBook={setBook} fail={fail} />}
