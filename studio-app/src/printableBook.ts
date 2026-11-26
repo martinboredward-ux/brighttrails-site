@@ -4,6 +4,8 @@ import { fetchImageBlob } from "./api";
 export interface PrintableOptions {
   /** Insert a blank page behind every printed page so markers do not bleed through. */
   backingPages: boolean;
+  /** "page": each picture gets a full page of its own (best for coloring). "inline": picture shares the story page. */
+  pictureLayout?: "page" | "inline";
 }
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -259,13 +261,29 @@ export async function buildPrintableBook(book: Book, opts: PrintableOptions): Pr
     const num = `<span class="num">${i + 1}</span>`;
     const story = p.STORY_TEXT ?? (p.WHILE_YOU_LISTEN || p.GUIDE_SAY ? "" : s.summary);
 
-    // Page 1: story time.
-    add(`<section class="page">
+    // Page 1: story time. A portrait picture is tiny when it shares a page with the text, so the
+    // default gives it a page of its own and puts the story on the next page.
+    const picHtml = `<div class="frame pic">${pic ? `<img src="${pic}" alt="${esc(s.title)}">` : `<div class="none">Picture for this page</div>`}</div>`;
+    const textBlocks = `${story ? `<div class="frame story"><div class="label">Story time</div>${md(story)}</div>` : ""}
+  ${p.WHILE_YOU_LISTEN ? frame("While you listen", `<div class="listen">${md(p.WHILE_YOU_LISTEN)}</div>`) : ""}`;
+    if (opts.pictureLayout === "inline") {
+      add(`<section class="page">
   <div class="head">${num}<h2>${esc(s.title)}</h2></div>
-  <div class="frame pic">${pic ? `<img src="${pic}" alt="${esc(s.title)}">` : `<div class="none">Picture for this page</div>`}</div>
-  ${story ? `<div class="frame story"><div class="label">Story time</div>${md(story)}</div>` : ""}
-  ${p.WHILE_YOU_LISTEN ? frame("While you listen", `<div class="listen">${md(p.WHILE_YOU_LISTEN)}</div>`) : ""}
+  ${picHtml}
+  ${textBlocks}
 </section>`);
+    } else {
+      add(`<section class="page">
+  <div class="head">${num}<h2>${esc(s.title)}</h2></div>
+  ${picHtml}
+</section>`);
+      if (story || p.WHILE_YOU_LISTEN) {
+        add(`<section class="page">
+  <div class="head">${num}<h2>${esc(s.title)}</h2></div>
+  ${textBlocks}
+</section>`);
+      }
+    }
 
     // Page 2: parent and teacher quick-prep guide.
     const meta = [["Time", p.GUIDE_TIME], ["Skill", p.GUIDE_SKILL], ["Materials", p.GUIDE_MATERIALS]].filter(([, v]) => v);
