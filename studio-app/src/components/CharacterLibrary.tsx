@@ -6,7 +6,7 @@ import { useBlobUrl } from "../blobUrl";
 import { TooltipButton } from "./TooltipButton";
 import LibraryGenerate from "./LibraryGenerate";
 
-export const KIND_LABEL: Record<RefKind, string> = { character: "Character", badge: "Badge", prop: "Prop / place", cover: "Cover style", page: "Page design (contents, certificate…)" };
+export const KIND_LABEL: Record<RefKind, string> = { character: "Character", badge: "Badge", prop: "Prop / place", cover: "Cover style", page: "Page design (contents, certificate…)", puzzle: "Puzzle / activity picture" };
 const MAX_LIBRARY = 40;
 
 function Card({ c, book, onRename, onKind, onRemove }: { c: CharacterRef; book: Book; onRename: (n: string) => void; onKind: (k: RefKind) => void; onRemove: () => void }) {

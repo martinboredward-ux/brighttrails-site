@@ -54,6 +54,12 @@ function Login({ onDone }: { onDone: () => void }) {
   );
 }
 
+const STAGES: { id: string; label: string }[] = [
+  { id: "idea", label: "Idea" }, { id: "writing", label: "Writing" }, { id: "art", label: "Art" }, { id: "interior", label: "Interior" },
+  { id: "cover", label: "Cover" }, { id: "proof", label: "Proof copy" }, { id: "published", label: "Published" },
+];
+const stageLabel = (id: string) => STAGES.find((x) => x.id === id)?.label ?? "Idea";
+
 export default function App() {
   const [theme, toggleTheme] = useTheme();
   const [authed, setAuthed] = useState(!!getPassword());
@@ -177,7 +183,7 @@ export default function App() {
               <li key={b.id}>
                 <TooltipButton onClick={() => pick(b.id)} className={`w-full rounded-lg px-3 py-2 text-left text-sm ${book?.id === b.id ? "bg-brand text-onbrand" : "hover:bg-forest/10"}`}>
                   {b.title}
-                  <span className="block text-xs opacity-70">{b.mode}</span>
+                  <span className="block text-xs opacity-70">{b.mode} · {stageLabel(b.stage)}</span>
                   {b.approvedAt && <span className="mt-1 inline-block rounded bg-green px-1.5 py-0.5 text-[10px] font-extrabold text-white">APPROVED FOR KDP</span>}
                 </TooltipButton>
               </li>
@@ -206,6 +212,11 @@ export default function App() {
                 ))}
               </nav>
               <div className="ml-auto flex items-center gap-2">
+                <label className="flex items-center gap-1 text-xs text-muted">Stage
+                  <select className="field !w-auto !py-1" value={book.stage || "idea"} onChange={(e) => void commit({ stage: e.target.value })} aria-label="Book stage">
+                    {STAGES.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
+                  </select>
+                </label>
                 {dirty && <span className="text-xs text-accent">Unsaved changes</span>}
                 <TooltipButton className="btn-alt" onClick={save} disabled={!dirty || saving || running}>{saving ? "Saving…" : "Save"}</TooltipButton>
                 <TooltipButton className="btn" onClick={exportZip}>Export .ZIP Bundle</TooltipButton>

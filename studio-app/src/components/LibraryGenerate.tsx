@@ -87,7 +87,7 @@ export default function LibraryGenerate({ book, commit, fail, initial, compact, 
       <label className="block text-xs text-muted">Describe it (optional)
         <textarea className="field mt-1 min-h-16" value={detail} onChange={(e) => setDetail(e.target.value)} placeholder="Looks, clothes, colors, anything that must stay the same" />
       </label>
-      <p className="hint">Preset: {kind === "character" ? "black-and-white turnaround sheet" : kind === "badge" ? "circular black-and-white passport stamp on pure white" : kind === "prop" ? "single black-and-white prop or compass" : kind === "cover" ? "color cover sample" : "page design"}.</p>
+      <p className="hint">Preset: {kind === "character" ? "black-and-white turnaround sheet" : kind === "badge" ? "circular black-and-white passport stamp on pure white" : kind === "prop" ? "single black-and-white prop or compass" : kind === "cover" ? "color cover sample" : kind === "puzzle" ? "black-and-white puzzle picture, no lettering" : "page design"}.</p>
       <div className="flex flex-wrap items-center gap-2">
         <TooltipButton type="button" className="btn" onClick={run} disabled={busy}>{busy ? "Generating…" : "Generate to Library"}</TooltipButton>
         <TooltipButton type="button" className="btn-alt" onClick={copy}>$0 Copy Prompt</TooltipButton>

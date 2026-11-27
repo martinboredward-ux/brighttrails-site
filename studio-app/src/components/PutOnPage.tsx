@@ -31,8 +31,8 @@ export default function PutOnPage({ book, sectionId, kinds, preset, onDone, fail
       const bmp = await createImageBitmap(blob);
       const r = bmp.width / bmp.height; bmp.close();
       const shape: ImageAspect = r > 1.15 ? "landscape" : r < 0.87 ? "portrait" : "square";
-      const image = await copyLibraryToSection(book.id, sectionId, chosen.id, chosen.name, shape, preset);
-      setMsg(`${chosen.name} is now on this page.`);
+      const image = await copyLibraryToSection(book.id, sectionId, chosen.id, chosen.name, shape, preset, chosen.kind === "puzzle" ? "puzzle" : undefined);
+      setMsg(chosen.kind === "puzzle" ? `${chosen.name} is now the puzzle on this page's worksheet.` : `${chosen.name} is now on this page.`);
       onDone(image);
     } catch (e) { setMsg(""); fail(e); } finally { setBusy(false); }
   };

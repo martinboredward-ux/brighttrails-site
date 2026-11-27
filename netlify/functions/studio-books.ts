@@ -22,7 +22,7 @@ const EDITABLE: (keyof Book)[] = [
   "styleBible", "sections", "review", "workbook", "kdp", "characterRefId", "characters", "rescueAudit",
   "research", "preReview", "reviewQuestion", "reviewDirection", "polishDirection", "previousNotesBackup",
   "previousStyleBibleBackup", "previousSectionsBackup", "nameplateLabel", "cover",
-  "preReviewFixes", "preReviewSelected", "reviewFixes", "reviewSelected", "lastApplied", "approvedAt", "ignoredAssetNames", "cornerPropId",
+  "preReviewFixes", "preReviewSelected", "reviewFixes", "reviewSelected", "lastApplied", "approvedAt", "ignoredAssetNames", "cornerPropId", "stage",
 ];
 
 function idFromPath(req: Request): string | null {
@@ -62,10 +62,11 @@ export default async (req: Request): Promise<Response> => {
         ? [...new Set(next.linkedBookIds.map(String))].filter((x) => x !== id).slice(0, 12)
         : [];
       next.seriesName = String(next.seriesName ?? "").slice(0, 120);
+      if (!["idea", "writing", "art", "interior", "cover", "proof", "published"].includes(String(next.stage))) next.stage = "idea";
       // Character Library: only pictures that belong to this book, with a short name each.
       next.characters = Array.isArray(next.characters)
         ? next.characters
-            .map((c) => ({ id: String(c?.id ?? ""), name: String(c?.name ?? "").trim().slice(0, 40), kind: (["badge", "prop", "cover", "page"].includes(String(c?.kind)) ? c.kind : "character") as "character" | "badge" | "prop" | "cover" | "page" }))
+            .map((c) => ({ id: String(c?.id ?? ""), name: String(c?.name ?? "").trim().slice(0, 40), kind: (["badge", "prop", "cover", "page", "puzzle"].includes(String(c?.kind)) ? c.kind : "character") as "character" | "badge" | "prop" | "cover" | "page" | "puzzle" }))
             .filter((c) => IMAGE_ID_RE.test(c.id) && c.id.startsWith(`${id}__`))
             .map((c) => ({ ...c, name: c.name || "Character" }))
             .slice(0, 40)
