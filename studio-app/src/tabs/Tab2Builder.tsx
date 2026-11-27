@@ -14,6 +14,7 @@ import ImageGallery from "../components/ImageGallery";
 import { download, type ExportAssets } from "../exportZip";
 import AssetDetector from "../components/AssetDetector";
 import ArtChecklist from "../components/ArtChecklist";
+import WidgetLibrary from "../components/WidgetLibrary";
 import PolishPanel from "../components/PolishPanel";
 import JobStatus from "../components/JobStatus";
 import { useRunJob } from "../hooks/useRunJob";
@@ -164,6 +165,8 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
       <AssetDetector book={book} commit={commit} fail={fail} pins={pins} onPin={pin} />
 
       <ArtChecklist book={book} commit={commit} fail={fail} onDone={addImage} />
+
+      {book.mode === "activity" && <WidgetLibrary book={book} />}
 
       <section className="card space-y-3">
         <div className="flex items-center justify-between">
