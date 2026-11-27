@@ -33,6 +33,21 @@ export default async (req: Request): Promise<Response> => {
       if (bytes.byteLength > MAX_BYTES) return json({ error: "Image is too large. The Studio shrinks images in your browser first; try a smaller one." }, 413);
       const id = `${bookId}__${crypto.randomUUID()}`;
       await store.set(id, bytes, { metadata: { contentType: type, bookId, bytes: bytes.byteLength } });
+      // A picture made elsewhere (for example in ChatGPT) and attached to one page: it is saved in the book's
+      // picture list for that section, exactly like a generated picture, so the page, the PDF and the HTML use it.
+      const sectionId = url.searchParams.get("sectionId") ?? "";
+      if (sectionId) {
+        const book = await getBook(bookId);
+        if (book && book.sections.some((s) => s.id === sectionId)) {
+          const aspect = ["portrait", "square", "landscape"].includes(url.searchParams.get("aspect") ?? "") ? (url.searchParams.get("aspect") as "portrait" | "square" | "landscape") : "square";
+          const preset = ["coloring", "storybook", "cover", "aplus"].includes(url.searchParams.get("preset") ?? "") ? (url.searchParams.get("preset") as "coloring" | "storybook" | "cover" | "aplus") : "storybook";
+          const image = { id, sectionId, prompt: "Uploaded picture", provider: "upload" as const, modelUsed: "Uploaded picture", aspect, stylePreset: preset, quality: "low" as const, createdAt: new Date().toISOString() };
+          book.images = [...book.images, image].slice(-200);
+          book.updatedAt = new Date().toISOString();
+          await putBook(book);
+          return json({ id, image }, 201);
+        }
+      }
       return json({ id }, 201);
     }
 

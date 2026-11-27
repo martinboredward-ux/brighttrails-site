@@ -57,6 +57,20 @@ export async function uploadImage(bookId: string, blob: Blob): Promise<string> {
   return data.id as string;
 }
 
+/** Attach a picture made elsewhere (for example ChatGPT) to one page. The server adds it to that section's pictures. */
+export async function uploadSectionImage(bookId: string, sectionId: string, blob: Blob, aspect: ImageAspect, preset: StylePreset): Promise<GeneratedImage> {
+  const res = await fetch(`/api/studio/image?bookId=${encodeURIComponent(bookId)}&sectionId=${encodeURIComponent(sectionId)}&aspect=${aspect}&preset=${preset}`, {
+    method: "POST",
+    headers: { "content-type": blob.type || "image/jpeg", "x-studio-password": getPassword() },
+    body: blob,
+  });
+  if (res.status === 401) throw new AuthError("Wrong password");
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `Upload failed (${res.status})`);
+  if (!data.image) throw new Error("The picture uploaded but could not be attached to this page. Try again.");
+  return data.image as GeneratedImage;
+}
+
 export async function fetchImageBlob(id: string): Promise<Blob> {
   const res = await fetch(`/api/studio/image?id=${encodeURIComponent(id)}`, { headers: { "x-studio-password": getPassword() } });
   if (res.status === 401) throw new AuthError("Wrong password");

@@ -79,11 +79,12 @@ export default function CharacterLibrary({ book, commit, fail, compact }: Props)
           </select>
         </label>
         <label className={`btn cursor-pointer ${busy ? "pointer-events-none opacity-60" : ""}`}>
-          {busy ? "Uploading…" : "Upload Picture (PNG/JPG)"}
+          {busy ? "Uploading…" : compact ? "Add to Character Library (PNG/JPG)" : "Upload Picture (PNG/JPG)"}
           <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" disabled={busy}
             onChange={(e) => { void pick(e.target.files?.[0]); e.target.value = ""; }} />
         </label>
       </div>
+      {compact && <p className="hint">This adds a reference to the Character Library. It does not put the picture on a page.</p>}
       {note && <p className="text-xs font-semibold text-forest">{note}</p>}
       {!compact && <LibraryGenerate book={book} commit={commit} fail={fail} />}
       {!compact && (
