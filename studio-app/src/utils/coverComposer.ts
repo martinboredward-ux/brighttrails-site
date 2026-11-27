@@ -274,13 +274,15 @@ export function renderWrapCanvas(s: CoverSettings, fallbackTrim: Trim, art: Img 
   const t = layout(ctx, s.title ?? "", maxW, 2, tw * 0.1, 900);
   ctx.fillStyle = "#15382a"; ctx.textAlign = "left";
   t.lines.forEach((l, i) => ctx.fillText(l, safe, bleed + 0.55 * DPI + i * t.px * t.lh));
+  const bw = 2 * DPI, bh = 1.2 * DPI, bx = bleed + tw - 0.25 * DPI - bw, by = c.height - bleed - 0.25 * DPI - bh;
   if (s.backBlurb?.trim()) {
-    const b = layout(ctx, s.backBlurb, maxW, 14, tw * 0.045, 600, 1.35);
-    ctx.fillStyle = "#1f2f28"; ctx.textAlign = "left"; ctx.textBaseline = "top";
     const y0 = bleed + 0.55 * DPI + t.height + 0.18 * DPI;
+    // The blurb must end above the barcode box, so shrink it until it fits there (never below a readable size).
+    const room = by - 0.2 * DPI - y0;
+    const b = layout(ctx, s.backBlurb, maxW, 60, tw * 0.045, 600, 1.35, Math.max(room, 1));
+    ctx.fillStyle = "#1f2f28"; ctx.textAlign = "left"; ctx.textBaseline = "top";
     b.lines.forEach((l, i) => ctx.fillText(l, safe, y0 + i * b.px * b.lh));
   }
-  const bw = 2 * DPI, bh = 1.2 * DPI, bx = bleed + tw - 0.25 * DPI - bw, by = c.height - bleed - 0.25 * DPI - bh;
   if (s.barcodeCorner !== false) { ctx.fillStyle = "#ffffff"; ctx.fillRect(bx, by, bw, bh); }
   if ((s.pageCount ?? 0) > 79 && sp > 0.25 * DPI) {
     ctx.save();
