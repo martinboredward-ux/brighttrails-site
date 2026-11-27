@@ -71,6 +71,19 @@ export async function uploadSectionImage(bookId: string, sectionId: string, blob
   return data.image as GeneratedImage;
 }
 
+/** Put a Library picture on one page. The server copies it, so the Library item stays untouched. */
+export async function copyLibraryToSection(bookId: string, sectionId: string, fromId: string, label: string, aspect: ImageAspect, preset: StylePreset): Promise<GeneratedImage> {
+  const res = await fetch(`/api/studio/image?bookId=${encodeURIComponent(bookId)}&sectionId=${encodeURIComponent(sectionId)}&copyFrom=${encodeURIComponent(fromId)}&label=${encodeURIComponent(label)}&aspect=${aspect}&preset=${preset}`, {
+    method: "POST",
+    headers: { "x-studio-password": getPassword() },
+  });
+  if (res.status === 401) throw new AuthError("Wrong password");
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `Could not put it on the page (${res.status})`);
+  if (!data.image) throw new Error("The picture could not be attached to this page. Try again.");
+  return data.image as GeneratedImage;
+}
+
 export async function fetchImageBlob(id: string): Promise<Blob> {
   const res = await fetch(`/api/studio/image?id=${encodeURIComponent(id)}`, { headers: { "x-studio-password": getPassword() } });
   if (res.status === 401) throw new AuthError("Wrong password");
