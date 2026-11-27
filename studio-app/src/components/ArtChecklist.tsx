@@ -3,6 +3,7 @@ import type { Book, GeneratedImage, RefKind, StylePreset } from "../types";
 import { sectionText } from "../utils/assetDetector";
 import LibraryGenerate from "./LibraryGenerate";
 import PutOnPage from "./PutOnPage";
+import { TooltipButton } from "./TooltipButton";
 
 interface Props {
   book: Book;
@@ -51,7 +52,9 @@ export default function ArtChecklist({ book, commit, fail, onDone }: Props) {
   }).filter((r) => r.needs.length), [book.sections, book.images, book.notes, book.styleBible]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!isLantern && !rows.length) return null;
-  const items = isLantern ? LANTERNSIDE.map((it) => ({ it, have: lib.find((c) => it.re.test(c.name)) })) : [];
+  const ignored = new Set((book.ignoredAssetNames ?? []).map((n) => n.toLowerCase()));
+  const items = isLantern ? LANTERNSIDE.filter((it) => !ignored.has(it.name.toLowerCase())).map((it) => ({ it, have: lib.find((c) => it.re.test(c.name)) })) : [];
+  const dismissed = isLantern ? LANTERNSIDE.filter((it) => ignored.has(it.name.toLowerCase())).map((it) => it.name) : [];
   const missing = items.filter((x) => !x.have).length;
 
   return (
@@ -65,13 +68,17 @@ export default function ArtChecklist({ book, commit, fail, onDone }: Props) {
           <ul className="mt-2 space-y-2">
             {items.map(({ it, have }) => (
               <li key={it.name} className="rounded-lg border border-line p-2">
-                <p className="text-sm font-semibold">
-                  <span className={have ? "text-green" : "text-accent"}>{have ? "✓" : "✗"}</span> {it.name}
-                  <span className="text-xs font-normal text-muted"> · {it.use}{have ? ` · in Library as “${have.name}”` : ""}</span>
-                </p>
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <p className="text-sm font-semibold">
+                    <span className={have ? "text-green" : "text-accent"}>{have ? "✓" : "✗"}</span> {it.name}
+                    <span className="text-xs font-normal text-muted"> · {it.use}{have ? ` · in Library as “${have.name}”` : ""}</span>
+                  </p>
+                  {!have && <TooltipButton type="button" className="btn-alt !px-2 !py-1 text-xs" tip="This book does not need it. Hides it from this checklist for this book." engine="$0 Free · Runs in your browser" onClick={() => void commit({ ignoredAssetNames: [...(book.ignoredAssetNames ?? []), it.name] })}>Ignore / Dismiss</TooltipButton>}
+                </div>
                 {!have && (
                   <details className="mt-1">
                     <summary className="cursor-pointer text-xs underline">Make it or copy a free prompt</summary>
+
                     <div className="mt-2">
                       <LibraryGenerate book={book} commit={commit} fail={fail} compact initial={{ name: it.name, kind: it.kind, detail: it.detail }} />
                     </div>
@@ -80,6 +87,9 @@ export default function ArtChecklist({ book, commit, fail, onDone }: Props) {
               </li>
             ))}
           </ul>
+          {dismissed.length > 0 && (
+            <p className="hint mt-2">Dismissed: {dismissed.join(", ")}. <TooltipButton type="button" className="underline" onClick={() => void commit({ ignoredAssetNames: (book.ignoredAssetNames ?? []).filter((n) => !dismissed.some((d) => d.toLowerCase() === n.toLowerCase())) })}>Show them again</TooltipButton></p>
+          )}
         </details>
       )}
 
