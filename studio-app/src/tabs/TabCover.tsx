@@ -131,7 +131,7 @@ export default function TabCover({ book, update, commit, setBook, fail }: Props)
           <div><label className="label">Series pill</label><input className="field" value={s.seriesPill} onChange={(e) => set({ seriesPill: e.target.value })} placeholder="HAPPY TRAILS COLLECTION · AGES 6–9" /></div>
           <div><label className="label">Trim size</label>
             <select className="field" value={s.trim} onChange={(e) => set({ trim: e.target.value as Trim })}>{TRIMS.map((t) => <option key={t.id} value={t.id}>{t.label} ({t.use})</option>)}</select></div>
-          <div><label className="label">Page count</label><input type="number" min={24} max={828} className="field" value={s.pageCount} onChange={(e) => set({ pageCount: Number(e.target.value) || 24 })} /></div>
+          <div><label className="label">Page count</label><input type="number" min={24} max={828} className="field" value={s.pageCount} onChange={(e) => set({ pageCount: Number(e.target.value) || 24 })} /><p className="hint">Type the real page count of your finished interior PDF. The starting number is only a guess, and it sets the spine width.</p></div>
           <div><label className="label">Interior paper</label>
             <select className="field" value={s.paper} onChange={(e) => set({ paper: e.target.value as PaperType })}>
               {(["standardColor", "premiumColor", "white", "cream"] as PaperType[]).map((p) => <option key={p} value={p}>{PAPER_LABEL[p]}</option>)}
