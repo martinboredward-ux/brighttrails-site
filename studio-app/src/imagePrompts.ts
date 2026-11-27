@@ -89,7 +89,7 @@ export function libraryPrompt(kind: LibKind, name: string, detail = "", color = 
 }
 
 /** A ready-to-paste cover picture prompt for ChatGPT or Nano Banana: the scene plus the cover-safe composition rules, in the book's style. */
-export function coverPrompt(scene: string, aspect: "portrait" | "square" | "landscape", styleBible?: string): string {
+export function coverPrompt(scene: string, aspect: "portrait" | "square" | "landscape", styleBible?: string, look?: string): string {
   const shape = aspect === "square" ? "SQUARE (1:1)" : aspect === "landscape" ? "LANDSCAPE (4:3)" : "TALL PORTRAIT (about 2:3)";
-  return `${bibleSummary(styleBible)}Create a ${shape} children's book COVER illustration, bright and appealing, with NO lettering, words, logos or numbers anywhere. Scene: ${scene.trim()} COMPOSITION: the main subject sits in the LOWER 60% of the frame; the TOP 35% is completely empty open sky or plain space (nothing, not even a head or tip, enters it) because the title is added later; faces fully visible; a calm simple band across the bottom 12%; keep everything important away from the outer edges. One clear hero subject, bold simple shapes, strong contrast, so it still reads as a small thumbnail.`;
+  return `${bibleSummary(styleBible)}Create a ${shape} children's book COVER illustration, bright and appealing, with NO lettering, words, logos or numbers anywhere. Scene: ${scene.trim()} COMPOSITION: the main subject sits in the LOWER 60% of the frame; the TOP 35% is completely empty open sky or plain space (nothing, not even a head or tip, enters it) because the title is added later; faces fully visible; a calm simple band across the bottom 12%; keep everything important away from the outer edges. One clear hero subject, bold simple shapes, strong contrast, so it still reads as a small thumbnail.${look ? ` MATCH THE LOOK OF MY OTHER COVERS (reference pictures attached): ${look.trim()}` : ""}`;
 }

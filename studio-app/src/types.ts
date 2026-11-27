@@ -83,9 +83,11 @@ export interface CoverSettings {
   approvedSig?: string; approvedAt?: string; checkNotes?: string; checkedAt?: string;
   /** Saved Cover Ideas so they are not paid for twice. */
   ideas?: CoverIdeas;
+  /** Up to 3 finished covers (image ids) whose look new cover ideas should match. */
+  refCoverIds?: string[];
 }
-export interface CoverIdea { name: string; why: string; scene: string; layout: { titlePlacement: "top" | "bottom" | "split"; topSky: "off" | "20" | "30"; scrim: "none" | "softDark" | "softLight" | "pill"; textColor: string; textEffect: "none" | "shadow" | "outline" } }
-export interface CoverIdeas { concepts: CoverIdea[]; tips: string[]; model?: string; at?: string }
+export interface CoverIdea { artId?: string; name: string; why: string; scene: string; layout: { titlePlacement: "top" | "bottom" | "split"; topSky: "off" | "20" | "30"; scrim: "none" | "softDark" | "softLight" | "pill"; textColor: string; textEffect: "none" | "shadow" | "outline" } }
+export interface CoverIdeas { concepts: CoverIdea[]; tips: string[]; lookNotes?: string; model?: string; at?: string }
 export type PaperType = "standardColor" | "premiumColor" | "white" | "cream";
 export interface ReviewFix { id: string; title: string; detail: string; target: "notes" | "styleBible" | "sections" }
 export interface AppliedLog { kind: "idea" | "qa"; at: string; changes: string[] }
