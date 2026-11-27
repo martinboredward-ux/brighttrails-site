@@ -5,6 +5,7 @@ import { compressImage } from "../imageTools";
 import { wrapPrompt } from "../imagePrompts";
 import { trimAspect } from "../utils/trims";
 import CharacterLibrary, { KIND_LABEL } from "./CharacterLibrary";
+import PutOnPage from "./PutOnPage";
 import { useBlobUrl } from "../blobUrl";
 import { TooltipButton } from "./TooltipButton";
 
@@ -159,6 +160,8 @@ export default function ImageEngine({ book, sectionId, initialPrompt = "", defau
               onChange={(e) => { void attachOwn(e.target.files?.[0]); e.target.value = ""; }} />
           </label>
           <p className="hint">This puts the picture on this page. It shows in the pictures below and is the one the PDF and printable book use. The newest picture on a page wins.</p>
+          <p className="pt-1 text-xs font-semibold text-forest">Or put a picture from the Character Library on this page</p>
+          <PutOnPage book={book} sectionId={sectionId} preset={preset} onDone={onDone} fail={fail} />
         </div>
       )}
       {commit && <CharacterLibrary book={book} commit={commit} fail={fail} compact />}

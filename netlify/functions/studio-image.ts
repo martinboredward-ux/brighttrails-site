@@ -26,6 +26,28 @@ export default async (req: Request): Promise<Response> => {
     if (req.method === "POST") {
       const bookId = url.searchParams.get("bookId") ?? "";
       if (!(await getBook(bookId))) return json({ error: "Book not found" }, 404);
+      // Put a picture that is already in this book (for example a Character Library item) onto one page.
+      // It is copied, so removing it from the page never breaks the Library item.
+      const copyFrom = url.searchParams.get("copyFrom") ?? "";
+      if (copyFrom) {
+        const sid = url.searchParams.get("sectionId") ?? "";
+        if (!IMAGE_ID_RE.test(copyFrom) || !copyFrom.startsWith(`${bookId}__`)) return json({ error: "Bad picture id" }, 400);
+        const src = await store.getWithMetadata(copyFrom, { type: "arrayBuffer" });
+        if (!src) return json({ error: "That library picture was not found" }, 404);
+        const book = await getBook(bookId);
+        if (!book || !book.sections.some((s) => s.id === sid)) return json({ error: "Page not found" }, 404);
+        const contentType = String((src.metadata as { contentType?: string } | null)?.contentType ?? "image/png");
+        const newId = `${bookId}__${crypto.randomUUID()}`;
+        await store.set(newId, src.data, { metadata: { contentType, bookId, bytes: src.data.byteLength } });
+        const aspect = ["portrait", "square", "landscape"].includes(url.searchParams.get("aspect") ?? "") ? (url.searchParams.get("aspect") as "portrait" | "square" | "landscape") : "square";
+        const preset = ["coloring", "storybook", "cover", "aplus"].includes(url.searchParams.get("preset") ?? "") ? (url.searchParams.get("preset") as "coloring" | "storybook" | "cover" | "aplus") : "storybook";
+        const label = (url.searchParams.get("label") ?? "").slice(0, 60);
+        const image = { id: newId, sectionId: sid, prompt: `Library: ${label || "picture"}`, provider: "upload" as const, modelUsed: "From the Library", aspect, stylePreset: preset, quality: "low" as const, createdAt: new Date().toISOString() };
+        book.images = [...book.images, image].slice(-200);
+        book.updatedAt = new Date().toISOString();
+        await putBook(book);
+        return json({ id: newId, image }, 201);
+      }
       const type = (req.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
       if (!TYPES.has(type)) return json({ error: "Only PNG, JPEG or WebP images" }, 415);
       const bytes = await req.arrayBuffer();
