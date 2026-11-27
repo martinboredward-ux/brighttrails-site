@@ -39,7 +39,7 @@ export function coverDefaults(book: Book): CoverSettings {
     textColor: c.textColor ?? "#15382a",
     textEffect: c.textEffect ?? "none",
     topSky: c.topSky ?? "off",
-    approvedSig: c.approvedSig, approvedAt: c.approvedAt, checkNotes: c.checkNotes, checkedAt: c.checkedAt,
+    approvedSig: c.approvedSig, approvedAt: c.approvedAt, checkNotes: c.checkNotes, checkedAt: c.checkedAt, ideas: c.ideas,
   };
 }
 

@@ -1,4 +1,4 @@
-import type { Action, Book, GeneratedImage, ImageAspect, ImageProvider, KdpPackage, StylePreset } from "./types";
+import type { Action, Book, GeneratedImage, ImageAspect, ImageProvider, KdpPackage, StylePreset, CoverIdeas } from "./types";
 
 const KEY = "studio-password";
 export const getPassword = () => sessionStorage.getItem(KEY) ?? "";
@@ -127,6 +127,9 @@ export async function generateImage(req: ImageJobRequest, onTick?: (status: stri
   }
   throw new Error("The picture is taking too long. Check the gallery in a minute; it may still appear.");
 }
+
+export const coverIdeas = (payload: Record<string, unknown>) =>
+  call<CoverIdeas>("/api/studio/cover-ideas", { method: "POST", body: JSON.stringify(payload) });
 
 export interface CoverCheck { ok: boolean; summary: string; checks: { name: string; pass: boolean; note: string }[] }
 export const checkCover = (payload: Record<string, unknown>) =>

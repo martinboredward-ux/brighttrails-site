@@ -6,6 +6,7 @@ import { blobToImage, compressImage } from "../imageTools";
 import { useBlobUrl } from "../blobUrl";
 import { download } from "../exportZip";
 import ImageEngine from "../components/ImageEngine";
+import CoverIdeas from "../components/CoverIdeas";
 import { TooltipButton, Tip } from "../components/TooltipButton";
 import { TRIMS, trimAspect, trimDims, type Trim } from "../utils/trims";
 import { PAPER_LABEL, coverApproved, coverDefaults, coverSig, renderCheckJpeg, renderEbookCanvas, renderEbookCover, renderPrintFront, renderPrintFrontCanvas, renderWrapCanvas, renderWrapPdf, renderWrapPng, spineWidth, wrapGeometry } from "../utils/coverComposer";
@@ -163,6 +164,7 @@ export default function TabCover({ book, update, commit, setBook, fail }: Props)
       <section className="card space-y-3 lg:col-span-2">
         <h2 className="text-base font-bold text-forest">Front cover art</h2>
         <p className="hint">Pick a picture from this book, upload your own, or make cover-safe art below. It leaves the top 30% as open sky for the title and keeps faces in the middle.</p>
+        <CoverIdeas book={book} s={s} aspect={trimAspect(s.trim ?? book.trim)} set={set} commit={commit} fail={fail} />
         <Tip what="Uploads a PNG or JPG from your computer as the cover art." engine="$0 Free · Runs in your browser">
           <label className="btn-alt cursor-pointer">Upload cover art<input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={(e) => { void uploadArt(e.target.files?.[0]); e.target.value = ""; }} /></label>
         </Tip>
