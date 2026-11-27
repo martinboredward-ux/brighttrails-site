@@ -47,11 +47,15 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
   const [pdfBusy, setPdfBusy] = useState(false);
   const [htmlBusy, setHtmlBusy] = useState(false);
   const [backing, setBacking] = useState(false);
+  const [copyrightPage, setCopyrightPage] = useState(true);
+  const [evenPages, setEvenPages] = useState(true);
+  const [htmlMsg, setHtmlMsg] = useState("");
   const [picLayout, setPicLayout] = useState<"page" | "inline">(book.mode === "storybook" ? "inline" : "page");
   const makeHtml = async () => {
     setHtmlBusy(true);
     try {
-      const html = await buildPrintableBook(book, { backingPages: backing, pictureLayout: picLayout });
+      const html = await buildPrintableBook(book, { backingPages: backing, pictureLayout: picLayout, copyrightPage, evenPages });
+      setHtmlMsg(`This printable book has ${(html.match(/<section class="page/g) ?? []).length} pages. Put that number in Cover Studio so the spine is right.`);
       download(`${book.slug}-printable-book.html`, new Blob([html], { type: "text/html" }));
     } catch (e) { fail(e); } finally { setHtmlBusy(false); }
   };
@@ -90,7 +94,7 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
   const run2 = (a: Action) => runJob(a, { model });
   const tagged = isTaggedMode(book.mode);
   const untagged = book.sections.filter((s) => s.draft.trim() && !parseTagged(s.draft)).length;
-  const empty = book.sections.filter((s) => !s.draft.trim()).length;
+  const empty = book.sections.filter((s) => s.kind !== "coloring" && !s.draft.trim()).length;
   const draftAll = () => {
     if (!book.sections.length) return;
     let onlyEmpty = true;
@@ -184,13 +188,14 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
                 <TooltipButton className="flex-1 text-left text-sm font-semibold" onClick={() => setOpen(open === s.id ? null : s.id)}>
                   {i + 1}. {s.title} {s.draft ? <span className="text-xs font-normal text-green">· drafted</span> : null}
                 </TooltipButton>
-                <TooltipButton className="btn-alt !px-3 !py-1" disabled={running} onClick={() => run("draft_section", s.id)}>Draft</TooltipButton>
+                <TooltipButton className="btn-alt !px-3 !py-1" disabled={running || s.kind === "coloring"} tip={s.kind === "coloring" ? "A coloring page has no text to draft." : undefined} onClick={() => run("draft_section", s.id)}>Draft</TooltipButton>
                 <TooltipButton className="btn-alt !px-3 !py-1" onClick={() => copy(s.id, hybridPrompt("section", s))}>{copied === s.id ? "Copied" : "$0 prompt"}</TooltipButton>
                 <TooltipButton className="text-xs text-accent underline" disabled={running} onClick={() => update({ sections: book.sections.filter((x) => x.id !== s.id) })}>Remove</TooltipButton>
               </div>
               {open === s.id && (
                 <div className="space-y-2 border-t border-line p-3">
                   <input className="field" value={s.title} readOnly={running} onChange={(e) => setSection(s.id, { title: e.target.value })} />
+                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={s.kind === "coloring"} onChange={(e) => setSection(s.id, { kind: e.target.checked ? "coloring" : undefined })} /> Coloring page: picture only, no text (a blank back is added)</label>
                   {book.mode === "activity" && (
                     <div className="grid gap-2 sm:grid-cols-2">
                       <label className="text-xs text-muted">Activity widget (worksheet page)
@@ -256,10 +261,13 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
               {!(book.characters ?? []).some((c) => c.kind === "prop") && <span className="hint">Add a Type: Prop item (for example a Compass Rose) to the Library on tab 1.</span>}
             </label>
           )}
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={copyrightPage} onChange={(e) => setCopyrightPage(e.target.checked)} /> Add a copyright page after the title page</label>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={evenPages} onChange={(e) => setEvenPages(e.target.checked)} /> Add one blank page at the end if the page count would be odd</label>
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={backing} onChange={(e) => setBacking(e.target.checked)} /> Insert a blank backing page after every page (stops marker bleed-through)</label>
           {(untagged > 0 || empty > 0) && <p className="rounded-lg bg-sun/30 px-3 py-2 text-sm text-forest">{empty > 0 ? `${empty} section${empty === 1 ? " has" : "s have"} no draft yet. ` : ""}{untagged > 0 ? `${untagged} section${untagged === 1 ? " is" : "s are"} in the older draft format, so some boxes would print empty. ` : ""}Use “Draft all sections” above to fill them in.</p>}
           <div className="flex flex-wrap items-center gap-3">
             <TooltipButton className="btn" onClick={makeHtml} disabled={htmlBusy || !book.sections.length}>{htmlBusy ? "Building…" : "Export Printable Book (.HTML)"}</TooltipButton>
+            {htmlMsg && <span className="text-sm font-semibold text-forest">{htmlMsg}</span>}
             <span className="hint">Open the downloaded HTML in Chrome/Edge and press Ctrl+P → Save as PDF (Margins: None, Size: Letter) for a print-ready KDP interior!</span>
           </div>
         </section>

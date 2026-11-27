@@ -8,6 +8,10 @@ export interface PrintableOptions {
   backingPages: boolean;
   /** "page": each picture gets a full page of its own (best for coloring). "inline": picture shares the story page. */
   pictureLayout?: "page" | "inline";
+  /** Copyright page after the title page. Default on. */
+  copyrightPage?: boolean;
+  /** Add one blank page at the end when the page count is odd. Default on. */
+  evenPages?: boolean;
 }
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -206,7 +210,9 @@ const cssFor = (w: number, h: number) => `
 @page { size: ${w}in ${h}in; margin: 0; }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; background: #e9e9e9; }
-body { font-family: 'Nunito', 'Segoe UI', Arial, Helvetica, sans-serif; color: #000; }
+body { font-family: 'Nunito', 'Segoe UI', Arial, Helvetica, sans-serif; color: #000; font-variant-ligatures: none; font-feature-settings: "liga" 0, "clig" 0, "dlig" 0; }
+.cpy { margin: auto 0 0.8in; font-size: 11pt; line-height: 1.5; text-align: center; }
+.cpy p { margin: 0 0 0.12in; }
 h1, h2, h3, .label { font-family: 'Fredoka', 'Nunito', 'Segoe UI', Arial, sans-serif; }
 .tip { max-width: ${w}in; margin: 12px auto; padding: 10px 14px; background: #fff8dc; border: 1px solid #c9a400; border-radius: 8px; font: 14px/1.4 Arial, sans-serif; }
 .page { width: ${w}in; height: ${h}in; padding: ${w * h < 80 ? "0.45" : "0.6"}in; margin: 0 auto 12px; background: #fff; position: relative; overflow: hidden; page-break-after: always; break-after: page; display: flex; flex-direction: column; gap: 0.18in; }
@@ -323,12 +329,38 @@ export async function buildPrintableBook(book: Book, opts: PrintableOptions): Pr
   <div class="pub">Bright Trails Publishing</div>
 </section>`);
 
+  if (opts.copyrightPage !== false) {
+    const year = new Date().getFullYear();
+    const who = (book.cover?.author ?? "").trim() || "Bright Trails Publishing";
+    const ai = book.aiDisclosure === "generated" ? "Illustrations and text were created with AI tools and reviewed by the publisher."
+      : book.aiDisclosure === "assisted" ? "Created with the assistance of AI tools, then reviewed and edited by the author." : "";
+    add(`<section class="page copyright">
+  <div class="cpy">
+    <p><b>${esc(book.title || "Untitled")}</b>${book.subtitle ? `<br>${esc(book.subtitle)}` : ""}</p>
+    <p>Copyright &copy; ${year} ${esc(who)}. All rights reserved.</p>
+    <p>No part of this book may be reproduced or used in any manner without written permission of the publisher, except for personal use such as coloring the pages.</p>
+    ${ai ? `<p>${esc(ai)}</p>` : ""}
+    <p>Published by Bright Trails Publishing</p>
+  </div>
+</section>`);
+  }
+
+  // A coloring page is the picture alone (no text), always with a blank back so markers cannot bleed through.
+  const addColoring = (s: { id: string; title: string }) => {
+    const pic = pics.get(s.id);
+    pages.push(`<section class="page sb-art" aria-label="${esc(s.title)} coloring page">
+  <div class="frame pic">${pic ? `<img src="${pic}" alt="${esc(s.title)}">` : `<div class="none">Coloring picture not added yet for: ${esc(s.title)}</div>`}</div>
+</section>`);
+    pages.push(`<section class="page blank" aria-label="Blank back of coloring page"></section>`);
+  };
+
   const parts = book.sections.map((s) => sectionParts(s));
 
   if (storybook) {
     // Toddler picture book: one picture page and one big-print story page per section. No worksheets, word banks, answer keys or Name/Date lines.
     const PLAY = ["Point to the happy faces. Can you count them?", "Can you find something round? Point and say what it is!", "Point to something blue. How many can you count?", "Can you wave hello to the picture?"];
     book.sections.forEach((s, i) => {
+      if (s.kind === "coloring") { addColoring(s); return; }
       const p = parts[i];
       const pic = pics.get(s.id);
       add(`<section class="page sb-art" aria-label="${esc(s.title)} illustration">
@@ -350,6 +382,7 @@ export async function buildPrintableBook(book: Book, opts: PrintableOptions): Pr
     });
   } else {
   book.sections.forEach((s, i) => {
+    if (s.kind === "coloring") { addColoring(s); return; }
     const p = parts[i];
     const pic = pics.get(s.id);
     const num = `<span class="num">${i + 1}</span>`;
@@ -445,6 +478,8 @@ export async function buildPrintableBook(book: Book, opts: PrintableOptions): Pr
   }
 
   }
+
+  if (opts.evenPages !== false && pages.length % 2 === 1) pages.push(`<section class="page blank" aria-label="Blank page to make the page count even"></section>`);
 
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8">

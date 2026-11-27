@@ -17,6 +17,8 @@ export interface Section {
   title: string;
   summary: string;
   draft: string;
+  /** "coloring": a picture-only page with no text. */
+  kind?: "coloring";
 }
 
 export interface APlusModule {

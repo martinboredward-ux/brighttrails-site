@@ -3,7 +3,7 @@ export type JobStatus = "idle" | "running" | "done" | "error";
 
 import type { Trim } from "./utils/trims";
 export type WidgetKind = "wordbank" | "compass" | "mapgrid" | "steps" | "dots" | "tracing";
-export interface Section { id: string; title: string; summary: string; draft: string; widget?: WidgetKind; rank?: 0 | 1 | 2 | 3 }
+export interface Section { id: string; title: string; summary: string; draft: string; /** "coloring": a picture-only page with no text (a blank back is added). */ kind?: "coloring"; widget?: WidgetKind; rank?: 0 | 1 | 2 | 3 }
 export interface APlusModule {
   size: "970x600" | "970x300" | "300x300";
   headline: string;

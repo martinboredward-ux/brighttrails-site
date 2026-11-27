@@ -185,7 +185,7 @@ Create the working plan for this book. Return ONLY JSON: {"styleBible": string, 
     }
 
     case "draft_all": {
-      const todo = book.sections.map((s, i) => i).filter((i) => p.onlyEmpty === false || !book.sections[i].draft.trim());
+      const todo = book.sections.map((s, i) => i).filter((i) => book.sections[i].kind !== "coloring" && (p.onlyEmpty === false || !book.sections[i].draft.trim()));
       if (!todo.length) throw new Error("Every section already has a draft.");
       let done = 0;
       for (const idx of todo) {
