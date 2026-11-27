@@ -52,7 +52,7 @@ export interface GeneratedImage {
   createdAt: string;
 }
 
-export type ImageProvider = "openai-mini" | "openai-1.5" | "nano-banana";
+export type ImageProvider = "openai-mini" | "openai-1.5" | "nano-banana" | "upload";
 export type ImageAspect = "portrait" | "square" | "landscape";
 export type StylePreset = "coloring" | "storybook" | "cover" | "aplus" | "library_bw" | "library_color";
 

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Book, CharacterRef, GeneratedImage, ImageAspect, ImageProvider, StylePreset } from "../types";
-import { generateImage } from "../api";
+import { generateImage, uploadSectionImage } from "../api";
+import { compressImage } from "../imageTools";
 import { wrapPrompt } from "../imagePrompts";
 import { trimAspect } from "../utils/trims";
 import CharacterLibrary, { KIND_LABEL } from "./CharacterLibrary";
@@ -81,6 +82,22 @@ export default function ImageEngine({ book, sectionId, initialPrompt = "", defau
     } finally { setBusy(false); }
   };
 
+  const [upBusy, setUpBusy] = useState(false);
+  const attachOwn = async (f: File | undefined) => {
+    if (!f || !sectionId) return;
+    if (!/^image\/(png|jpeg|webp)$/.test(f.type)) { setStatus("Please choose a PNG or JPG picture."); return; }
+    setUpBusy(true); setStatus("Uploading your picture…");
+    try {
+      const { blob } = await compressImage(f, 1600);
+      const bmp = await createImageBitmap(blob);
+      const r = bmp.width / bmp.height; bmp.close();
+      const shape: ImageAspect = r > 1.15 ? "landscape" : r < 0.87 ? "portrait" : "square";
+      const image = await uploadSectionImage(book.id, sectionId, blob, shape, preset);
+      setStatus("Your picture is now on this page.");
+      onDone(image);
+    } catch (e) { setStatus(""); fail(e); } finally { setUpBusy(false); }
+  };
+
   const copyPrompt = async () => {
     try { await navigator.clipboard.writeText(wrapPrompt(preset, prompt, sectionId ? book.styleBible : undefined)); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* clipboard blocked */ }
   };
@@ -134,6 +151,16 @@ export default function ImageEngine({ book, sectionId, initialPrompt = "", defau
           )}
         </div>
       ) : <p className="hint">Add your characters and badges to the Character Library on the Details tab, or below, and both ChatGPT and Nano Banana will copy them.</p>}
+      {sectionId && (
+        <div className="space-y-1 rounded-lg border border-sun p-2">
+          <label className={`btn cursor-pointer ${upBusy ? "pointer-events-none opacity-60" : ""}`}>
+            {upBusy ? "Uploading…" : "Use my own picture for this page (from ChatGPT)"}
+            <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" disabled={upBusy}
+              onChange={(e) => { void attachOwn(e.target.files?.[0]); e.target.value = ""; }} />
+          </label>
+          <p className="hint">This puts the picture on this page. It shows in the pictures below and is the one the PDF and printable book use. The newest picture on a page wins.</p>
+        </div>
+      )}
       {commit && <CharacterLibrary book={book} commit={commit} fail={fail} compact />}
       <div className="flex flex-wrap items-center gap-3">
         <TooltipButton className="btn" onClick={run} disabled={busy}>{busy ? "Generating…" : "Generate image"}</TooltipButton>
