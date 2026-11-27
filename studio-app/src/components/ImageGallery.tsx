@@ -31,6 +31,7 @@ function Thumb({ img, book, selected, onToggle, onCharacter, onRemoved, onUse, u
             <option value="prop">Prop / place</option>
             <option value="cover">Cover style</option>
             <option value="page">Page design</option>
+            <option value="puzzle">Puzzle picture</option>
           </select>
         )}
         <TooltipButton className={`btn-alt !px-2 !py-1 !text-xs ${isRef ? "!border-sun" : ""}`} onClick={() => onCharacter(img.id, kind, isRef)}>{isRef ? "In library ✓ (remove)" : "Add to Library"}</TooltipButton>

@@ -42,7 +42,8 @@ export default async (req: Request): Promise<Response> => {
         const aspect = ["portrait", "square", "landscape"].includes(url.searchParams.get("aspect") ?? "") ? (url.searchParams.get("aspect") as "portrait" | "square" | "landscape") : "square";
         const preset = ["coloring", "storybook", "cover", "aplus"].includes(url.searchParams.get("preset") ?? "") ? (url.searchParams.get("preset") as "coloring" | "storybook" | "cover" | "aplus") : "storybook";
         const label = (url.searchParams.get("label") ?? "").slice(0, 60);
-        const image = { id: newId, sectionId: sid, prompt: `Library: ${label || "picture"}`, provider: "upload" as const, modelUsed: "From the Library", aspect, stylePreset: preset, quality: "low" as const, createdAt: new Date().toISOString() };
+        const slot = url.searchParams.get("slot") === "puzzle" ? ("puzzle" as const) : undefined;
+        const image = { id: newId, sectionId: sid, prompt: `Library: ${label || "picture"}`, provider: "upload" as const, modelUsed: "From the Library", aspect, stylePreset: preset, quality: "low" as const, createdAt: new Date().toISOString(), ...(slot ? { slot } : {}) };
         book.images = [...book.images, image].slice(-200);
         book.updatedAt = new Date().toISOString();
         await putBook(book);
@@ -63,7 +64,8 @@ export default async (req: Request): Promise<Response> => {
         if (book && book.sections.some((s) => s.id === sectionId)) {
           const aspect = ["portrait", "square", "landscape"].includes(url.searchParams.get("aspect") ?? "") ? (url.searchParams.get("aspect") as "portrait" | "square" | "landscape") : "square";
           const preset = ["coloring", "storybook", "cover", "aplus"].includes(url.searchParams.get("preset") ?? "") ? (url.searchParams.get("preset") as "coloring" | "storybook" | "cover" | "aplus") : "storybook";
-          const image = { id, sectionId, prompt: "Uploaded picture", provider: "upload" as const, modelUsed: "Uploaded picture", aspect, stylePreset: preset, quality: "low" as const, createdAt: new Date().toISOString() };
+          const slot = url.searchParams.get("slot") === "puzzle" ? ("puzzle" as const) : undefined;
+          const image = { id, sectionId, prompt: "Uploaded picture", provider: "upload" as const, modelUsed: "Uploaded picture", aspect, stylePreset: preset, quality: "low" as const, createdAt: new Date().toISOString(), ...(slot ? { slot } : {}) };
           book.images = [...book.images, image].slice(-200);
           book.updatedAt = new Date().toISOString();
           await putBook(book);

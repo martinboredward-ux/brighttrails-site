@@ -155,10 +155,10 @@ function pickPictures(book: Book): Map<string, string> {
   const byId = new Map<string, string>();
   const sectionIds = new Set(book.sections.map((s) => s.id));
   for (const s of book.sections) {
-    const own = book.images.filter((i) => i.sectionId === s.id);
+    const own = book.images.filter((i) => i.sectionId === s.id && i.slot !== "puzzle");
     if (own.length) byId.set(s.id, own[own.length - 1].id);
   }
-  const orphans = book.images.filter((i) => !i.sectionId || !sectionIds.has(i.sectionId));
+  const orphans = book.images.filter((i) => (!i.sectionId || !sectionIds.has(i.sectionId)) && i.slot !== "puzzle");
   for (const s of book.sections) {
     if (strict || byId.has(s.id) || !orphans.length) continue;
     const parts = sectionParts(s);
@@ -293,6 +293,13 @@ export async function buildPrintableBook(book: Book, opts: PrintableOptions): Pr
     try { pics.set(sectionId, await blobToDataUrl(await fetchImageBlob(imageId))); } catch { /* leave the frame empty */ }
   }
 
+  // A puzzle picture (slot "puzzle") fills the worksheet box of its page. Newest one wins.
+  const puzzles = new Map<string, string>();
+  for (const s of book.sections) {
+    const pz = book.images.filter((i) => i.sectionId === s.id && i.slot === "puzzle");
+    if (pz.length) { try { puzzles.set(s.id, await blobToDataUrl(await fetchImageBlob(pz[pz.length - 1].id))); } catch { /* no puzzle picture */ } }
+  }
+
   const storybook = book.mode === "storybook";
   // Corner prop (a Library item of type Prop) and rank badge, stamped on every page of a section.
   let propUrl = "";
@@ -394,16 +401,17 @@ export async function buildPrintableBook(book: Book, opts: PrintableOptions): Pr
     }
 
     // Page 3: the child's explorer worksheet.
-    const svg = widgetSvg(s.widget, i);
-    const bank = svg ? [] : wordList(p.WORD_BANK);
-    if (p.WORKSHEET_BODY || p.WORKSHEET_INSTRUCTIONS || bank.length || svg || p.BONUS_DOODLE) {
+    const pz = puzzles.get(s.id);
+    const svg = pz ? "" : widgetSvg(s.widget, i);
+    const bank = svg || pz ? [] : wordList(p.WORD_BANK);
+    if (p.WORKSHEET_BODY || p.WORKSHEET_INSTRUCTIONS || bank.length || svg || pz || p.BONUS_DOODLE) {
       add(`<section class="page">
   <div class="head">${num}<h2>${esc(s.title)}: Explorer Worksheet</h2></div>
   <div class="namedate"><div>Name:</div><div>Date:</div></div>
   ${corner(s.rank)}
   ${p.WORKSHEET_INSTRUCTIONS ? `<p class="instr">${esc(p.WORKSHEET_INSTRUCTIONS.replace(/\n+/g, " "))}</p>` : ""}
   ${p.WORKSHEET_BODY ? `<div class="frame ws">${md(p.WORKSHEET_BODY)}</div>` : ""}
-  ${svg ? `<div class="frame widget"><div class="label">${esc(WIDGET_TITLE[s.widget as string] ?? "Activity")}</div>${svg}</div>` : bank.length ? `<div class="frame"><div class="label">Word bank</div><div class="words">${bank.map((w) => `<div class="word">${esc(w)}</div>`).join("")}</div></div>` : ""}
+  ${pz ? `<div class="frame widget"><div class="label">Puzzle</div><img src="${pz}" alt="Puzzle" style="display:block;width:100%;max-height:100%;object-fit:contain"></div>` : svg ? `<div class="frame widget"><div class="label">${esc(WIDGET_TITLE[s.widget as string] ?? "Activity")}</div>${svg}</div>` : bank.length ? `<div class="frame"><div class="label">Word bank</div><div class="words">${bank.map((w) => `<div class="word">${esc(w)}</div>`).join("")}</div></div>` : ""}
   ${p.BONUS_DOODLE ? `<div class="frame doodle"><div class="label">Bonus doodle</div><p class="prompt">${esc(p.BONUS_DOODLE.replace(/\n+/g, " "))}</p><div class="area"></div></div>` : ""}
 </section>`);
     }

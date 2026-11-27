@@ -42,6 +42,9 @@ function RefChip({ c, on, onToggle }: { c: CharacterRef; on: boolean; onToggle: 
   );
 }
 
+/** Pictures generated since this page was opened (each one uses Netlify AI credits). */
+let generatedThisVisit = 0;
+
 export default function ImageEngine({ book, sectionId, initialPrompt = "", defaultAspect = "portrait", defaultPreset = "coloring", onDone, fail, commit, pinned }: Props) {
   const [provider, setProvider] = useState<ImageProvider>("openai-mini");
   const [quality, setQuality] = useState<"low" | "medium">("low");
@@ -66,6 +69,8 @@ export default function ImageEngine({ book, sectionId, initialPrompt = "", defau
 
   const run = async () => {
     if (!prompt.trim()) { setStatus("Write a prompt first."); return; }
+    if (sectionId && book.images.some((i) => i.sectionId === sectionId && i.provider !== "upload" && i.slot !== "puzzle")
+      && !confirm("This page already has a picture. Generating another uses Netlify credits. Use your $0 prompt in ChatGPT instead, or press OK to generate anyway.")) return;
     setBusy(true);
     setNotes([]);
     setStatus("Starting…");
@@ -75,7 +80,8 @@ export default function ImageEngine({ book, sectionId, initialPrompt = "", defau
         (s) => setStatus(s === "queued" ? "Queued…" : "Drawing… this can take up to a minute"),
       );
       setNotes(job.notes ?? []);
-      setStatus(`Done with ${image.modelUsed}.`);
+      generatedThisVisit += 1;
+      setStatus(`Done with ${image.modelUsed}. ${generatedThisVisit} picture${generatedThisVisit === 1 ? "" : "s"} generated this visit.`);
       onDone(image);
     } catch (e) {
       setStatus("");
@@ -84,7 +90,7 @@ export default function ImageEngine({ book, sectionId, initialPrompt = "", defau
   };
 
   const [upBusy, setUpBusy] = useState(false);
-  const attachOwn = async (f: File | undefined) => {
+  const attachOwn = async (f: File | undefined, slot?: "puzzle") => {
     if (!f || !sectionId) return;
     if (!/^image\/(png|jpeg|webp)$/.test(f.type)) { setStatus("Please choose a PNG or JPG picture."); return; }
     setUpBusy(true); setStatus("Uploading your picture…");
@@ -93,8 +99,8 @@ export default function ImageEngine({ book, sectionId, initialPrompt = "", defau
       const bmp = await createImageBitmap(blob);
       const r = bmp.width / bmp.height; bmp.close();
       const shape: ImageAspect = r > 1.15 ? "landscape" : r < 0.87 ? "portrait" : "square";
-      const image = await uploadSectionImage(book.id, sectionId, blob, shape, preset);
-      setStatus("Your picture is now on this page.");
+      const image = await uploadSectionImage(book.id, sectionId, blob, shape, preset, slot);
+      setStatus(slot ? "Your puzzle is now on this page's worksheet." : "Your picture is now on this page.");
       onDone(image);
     } catch (e) { setStatus(""); fail(e); } finally { setUpBusy(false); }
   };
@@ -160,6 +166,16 @@ export default function ImageEngine({ book, sectionId, initialPrompt = "", defau
               onChange={(e) => { void attachOwn(e.target.files?.[0]); e.target.value = ""; }} />
           </label>
           <p className="hint">This puts the picture on this page. It shows in the pictures below and is the one the PDF and printable book use. The newest picture on a page wins.</p>
+          {book.mode === "activity" && (
+            <>
+              <label className={`btn-alt cursor-pointer ${upBusy ? "pointer-events-none opacity-60" : ""}`}>
+                Use my own PUZZLE picture on this page&rsquo;s worksheet
+                <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" disabled={upBusy}
+                  onChange={(e) => { void attachOwn(e.target.files?.[0], "puzzle"); e.target.value = ""; }} />
+              </label>
+              <p className="hint">The puzzle fills the worksheet box (it replaces the code-drawn widget on that page). Keep letters and numbers out of the picture, or check them closely.</p>
+            </>
+          )}
           <p className="pt-1 text-xs font-semibold text-forest">Or put a picture from the Character Library on this page</p>
           <PutOnPage book={book} sectionId={sectionId} preset={preset} onDone={onDone} fail={fail} />
         </div>

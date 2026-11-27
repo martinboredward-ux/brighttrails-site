@@ -65,7 +65,7 @@ export function defaultScenePrompt(s: Section): string {
   return `${s.title}. ${sentences.slice(0, 2).join(" ")}`.trim();
 }
 
-export type LibKind = "character" | "badge" | "prop" | "cover" | "page";
+export type LibKind = "character" | "badge" | "prop" | "cover" | "page" | "puzzle";
 
 /** Smart starting prompts for the Library's "Generate with AI". */
 export function libraryPrompt(kind: LibKind, name: string, detail = "", color = false): { prompt: string; preset: StylePreset } {
@@ -79,6 +79,8 @@ export function libraryPrompt(kind: LibKind, name: string, detail = "", color = 
       return { preset: line, prompt: `A single circular passport stamp badge for "${n}", centered, large, on a pure white background: a simple bold icon inside a round border with a dashed ring and small stars. Leave any banner or ribbon blank.${d}` };
     case "prop":
       return { preset: line, prompt: `One simple prop or corner emblem for the book: ${n}. Centered, bold outline, plenty of white space around it, readable when small (for example a compass rose with a blank circle at each point).${d}` };
+    case "puzzle":
+      return { preset: line, prompt: `One puzzle picture for the worksheet page: ${n}. Black-and-white coloring-book line art on pure white, wide shape, clear space around every object, NO letters or numbers anywhere (they are added later in code).${d}` };
     case "cover":
       return { preset: "library_color", prompt: `Cover style sample for "${n}": a bright, appealing cover scene with open sky or plain space across the top 30% for the title and a calm band at the bottom for the author name.${d}` };
     default:

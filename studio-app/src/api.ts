@@ -58,8 +58,8 @@ export async function uploadImage(bookId: string, blob: Blob): Promise<string> {
 }
 
 /** Attach a picture made elsewhere (for example ChatGPT) to one page. The server adds it to that section's pictures. */
-export async function uploadSectionImage(bookId: string, sectionId: string, blob: Blob, aspect: ImageAspect, preset: StylePreset): Promise<GeneratedImage> {
-  const res = await fetch(`/api/studio/image?bookId=${encodeURIComponent(bookId)}&sectionId=${encodeURIComponent(sectionId)}&aspect=${aspect}&preset=${preset}`, {
+export async function uploadSectionImage(bookId: string, sectionId: string, blob: Blob, aspect: ImageAspect, preset: StylePreset, slot?: "puzzle"): Promise<GeneratedImage> {
+  const res = await fetch(`/api/studio/image?bookId=${encodeURIComponent(bookId)}&sectionId=${encodeURIComponent(sectionId)}&aspect=${aspect}&preset=${preset}${slot ? "&slot=puzzle" : ""}`, {
     method: "POST",
     headers: { "content-type": blob.type || "image/jpeg", "x-studio-password": getPassword() },
     body: blob,
@@ -72,8 +72,8 @@ export async function uploadSectionImage(bookId: string, sectionId: string, blob
 }
 
 /** Put a Library picture on one page. The server copies it, so the Library item stays untouched. */
-export async function copyLibraryToSection(bookId: string, sectionId: string, fromId: string, label: string, aspect: ImageAspect, preset: StylePreset): Promise<GeneratedImage> {
-  const res = await fetch(`/api/studio/image?bookId=${encodeURIComponent(bookId)}&sectionId=${encodeURIComponent(sectionId)}&copyFrom=${encodeURIComponent(fromId)}&label=${encodeURIComponent(label)}&aspect=${aspect}&preset=${preset}`, {
+export async function copyLibraryToSection(bookId: string, sectionId: string, fromId: string, label: string, aspect: ImageAspect, preset: StylePreset, slot?: "puzzle"): Promise<GeneratedImage> {
+  const res = await fetch(`/api/studio/image?bookId=${encodeURIComponent(bookId)}&sectionId=${encodeURIComponent(sectionId)}&copyFrom=${encodeURIComponent(fromId)}&label=${encodeURIComponent(label)}&aspect=${aspect}&preset=${preset}${slot ? "&slot=puzzle" : ""}`, {
     method: "POST",
     headers: { "x-studio-password": getPassword() },
   });

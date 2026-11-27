@@ -4,7 +4,7 @@ export type Mode = "activity" | "storybook" | "nonfiction";
 export type JobStatus = "idle" | "running" | "done" | "error";
 
 /** A named character picture in the book's Character Library (the picture is in the image store). */
-export type RefKind = "character" | "badge" | "prop" | "cover" | "page";
+export type RefKind = "character" | "badge" | "prop" | "cover" | "page" | "puzzle";
 export interface CharacterRef {
   id: string;
   name: string;
@@ -50,6 +50,8 @@ export interface GeneratedImage {
   stylePreset: StylePreset;
   quality: "low" | "medium";
   createdAt: string;
+  /** "puzzle": the picture fills the worksheet box instead of being the page picture. */
+  slot?: "puzzle";
 }
 
 export type ImageProvider = "openai-mini" | "openai-1.5" | "nano-banana" | "upload";
@@ -101,6 +103,8 @@ export interface Book {
   reviewSelected: string[];
   lastApplied: { kind: "idea" | "qa"; at: string; changes: string[] } | null;
   approvedAt: string;
+  /** Where the book is in the work: idea, writing, art, interior, cover, proof, published. */
+  stage: string;
   ignoredAssetNames: string[];
   cornerPropId: string;
   jobStatus: JobStatus;
@@ -181,6 +185,7 @@ export function newBook(partial: Partial<Book>): Book {
     reviewSelected: [],
     lastApplied: null,
     approvedAt: "",
+    stage: "idea",
     ignoredAssetNames: [],
     cornerPropId: "",
     jobStatus: "idle",
@@ -218,6 +223,7 @@ function normalise(b: Book | null): Book | null {
   b.reviewSelected ??= [];
   b.lastApplied ??= null;
   b.approvedAt ??= "";
+  b.stage ??= "idea";
   b.ignoredAssetNames ??= [];
   b.cornerPropId ??= "";
   if (!["8.5x8.5", "8x10", "8.5x11", "6x9", "5.5x8.5"].includes(b.trim)) b.trim = "8.5x11";

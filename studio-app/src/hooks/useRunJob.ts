@@ -5,10 +5,24 @@ import { startJob } from "../api";
 interface Args { book: Book; save: () => Promise<Book | null>; setBook: Dispatch<SetStateAction<Book | null>>; fail: (e: unknown) => void }
 
 /** Saves the book, then starts a background AI job on it. The app polls until the job finishes. */
+/** What each AI review looked at the last time it ran this visit, so an unchanged book is not reviewed twice. */
+const lastRun = new Map<string, string>();
+const REPEAT_GUARD: Action[] = ["review_book", "pre_review", "market_research", "extract_workbook"];
+const signature = (b: Book) => {
+  const t = JSON.stringify([b.notes, b.styleBible, b.sections.map((s) => [s.title, s.summary, s.draft])]);
+  let h = 0; for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0;
+  return `${t.length}:${h}`;
+};
+
 export function useRunJob({ book, save, setBook, fail }: Args) {
   return async (action: Action, opts: { sectionId?: string; model?: "haiku" | "sonnet"; onlyEmpty?: boolean } = {}) => {
+    const key = `${book.id}:${action}`;
+    const sig = signature(book);
+    if (REPEAT_GUARD.includes(action) && lastRun.get(key) === sig
+      && !confirm("Nothing in the notes, style bible or sections has changed since this ran. Running it again uses Netlify credits and gives the same kind of answer. Run it anyway?")) return;
     const saved = await save();
     if (!saved) return;
+    lastRun.set(key, sig);
     try {
       setBook((b) => (b ? { ...b, jobStatus: "running", jobAction: action, jobError: "" } : b));
       await startJob({ bookId: book.id, action, ...opts });

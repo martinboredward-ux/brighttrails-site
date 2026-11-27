@@ -21,7 +21,7 @@ export interface KdpPackage {
   aPlusModules: APlusModule[];
   warnings?: string[];
 }
-export type RefKind = "character" | "badge" | "prop" | "cover" | "page";
+export type RefKind = "character" | "badge" | "prop" | "cover" | "page" | "puzzle";
 export interface CharacterRef { id: string; name: string; kind: RefKind }
 export interface Book {
   id: string; slug: string; title: string; subtitle: string; mode: Mode; audience: string;
@@ -51,6 +51,8 @@ export interface Book {
   reviewSelected: string[];
   lastApplied: AppliedLog | null;
   approvedAt: string;
+  /** idea, writing, art, interior, cover, proof, published. */
+  stage: string;
   ignoredAssetNames: string[];
   /** Library item of type Prop stamped in the corner of printable pages (for example a Compass Rose). */
   cornerPropId: string;
@@ -63,6 +65,8 @@ export type StylePreset = "coloring" | "storybook" | "cover" | "aplus" | "librar
 export interface GeneratedImage {
   id: string; sectionId?: string; prompt: string; provider: ImageProvider; modelUsed: string;
   aspect: ImageAspect; stylePreset: StylePreset; quality: "low" | "medium"; createdAt: string;
+  /** "puzzle": fills the worksheet box instead of being the page picture. */
+  slot?: "puzzle";
 }
 export type Action = "generate_outline" | "draft_section" | "draft_all" | "review_book" | "extract_workbook" | "market_research" | "pre_review" | "apply_review" | "apply_polish";
 export interface CoverSettings {
