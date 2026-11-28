@@ -47,6 +47,11 @@ export function bibleSummary(bible: string | undefined, cap = 1200): string {
 }
 
 export function wrapPrompt(preset: StylePreset, prompt: string, styleBible?: string): string {
+  // Cut-out sheets get the palette only: the full bible (arches, scenes, layout words) made ChatGPT draw a collage instead of separate cut-outs.
+  if (preset === "cutout") {
+    const pal = /palette\s*\(([^)]+)\)/i.exec(styleBible ?? "")?.[1];
+    return (pal ? `Palette: ${pal}.\n\n` : "") + wrapCore(preset, prompt);
+  }
   return bibleSummary(styleBible) + wrapCore(preset, prompt);
 }
 
@@ -124,6 +129,13 @@ export function defaultScenePrompt(s: Section, mascot = ""): string {
       pose = "standing full body with a happy smile, both arms up cheering, wearing a gold medal";
     }
     return `A single small sticker-style illustration: ${who}, ${ref}, ${pose}${prop}. ${tail} Just ${only}, nothing else on the page, no text.`;
+  }
+  if (s.kind === "cutout") {
+    const t = `${s.title} ${s.summary}`.toLowerCase();
+    const items = /thermometer|banner/.test(t)
+      ? "4 tall vertical progress thermometers (empty tubes with tick marks, nothing filled in) and 5 blank ribbon banners of different shapes (no words)"
+      : "12 separate icons and round badges: a mountain with a flag, a rocket, a stack of gold coins, a briefcase, a target with an arrow, a trophy, a star ribbon rosette, a crown, a lightbulb, a laptop, a key, a rising bar chart";
+    return `${items}. Each item stands alone as a flat sticker with its own clean outline, drawn on its own with about an inch of empty white space around it. No panels, boxes, frames, borders, scenery, landscapes, photos or background tint: only the separate items floating on plain white.`;
   }
   const tagged = parseTagged(s.draft)?.IMAGE_PROMPT?.replace(/\s+/g, " ").trim();
   const counts = countLine(s);
