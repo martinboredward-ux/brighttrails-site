@@ -13,7 +13,7 @@ import { automatedChecks, cleanFixes, diffSummary, parseJson } from "../lib/revi
 export const config: Config = {};
 
 const MODELS = { haiku: "claude-haiku-5-5", sonnet: "claude-sonnet-5-5" } as const;
-type Action = "generate_outline" | "draft_section" | "draft_all" | "review_book" | "extract_workbook" | "market_research" | "pre_review" | "apply_review" | "apply_polish" | "import_review" | "title_ideas" | "originality_review" | "fill_template";
+type Action = "generate_outline" | "draft_section" | "draft_all" | "review_book" | "extract_workbook" | "market_research" | "pre_review" | "apply_review" | "apply_polish" | "import_review" | "title_ideas" | "originality_review" | "fill_template" | "fill_details" | "shorten_section" | "split_section";
 
 interface Payload {
   bookId: string;
@@ -53,14 +53,18 @@ Notes: ${b.notes || "(none)"}`;
 let currentAction = "job";
 const gemini = (prompt: string, json = false) => geminiGenerate(prompt, { json, label: currentAction });
 
-async function claude(prompt: string, which: keyof typeof MODELS): Promise<string> {
+let lastStop: string | null = null;
+const wordCount = (s: string) => (s.match(/\S+/g) ?? []).length;
+
+async function claude(prompt: string, which: keyof typeof MODELS, maxTokens = 4000): Promise<string> {
   const client = new Anthropic();
   await logUsage(`text:${MODELS[which] ?? MODELS.haiku}:${currentAction}`);
   const msg = await client.messages.create({
     model: MODELS[which] ?? MODELS.haiku,
-    max_tokens: 4000,
+    max_tokens: maxTokens,
     messages: [{ role: "user", content: prompt }],
   });
+  lastStop = msg.stop_reason ?? null;
   return msg.content
     .map((c) => (c.type === "text" ? c.text : ""))
     .join("")
@@ -121,6 +125,24 @@ const CLEAN_RULES = `STRICT RULES
 - Keep the main character exactly as described in the style bible.
 - Write only content the child or the adult will read or use.`;
 
+/** Planner pages are single printed pages: about 250 words, never more than 300. */
+const PLANNER_LIMIT = 300;
+const PLANNER_PAGE_RULE = `PAGE BUDGET (hard rule): this section is ONE printed 8.5x11 page. Write at most 250 words, never more than ${PLANNER_LIMIT}. If the summary describes several pages, write only the first page's worth and finish cleanly; the other pages are separate sections. Always end on a complete sentence. No coloring-book or child wording.`;
+
+async function shortenText(text: string, limit: number, which: keyof typeof MODELS, title: string): Promise<string> {
+  return claude(
+    `Rewrite the text below so it fits ONE printed page: at most ${limit} words (aim for about ${Math.round(limit * 0.85)}).
+Keep the same Markdown structure and headings style, keep the most useful guidance, drop repetition and filler. If the text is cut off mid-sentence or mid-table, finish the thought briefly and cleanly. Do not add a preamble or notes. Return ONLY the rewritten page.
+
+PAGE TITLE: ${title}
+
+TEXT:
+${text}`,
+    which,
+    3000,
+  );
+}
+
 async function draftOne(book: Book, idx: number, which: keyof typeof MODELS, ctx: string): Promise<string> {
   const section = book.sections[idx];
   const prev = book.sections
@@ -128,7 +150,8 @@ async function draftOne(book: Book, idx: number, which: keyof typeof MODELS, ctx
     .map((s) => `## ${s.title}\n${s.draft || s.summary}`)
     .join("\n\n");
   const tagged = TAGGED_MODES.has(book.mode);
-  return claude(
+  const planner = book.mode === "planner";
+  const out = await claude(
     `${ctx}
 
 STYLE BIBLE
@@ -141,9 +164,13 @@ WRITE THIS SECTION
 Title: ${section.title}
 Summary: ${section.summary}
 
-${tagged ? `${formatFor(book.mode)}\n\n${CLEAN_RULES}` : "Write the full spec for this section as clean Markdown, following the mode guidance above. Keep to the style bible. Do not mention these instructions."}`,
+${tagged ? `${formatFor(book.mode)}\n\n${CLEAN_RULES}` : "Write the full spec for this section as clean Markdown, following the mode guidance above. Keep to the style bible. Do not mention these instructions."}${planner ? `\n\n${PLANNER_PAGE_RULE}` : ""}`,
     which,
+    planner ? 1800 : 4000,
   );
+  // Safety net: if the AI ran out of room or wrote too much for one page, shorten it once.
+  if (planner && (lastStop === "max_tokens" || wordCount(out) > PLANNER_LIMIT + 40)) return shortenText(out, PLANNER_LIMIT, which, section.title);
+  return out;
 }
 
 async function setJob(id: string, patch: Partial<Book>): Promise<Book | null> {
@@ -195,6 +222,45 @@ Create the working plan for this book. Return ONLY JSON: {"styleBible": string, 
       const text = await draftOne(book, idx, which, ctx);
       const sections = book.sections.map((s, i) => (i === idx ? { ...s, draft: text } : s));
       return { sections };
+    }
+
+    case "shorten_section": {
+      const idx = book.sections.findIndex((s) => s.id === p.sectionId);
+      if (idx < 0) throw new Error("Section not found");
+      const cur = book.sections[idx];
+      if (!cur.draft.trim()) throw new Error("This section has no text to shorten.");
+      const text = await shortenText(cur.draft, PLANNER_LIMIT, which, cur.title);
+      if (!text) throw new Error("The AI returned nothing. Nothing was changed.");
+      return { sections: book.sections.map((s, i) => (i === idx ? { ...s, draft: text } : s)) };
+    }
+
+    case "split_section": {
+      const idx = book.sections.findIndex((s) => s.id === p.sectionId);
+      if (idx < 0) throw new Error("Section not found");
+      const cur = book.sections[idx];
+      const source = (cur.draft.trim() || cur.summary).trim();
+      if (wordCount(source) < 120) throw new Error("This section is short enough already.");
+      const n = Math.min(6, Math.max(2, Math.ceil(wordCount(source) / 250)));
+      const raw = await claude(
+        `${ctx}
+
+Split the planner section below into ${n} separate printed pages, in order. Each page: a short clear title, and at most 250 words of page text (never more than ${PLANNER_LIMIT}). Keep the same Markdown style. Keep the best guidance from the source; if the source is cut off mid-sentence or mid-table, finish that thought briefly. No coloring-book or child wording.
+Return ONLY JSON: [{"title": string, "draft": string}] with exactly ${n} items.
+
+SECTION TITLE: ${cur.title}
+
+SOURCE:
+${source}`,
+        which,
+        6000,
+      );
+      let parts: { title?: string; draft?: string }[];
+      try { parts = JSON.parse(raw.replace(/^```(?:json)?|```$/g, "").trim()); } catch { throw new Error("The AI's answer could not be read. Nothing was changed; try again."); }
+      parts = (Array.isArray(parts) ? parts : []).filter((x) => x && String(x.draft ?? "").trim());
+      if (parts.length < 2) throw new Error("The AI did not split the section. Nothing was changed; try again.");
+      const stamp = Date.now().toString(36);
+      const made: Section[] = parts.map((x, k) => ({ ...cur, id: `${stamp}${k}`, title: String(x.title ?? `${cur.title} (${k + 1}/${parts.length})`).trim() || `${cur.title} (${k + 1})`, summary: k === 0 ? cur.summary : "", draft: String(x.draft).trim() }));
+      return { sections: [...book.sections.slice(0, idx), ...made, ...book.sections.slice(idx + 1)] };
     }
 
     case "draft_all": {

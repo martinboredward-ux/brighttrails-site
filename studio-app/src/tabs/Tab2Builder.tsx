@@ -228,6 +228,12 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
                   {i + 1}. {s.title} {s.draft ? <span className="text-xs font-normal text-green">· drafted</span> : null}
                 </TooltipButton>
                 <TooltipButton className="btn-alt !px-3 !py-1" disabled={running || s.kind === "coloring" || s.kind === "cutout" || s.kind === "picture" || !!s.tpl} tip={s.kind === "coloring" || s.kind === "cutout" ? "A picture-only page has no text to draft." : s.tpl ? "Template pages are written with Fill the words with AI." : undefined} onClick={() => run("draft_section", s.id)}>Draft</TooltipButton>
+                {book.mode === "planner" && !s.tpl && s.kind !== "cutout" && s.kind !== "picture" && (s.draft.match(/\S+/g) ?? []).length > 300 && (
+                  <>
+                    <TooltipButton className="btn !px-3 !py-1" disabled={running} tip={`${(s.draft.match(/\S+/g) ?? []).length} words: more than one printed page holds (about 300). Rewrites it to fit one page.`} onClick={() => run("shorten_section", s.id)}>Shorten to fit</TooltipButton>
+                    <TooltipButton className="btn-alt !px-3 !py-1" disabled={running} tip="Splits this long section into page-sized sections, keeping the content." onClick={() => { if (window.confirm("Split this section into several page-sized sections? The original is replaced (a restore point is saved first).")) void run("split_section", s.id); }}>Split into pages</TooltipButton>
+                  </>
+                )}
                 <TooltipButton className="btn-alt !px-3 !py-1" onClick={() => copy(s.id, hybridPrompt("section", s))}>{copied === s.id ? "Copied" : "$0 prompt"}</TooltipButton>
                 <TooltipButton className="text-xs underline" onClick={() => flag(s.id, s.title)}>Flag for Claude</TooltipButton>
                 <TooltipButton className="text-xs text-accent underline" disabled={running} onClick={() => update({ sections: book.sections.filter((x) => x.id !== s.id) })}>Remove</TooltipButton>
@@ -270,7 +276,7 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
                   <textarea className="field min-h-16" value={s.summary} readOnly={running} onChange={(e) => setSection(s.id, { summary: e.target.value })} placeholder="Summary" />
                   {!s.tpl && s.kind !== "cutout" && s.kind !== "picture" && <textarea className="field min-h-48 font-mono" value={s.draft} readOnly={running} onChange={(e) => setSection(s.id, { draft: e.target.value })} placeholder="Draft spec (paste from your web chat or let the Draft button write it)" />}
                   <h3 className="pt-1 text-sm font-bold text-forest">Pictures for this section</h3>
-                  <ImageEngine key={`${s.id}:${defaultScenePrompt(s, mascotName(book))}`} book={book} sectionId={s.id} initialPrompt={defaultScenePrompt(s, mascotName(book))} defaultAspect={book.trim === "8.5x8.5" ? "square" : book.mode === "activity" || newMode ? "portrait" : "landscape"} defaultPreset={presetFor(s)} onDone={addImage} fail={fail} commit={commit} pinned={pins[s.id]} />
+                  <ImageEngine key={`${s.id}:${defaultScenePrompt(s, mascotName(book), book.mode)}`} book={book} sectionId={s.id} initialPrompt={defaultScenePrompt(s, mascotName(book), book.mode)} defaultAspect={book.trim === "8.5x8.5" ? "square" : book.mode === "activity" || newMode ? "portrait" : "landscape"} defaultPreset={presetFor(s)} onDone={addImage} fail={fail} commit={commit} pinned={pins[s.id]} />
                   <ImageGallery book={book} images={book.images.filter((i) => i.sectionId === s.id)} selected={pdfPick} onToggle={togglePick} onCharacter={toggleLibrary} onRemoved={removeImage} fail={fail} />
                   <PictureCheck book={book} sectionId={s.id} fail={fail} />
                 </div>

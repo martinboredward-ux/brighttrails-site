@@ -62,8 +62,8 @@ function wrapCore(preset: StylePreset, prompt: string): string {
     case "library_bw": return `Black-and-white children's book art on a PURE WHITE background: clean uniform black outlines, hollow shapes ready for coloring, no gray shading, no stippling, no solid black fills, no lettering or numbers. Subject: ${p}`;
     case "library_color": return `Warm, friendly children's picture-book art on a plain white background: flat storybook colors, clean outlines, no lettering or numbers. Subject: ${p}`;
     case "cover": return `${COVER_SAFE} Subject: ${p}`;
-    case "planner": return `Modern full-color editorial illustration for an adult planner: refined palette, crisp elegant contours, generous negative space and margins, polished professional look. NOT a kids or cartoon style, no coloring-book outlines, no text or lettering. Subject: ${p}`;
-    case "cutout": return `Full-color cut-out clip-art sheet on a PURE WHITE background: several separate icons or badges with clean outlines, generous empty space between every item, nothing touching the page edge, one consistent refined palette, no text or lettering. Subject: ${p}`;
+    case "planner": return `Modern full-color editorial illustration for an adult planner: refined palette, crisp elegant contours, generous negative space and margins, polished professional look. NOT a kids or cartoon style, no coloring-book outlines. ONE single scene or subject only: no collage, no photo grid, no panels, no boxes, lines, charts, checklists, notebooks or planner mockups, no labels, text or lettering. Subject: ${p}`;
+    case "cutout": return `Full-color cut-out clip-art sheet on a PURE WHITE background: several separate icons, badges or photo tiles, generous empty space between every item, every item at least half an inch from the page edges, one consistent refined palette, no text or lettering, no cards or poster panels. Subject: ${p}`;
     case "aplus": return `Clean marketing illustration for an online book listing, uncluttered, friendly, no text or lettering. Subject: ${p}`;
     default: return `Warm, friendly children's picture book illustration, soft colors, clear simple shapes, no text or lettering. Scene: ${p}`;
   }
@@ -105,7 +105,7 @@ export function mascotName(book: { characters?: { name: string; kind?: string }[
   return (book.characters ?? []).find((c) => (c.kind ?? "character") === "character")?.name?.trim() || "the mascot";
 }
 
-export function defaultScenePrompt(s: Section, mascot = ""): string {
+export function defaultScenePrompt(s: Section, mascot = "", mode = ""): string {
   // Tracing pages (letters, numbers, warm-ups, name, certificate): Studio draws the letters, numbers, strokes and rows in code, so the picture is the mascot only.
   if (s.tpl && PICTURE_TPLS.includes(s.tpl)) {
     const who = mascot || "the mascot";
@@ -132,10 +132,22 @@ export function defaultScenePrompt(s: Section, mascot = ""): string {
   }
   if (s.kind === "cutout") {
     const t = `${s.title} ${s.summary}`.toLowerCase();
-    const items = /thermometer|banner/.test(t)
+    const items = /photo|tile/.test(t)
+      ? "12 separate small photographs as clean rectangles with a thin gold edge (about 2 inches wide), each a different calm lifestyle scene: a modern home with a pool, a sailboat on blue water, a yoga mat and water bottle by a window, a city skyline at sunset, a laptop and coffee on a marble desk, gold coins with a rising chart, a mountain trail, a garden terrace with two glasses, an art studio table, a family table, a quiet beach, a luxury suitcase and passport"
+      : /thermometer|banner/.test(t)
       ? "4 tall vertical progress thermometers (empty tubes with tick marks, nothing filled in) and 5 blank ribbon banners of different shapes (no words)"
-      : "12 separate icons and round badges: a mountain with a flag, a rocket, a stack of gold coins, a briefcase, a target with an arrow, a trophy, a star ribbon rosette, a crown, a lightbulb, a laptop, a key, a rising bar chart";
-    return `Tall portrait page (2:3, taller than wide), items in a neat grid with even spacing: ${items}. Each item stands alone as a flat sticker with its own clean outline, drawn on its own with about an inch of empty white space around it. No panels, boxes, frames, borders, scenery, landscapes, photos or background tint: only the separate items floating on plain white.`;
+      : "20 separate icons and badges: a mountain with a flag, a rocket, a stack of gold coins, a briefcase, a target with an arrow, a trophy, a star ribbon rosette, a crown, a lightbulb, a laptop, a key, a rising bar chart, a calendar with check marks, a shield badge, a graduation cap on books, gold bars, a modern house, an office building, a chess king piece, a presentation easel";
+    const photo = /photo|tile/.test(t);
+    const tail = photo
+      ? "Each photograph is its own separate small rectangle with about an inch of empty white space around it, nothing overlapping. No poster panel, no frame around the whole page, no words."
+      : "Each item stands alone as a flat sticker with its own clean outline, drawn on its own with about an inch of empty white space around it. No panels, boxes, frames, borders, scenery, landscapes or background tint, no words: only the separate items floating on plain white, every item at least half an inch from the page edges.";
+    return `Tall portrait page (2:3, taller than wide), items in a neat grid with even spacing: ${items}. ${tail}`;
+  }
+  if (mode === "planner" && s.kind !== "template") {
+    // Planner pictures are one calm scene. Layout words from the page spec (canvas, matrix, checklist...) made the AI draw whole collages.
+    const clean = s.title.replace(/^(?:part|phase|section)\s*\d+\s*[:.\-–]\s*/i, "").replace(/visual cut-?out asset vault\s*[–-]\s*/i, "").replace(/\b(canvas|matrix|tracker|checklist|sprints?|audit|deliverables|architecture)\b/gi, "").replace(/\s*&\s*/g, ", ").replace(/\s+/g, " ").replace(/[,\s]+$/, "").trim();
+    const first = `${s.summary}`.split(/(?<=[.!?])\s+/).find((x) => x.trim() && !NOT_A_SCENE.test(x) && !/collage|checklist|matrix|canvas|tracker|table|grid|panel|box|line/i.test(x));
+    return `One single calm editorial scene that evokes: ${clean || s.title}.${first ? ` ${first.trim()}` : ""} A cohesive lifestyle or architectural scene with real depth, no layout elements of any kind.`;
   }
   const tagged = parseTagged(s.draft)?.IMAGE_PROMPT?.replace(/\s+/g, " ").trim();
   const counts = countLine(s);

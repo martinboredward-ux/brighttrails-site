@@ -98,7 +98,7 @@ function ArtPack({ book }: { book: Book }) {
       const refs = lib.filter((c) => new RegExp(`\\b${c.name.split(" ")[0]}\\b`, "i").test(`${s.title} ${s.summary} ${s.draft}`)).map((c) => c.name);
       lines.push(`\n[${n}-${s.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase().replace(/^-|-$/g, "")}.png]${have}`);
       if (refs.length) lines.push(`Attach reference pictures: ${refs.join(", ")}`);
-      lines.push(wrapPrompt(book.mode === "planner" ? (s.kind === "cutout" ? "cutout" : "planner") : preset, defaultScenePrompt(s, mascotName(book)), book.styleBible));
+      lines.push(wrapPrompt(book.mode === "planner" ? (s.kind === "cutout" ? "cutout" : "planner") : preset, defaultScenePrompt(s, mascotName(book), book.mode), book.styleBible));
     });
     download(`${book.slug}-art-pack.txt`, new Blob([lines.join("\n")], { type: "text/plain" }));
   };

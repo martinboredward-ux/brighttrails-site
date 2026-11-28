@@ -92,7 +92,7 @@ export interface BookStudio {
   sentPages?: Record<string, string>;
 }
 export interface TitleIdeas { at: string; options: { title: string; subtitle: string; why: string }[]; searches: string[]; results?: string }
-export type Action = "generate_outline" | "draft_section" | "draft_all" | "review_book" | "extract_workbook" | "market_research" | "pre_review" | "apply_review" | "apply_polish" | "import_review" | "title_ideas" | "originality_review" | "fill_template" | "fill_details";
+export type Action = "generate_outline" | "draft_section" | "draft_all" | "review_book" | "extract_workbook" | "market_research" | "pre_review" | "apply_review" | "apply_polish" | "import_review" | "title_ideas" | "originality_review" | "fill_template" | "fill_details" | "shorten_section" | "split_section";
 export interface CoverSettings {
   title?: string; subtitle?: string; author?: string; seriesPill?: string;
   pageCount?: number; trim?: Trim; paper?: PaperType;

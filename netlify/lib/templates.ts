@@ -57,6 +57,7 @@ export const PLANNER_PACK: PackItem[] = [
   { title: "Cut-Out Sheet 1: Icons & Badges", kind: "cutout", summary: "Full-color cut-out icons and badges, single-sided." },
   { title: "Cut-Out Sheet 2: Thermometers & Banners", kind: "cutout", summary: "Full-color cut-out progress thermometers and banners, single-sided." },
   { title: "Cut-Out Sheet 3: Quote Boxes", tpl: "quotes", kind: "template", summary: "Affirmation boxes to cut out." },
+  { title: "Cut-Out Sheet 4: Photo Tiles", kind: "cutout", summary: "Full-color cut-out photo tiles for the vision board, single-sided." },
 ];
 
 /** Stroke order for the letter spreads. Each stroke is a polyline in a 0-100 box (y down). Phrases are the four allowed cues. */

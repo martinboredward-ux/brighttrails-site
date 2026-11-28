@@ -31,8 +31,8 @@ const WRAPPERS: Record<StylePreset, (p: string) => string> = {
   coloring: (p) => `${COLORING_WRAPPER} ${COLORING_GUARDRAIL} Subject: ${p}`,
   storybook: (p) => `Warm, friendly children's picture book illustration, soft colors, clear simple shapes, no text or lettering. Scene: ${p}`,
   cover: (p) => `Bright, appealing children's book COVER artwork, no lettering of any kind. COMPOSITION CRITICAL: Place the character and kite (or other main subject) smaller in the LOWER 60% of the frame (below the horizontal midline). The entire TOP 35-40% MUST be completely empty open sky and soft clouds ONLY: no character head, hair, hands, kite tips or objects in the top 35%. Keep faces clear and fully visible, keep the bottom 12% a simple calm ground area, and make the scene still work if the edges are trimmed. Subject: ${p}`,
-  planner: (p) => `Modern full-color editorial illustration for an adult planner: refined palette, crisp elegant contours, generous negative space and margins, polished professional look. NOT a kids or cartoon style, no coloring-book outlines, no text or lettering. Subject: ${p}`,
-  cutout: (p) => `Full-color cut-out clip-art sheet on a PURE WHITE background: several separate icons or badges with clean outlines, generous empty space between every item, nothing touching the page edge, one consistent refined palette, no text or lettering. Subject: ${p}`,
+  planner: (p) => `Modern full-color editorial illustration for an adult planner: refined palette, crisp elegant contours, generous negative space and margins, polished professional look. NOT a kids or cartoon style, no coloring-book outlines. ONE single scene or subject only: no collage, no photo grid, no panels, no boxes, lines, charts, checklists, notebooks or planner mockups, no labels, text or lettering. Subject: ${p}`,
+  cutout: (p) => `Full-color cut-out clip-art sheet on a PURE WHITE background: several separate icons, badges or photo tiles, generous empty space between every item, every item at least half an inch from the page edges, one consistent refined palette, no text or lettering, no cards or poster panels. Subject: ${p}`,
   aplus: (p) => `Clean marketing illustration for an online book listing, uncluttered, friendly, no text or lettering. Subject: ${p}`,
 };
 
@@ -75,6 +75,11 @@ export function bibleSummary(bible: string | undefined, cap = 1200): string {
 }
 
 export function wrapPrompt(preset: StylePreset, prompt: string, styleBible?: string): string {
+  // Cut-out sheets get the palette only: the full bible (arches, scenes, layout words) made the AI draw a collage.
+  if (preset === "cutout") {
+    const pal = /palette\s*\(([^)]+)\)/i.exec(styleBible ?? "")?.[1];
+    return (pal ? `Palette: ${pal}.\n\n` : "") + WRAPPERS.cutout(prompt.trim());
+  }
   return bibleSummary(styleBible) + (WRAPPERS[preset] ?? WRAPPERS.storybook)(prompt.trim());
 }
 
