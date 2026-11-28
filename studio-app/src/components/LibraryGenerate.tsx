@@ -23,16 +23,18 @@ const ENGINES: { id: ImageProvider; label: string }[] = [
 ];
 
 /** Generate a character, badge or prop straight into the Library (or copy a free prompt). */
+const PRESET_LABEL: Record<string, string> = { library_bw: "black-and-white line art", library_color: "full-color storybook art", planner: "refined full-color planner illustration", cutout: "full-color clip-art icon on white" };
+
 export default function LibraryGenerate({ book, commit, fail, initial, compact, onAdded }: Props) {
   const [name, setName] = useState(initial?.name ?? "");
   const [kind, setKind] = useState<RefKind>(initial?.kind ?? "character");
   const [detail, setDetail] = useState(initial?.detail ?? "");
   const [provider, setProvider] = useState<ImageProvider>("openai-mini");
-  const [color, setColor] = useState(book.mode === "storybook");
+  const [color, setColor] = useState(book.mode === "storybook" || book.mode === "planner" || book.mode === "gamebook");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
   const lib = book.characters ?? [];
-  const spec = libraryPrompt(kind, name, detail, color);
+  const spec = libraryPrompt(kind, name, detail, color || book.mode === "planner", book.mode);
 
   const run = async () => {
     if (!name.trim()) { setStatus("Type a name first."); return; }
@@ -88,7 +90,7 @@ export default function LibraryGenerate({ book, commit, fail, initial, compact, 
       <label className="block text-xs text-muted">Describe it (optional)
         <textarea className="field mt-1 min-h-16" value={detail} onChange={(e) => setDetail(e.target.value)} placeholder="Looks, clothes, colors, anything that must stay the same" />
       </label>
-      <p className="hint">Preset: {kind === "character" ? "black-and-white turnaround sheet" : kind === "badge" ? "circular black-and-white passport stamp on pure white" : kind === "prop" ? "single black-and-white prop or compass" : kind === "cover" ? "color cover sample" : kind === "puzzle" ? "black-and-white puzzle picture, no lettering" : "page design"}.</p>
+      <p className="hint">Preset: {PRESET_LABEL[spec.preset] ?? spec.preset}{book.mode === "planner" ? " (adult planner style; this book is full color)" : ""}.</p>
       <div className="flex flex-wrap items-center gap-2">
         <TooltipButton type="button" className="btn" onClick={run} disabled={busy}>{busy ? "Generating…" : "Generate to Library"}</TooltipButton>
         <TooltipButton type="button" className="btn-alt" onClick={copy}>$0 Copy Prompt</TooltipButton>

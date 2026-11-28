@@ -82,7 +82,7 @@ export default function AssetDetector({ book, commit, fail, pins, onPin }: Props
         <p className="hint">Dismissed: {(book.ignoredAssetNames ?? []).join(", ")}. <TooltipButton type="button" className="underline" onClick={() => void commit({ ignoredAssetNames: [] })}>Show them again</TooltipButton></p>
       )}
 
-      {passportMissing > 0 && book.sections.length > 0 && (
+      {passportMissing > 0 && book.sections.length > 0 && book.mode !== "planner" && book.mode !== "tracing" && (
         <details className="rounded-lg border border-line p-3">
           <summary className="cursor-pointer text-sm font-bold text-forest">Explorer Passport: {badges.length} of {book.sections.length} badge slots filled from the Library</summary>
           <p className="hint mt-2">The passport page uses your Library items of type Badge, in order. Empty slots print a plain stamp. Make the rest here:</p>

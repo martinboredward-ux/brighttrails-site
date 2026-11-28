@@ -105,7 +105,14 @@ export function defaultScenePrompt(s: Section): string {
 export type LibKind = "character" | "badge" | "prop" | "cover" | "page" | "puzzle";
 
 /** Smart starting prompts for the Library's "Generate with AI". */
-export function libraryPrompt(kind: LibKind, name: string, detail = "", color = false): { prompt: string; preset: StylePreset } {
+export function libraryPrompt(kind: LibKind, name: string, detail = "", color = false, mode = ""): { prompt: string; preset: StylePreset } {
+  const r = libraryPromptBase(kind, name, detail, color);
+  // Adult planners: refined full-color planner art (badges and props as clean clip-art), never the kids' storybook style.
+  if (mode === "planner" && kind !== "puzzle" && kind !== "cover") return { prompt: r.prompt.replace(/ Full color in the book's storybook palette\./, " Full color in a refined planner palette.").replace(/Black-and-white coloring-book line art on pure white/, "Refined full-color illustration on pure white"), preset: kind === "badge" || kind === "prop" ? "cutout" : "planner" };
+  return r;
+}
+
+function libraryPromptBase(kind: LibKind, name: string, detail = "", color = false): { prompt: string; preset: StylePreset } {
   const line: StylePreset = color ? "library_color" : "library_bw";
   const n = name.trim() || "the item";
   const d = detail.trim() ? ` ${detail.trim().replace(/\s+/g, " ")}` : "";
