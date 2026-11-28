@@ -64,7 +64,8 @@ export default async (req: Request): Promise<Response> => {
     const payload = { jobId, bookId, provider, quality, aspect, stylePreset, prompt, referenceImageIds, sectionId };
     const start = await fetch(new URL("/.netlify/functions/studio-generate-image-background", req.url), {
       method: "POST",
-      headers: { "content-type": "application/json", "x-studio-password": req.headers.get("x-studio-password") ?? "" },
+      // The browser cookie is passed on so Netlify password protection on preview deploys lets this internal call through.
+      headers: { "content-type": "application/json", "x-studio-password": req.headers.get("x-studio-password") ?? "", ...(req.headers.get("cookie") ? { cookie: req.headers.get("cookie") as string } : {}) },
       body: JSON.stringify(payload),
     });
     if (!start.ok && start.status !== 202) {
