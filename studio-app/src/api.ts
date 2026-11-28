@@ -142,3 +142,7 @@ export interface StudioSettings { reserved: Reserved; limits: { imagesPerDay: nu
 export const getSettings = () => call<StudioSettings>("/api/studio/settings");
 export const putSettings = (p: { reserved?: Reserved; limits?: { imagesPerDay: number } }) =>
   call<StudioSettings>("/api/studio/settings", { method: "PUT", body: JSON.stringify(p) });
+
+export interface PictureCheck { ok: boolean; summary: string; checks: { what: string; wanted: string; seen: string; pass: boolean }[]; fix: string }
+export const pictureCheck = (bookId: string, sectionId: string, imageId: string) =>
+  call<PictureCheck>("/api/studio/picture-check", { method: "POST", body: JSON.stringify({ bookId, sectionId, imageId }) });

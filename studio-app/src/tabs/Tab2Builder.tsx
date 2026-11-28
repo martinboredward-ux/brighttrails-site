@@ -19,6 +19,7 @@ import BulkUpload from "../components/BulkUpload";
 import PolishPanel from "../components/PolishPanel";
 import JobStatus from "../components/JobStatus";
 import ReservedScan from "../components/ReservedScan";
+import PictureCheck from "../components/PictureCheck";
 import { useRunJob } from "../hooks/useRunJob";
 import { TooltipButton } from "../components/TooltipButton";
 
@@ -223,6 +224,7 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
                   <h3 className="pt-1 text-sm font-bold text-forest">Pictures for this section</h3>
                   <ImageEngine key={`${s.id}:${defaultScenePrompt(s)}`} book={book} sectionId={s.id} initialPrompt={defaultScenePrompt(s)} defaultAspect={book.trim === "8.5x8.5" ? "square" : book.mode === "activity" ? "portrait" : "landscape"} defaultPreset={book.mode === "activity" ? "coloring" : "storybook"} onDone={addImage} fail={fail} commit={commit} pinned={pins[s.id]} />
                   <ImageGallery book={book} images={book.images.filter((i) => i.sectionId === s.id)} selected={pdfPick} onToggle={togglePick} onCharacter={toggleLibrary} onRemoved={removeImage} fail={fail} />
+                  <PictureCheck book={book} sectionId={s.id} fail={fail} />
                 </div>
               )}
             </li>
