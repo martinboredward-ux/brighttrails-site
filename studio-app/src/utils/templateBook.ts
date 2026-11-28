@@ -197,7 +197,9 @@ export async function buildTemplateBook(book: Book, opts: TemplateBookOptions = 
   for (const s of book.sections) {
     const pic = imgs.get(s.id);
     PIC = pic ?? "";
-    if (s.kind === "picture") { body.push(page("fullpic", pic ? `<img src="${pic}" alt="${esc(s.title)}">` : `<div class="hint">Full-page picture not added yet for: ${esc(s.title)}</div>`)); continue; }
+    // In a planner, a plain written page that has a picture is a finished page made in ChatGPT: print the picture alone, never cropped, without its planning notes.
+    const asPicture = s.kind === "picture" || (book.mode === "planner" && !s.kind && !s.tpl && !!pic);
+    if (asPicture) { body.push(page("fullpic", pic ? `<img src="${pic}" alt="${esc(s.title)}">` : `<div class="hint">Full-page picture not added yet for: ${esc(s.title)}</div>`)); continue; }
     if (s.kind === "cutout") { body.push(page("cutpic", pic ? `<img src="${pic}" alt="${esc(s.title)}">` : `<div class="hint">Cut-out picture not added yet for: ${esc(s.title)}</div>`), `<section class="page blank" aria-label="Blank back of cut-out sheet"></section>`); continue; }
     if (book.mode === "gamebook") {
       const n = nums.get(s.id) ?? 0;
