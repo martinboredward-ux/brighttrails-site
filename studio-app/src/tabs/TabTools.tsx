@@ -11,7 +11,7 @@ import { bibleSummary, defaultScenePrompt, mascotName, wrapPrompt } from "../ima
 import { findCandidates } from "../utils/assetDetector";
 import { pagePicture } from "../utils/checks";
 import { DEFAULT_LEAD, INTERIOR_LABEL, KDP_COST_NOTE, KDP_REMINDERS, LAUNCH_STEPS, addFlag, bookType, flagsText, isLargeTrim, launchProgress, meta, minPrice, printCost, removeFlag, restoreSnapshot, royalty, seasonPlan, setFlagDone, withSnapshot, type InteriorType } from "../utils/studioMeta";
-import { CLAIM_WORDS } from "../../../netlify/lib/templates";
+import { CLAIM_WORDS, PICTURE_TPLS } from "../../../netlify/lib/templates";
 
 interface Props {
   book: Book;
@@ -92,7 +92,7 @@ function ArtPack({ book }: { book: Book }) {
     lines.push("");
     lines.push("== PAGES ==");
     book.sections.forEach((s, i) => {
-      if (s.kind === "template" && s.tpl !== "letter") return;
+      if (s.kind === "template" && !(s.tpl && PICTURE_TPLS.includes(s.tpl))) return;
       const n = String(i + 1).padStart(2, "0");
       const have = pagePicture(book, s) ? " (already has a picture)" : "";
       const refs = lib.filter((c) => new RegExp(`\\b${c.name.split(" ")[0]}\\b`, "i").test(`${s.title} ${s.summary} ${s.draft}`)).map((c) => c.name);

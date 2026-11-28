@@ -245,7 +245,7 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
                       </select>
                     </label>
                   )}
-                  {s.tpl && <TemplateSection s={s} locked={running} onChange={(p) => setSection(s.id, p)} />}
+                  {s.tpl && <TemplateSection s={s} locked={running} onChange={(p) => setSection(s.id, p)} onFill={() => void run("fill_template", s.id)} />}
                   {!newMode && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={s.kind === "coloring"} onChange={(e) => setSection(s.id, { kind: e.target.checked ? "coloring" : undefined })} /> Coloring page: picture only, no text (a blank back is added)</label>}
                   {book.mode === "activity" && (
                     <div className="grid gap-2 sm:grid-cols-2">

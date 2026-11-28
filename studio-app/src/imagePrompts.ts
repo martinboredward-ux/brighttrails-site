@@ -1,5 +1,5 @@
 export const COVER_SAFE = "Bright, appealing children's book COVER artwork, no lettering of any kind. COMPOSITION CRITICAL: Place the character and kite (or other main subject) smaller in the LOWER 60% of the frame (below the horizontal midline). The entire TOP 35-40% MUST be completely empty open sky and soft clouds ONLY: no character head, hair, hands, kite tips or objects in the top 35%. Keep faces clear and fully visible, keep the bottom 12% a simple calm ground area, and make the scene still work if the edges are trimmed. FULL SUBJECT IN FRAME (critical): show the WHOLE subject, never cropped by any edge: for a vehicle, every wheel, the bumper and the ground under it must be visible with clear empty ground below it (at least 10% of the picture height) and clear space on both sides; zoom OUT and draw the subject smaller rather than let any part touch or leave the bottom or side edges.";
-import { LETTER_WORDS } from "../../netlify/lib/templates";
+import { LETTER_WORDS, NUMBER_ITEMS, PICTURE_TPLS, WARMUPS } from "../../netlify/lib/templates";
 import type { Section, StylePreset } from "./types";
 import { parseTagged } from "./printableBook";
 
@@ -101,12 +101,29 @@ export function mascotName(book: { characters?: { name: string; kind?: string }[
 }
 
 export function defaultScenePrompt(s: Section, mascot = ""): string {
-  // Tracing letter pages: Studio draws the letter, strokes and practice rows in code, so the picture must be the mascot only.
-  if (s.tpl === "letter") {
-    const ch = (s.data?.letter ?? s.title.replace(/^Letter\s+/i, "")[0] ?? "A").toUpperCase();
-    const word = LETTER_WORDS[ch] ?? "";
+  // Tracing pages (letters, numbers, warm-ups, name, certificate): Studio draws the letters, numbers, strokes and rows in code, so the picture is the mascot only.
+  if (s.tpl && PICTURE_TPLS.includes(s.tpl)) {
     const who = mascot || "the mascot";
-    return `A single small sticker-style illustration: ${who}, the mascot from the attached reference picture (copy it exactly: same animal, face, ears, headband and outfit), standing full body with a happy smile and one hand pointing to the right${word ? `, next to one small ${word}` : ""}. Black-and-white clean line art, drawn large so the character and prop fill about two-thirds of the picture, centered on a completely blank white background. Just the character${word ? ` and the ${word}` : ""}, nothing else on the page, no text.`;
+    const ref = `the mascot from the attached reference picture (copy it exactly: same animal, face, ears, headband and outfit)`;
+    const tail = `Black-and-white clean line art, drawn large so the character and prop fill about two-thirds of the picture, centered on a completely blank white background.`;
+    let pose = "standing full body with a happy smile and one hand pointing to the right", prop = "", only = "the character";
+    if (s.tpl === "letter") {
+      const ch = (s.data?.letter ?? s.title.replace(/^Letter\s+/i, "")[0] ?? "A").toUpperCase();
+      const word = LETTER_WORDS[ch] ?? "";
+      if (word) { prop = `, next to one small ${word}`; only = `the character and the ${word}`; }
+    } else if (s.tpl === "number") {
+      const n = Math.min(10, Math.max(1, parseInt(s.data?.n ?? s.title.replace(/\D/g, ""), 10) || 1));
+      const it = NUMBER_ITEMS[n - 1], things = `${n} small ${n === 1 ? it.one : it.many}`;
+      prop = `, next to exactly ${things} (show exactly ${n}, no more and no fewer)`; only = `the character and exactly ${things}`;
+    } else if (s.tpl === "warmup") {
+      const w = WARMUPS[s.data?.move ?? ""] ?? Object.values(WARMUPS).find((x) => s.title.toLowerCase().includes(x.verb.toLowerCase())) ?? WARMUPS.pull;
+      pose = `${w.pose}, with a happy smile`;
+    } else if (s.tpl === "name") {
+      pose = "standing full body with a happy smile, holding a big pencil in one hand";
+    } else if (s.tpl === "certificate") {
+      pose = "standing full body with a happy smile, both arms up cheering, wearing a gold medal";
+    }
+    return `A single small sticker-style illustration: ${who}, ${ref}, ${pose}${prop}. ${tail} Just ${only}, nothing else on the page, no text.`;
   }
   const tagged = parseTagged(s.draft)?.IMAGE_PROMPT?.replace(/\s+/g, " ").trim();
   const counts = countLine(s);

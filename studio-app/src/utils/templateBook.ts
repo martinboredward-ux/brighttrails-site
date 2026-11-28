@@ -5,7 +5,7 @@ import { blobToDataUrl, mdToHtml } from "../printableBook";
 import { pagePicture } from "./checks";
 import { GO_RE, pageNumbers } from "./gamebook";
 import { MATTER_CSS, matterPages } from "./matter";
-import { LETTER_STROKES, LOWER_STROKES } from "../../../netlify/lib/templates";
+import { LETTER_STROKES, LOWER_STROKES, NUM_STROKES, NUMBER_ITEMS, WARMUPS } from "../../../netlify/lib/templates";
 import type { Stroke } from "../../../netlify/lib/templates";
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -128,13 +128,13 @@ function practiceRow(items: { strokes: Stroke[] }[], guideMid: boolean): string 
   return `<svg viewBox="0 0 ${W} ${H}" width="100%">${guides}${cells}</svg>`;
 }
 /** Two empty boxes with only a green starting dot, for the child's own letter. */
-function targetSvg(up: Stroke[], lo: Stroke[]): string {
+function targetSvg(up: Stroke[], lo: Stroke[], labels: [string, string] = ["My capital", "My small letter"]): string {
   const box = (x: number, label: string, st: Stroke[], lower: boolean) => {
     const m: Mapper = ([px, py]) => [x + 70 + (px - 10) * 2.0, 62 + (py - 8) * 1.75];
     const [sx, sy] = m(st[0].pts[0]);
     return `<rect x="${x}" y="6" width="384" height="268" rx="26" fill="#fff" stroke="${INK}" stroke-width="4"/><text x="${x + 22}" y="36" font-size="21" font-weight="700" fill="${INK}" font-family="Fredoka, sans-serif">${label}</text><line x1="${x + 20}" y1="${62 + (92 - 8) * 1.75}" x2="${x + 364}" y2="${62 + (92 - 8) * 1.75}" stroke="#9db4a0" stroke-width="3" stroke-dasharray="10 9"/><circle cx="${sx.toFixed(0)}" cy="${sy.toFixed(0)}" r="11" fill="#7fb069"/>${lower ? "" : ""}`;
   };
-  return `<svg viewBox="0 0 800 280" width="100%">${box(6, "My capital", up, false)}${box(410, "My small letter", lo, true)}</svg>`;
+  return `<svg viewBox="0 0 800 280" width="100%">${box(6, labels[0], up, false)}${box(410, labels[1], lo, true)}</svg>`;
 }
 const CUE_CHIP = (st: Stroke[]) => st.map((x, i) => `<span class="chip"><b>${i + 1}</b> ${x.cue}</span>`).join("");
 function letter(s: Section, mascot?: string): string[] {
@@ -146,6 +146,59 @@ function letter(s: Section, mascot?: string): string[] {
   const rows = [practiceRow([U, U, U, U, U], false), practiceRow([Lw, Lw, Lw, Lw, Lw], true), practiceRow([U, Lw, U, Lw, U], true)];
   const B = page("tr", `<div class="trhead"><span class="bigl">${ch}${lc}</span><span class="trcue">Start at the green dot. Trace the dots, then try on your own.</span></div>${rows.map((x) => `<div class="tline">${x}</div>`).join("")}<div class="target">${targetSvg(up, lo)}</div>`);
   return [A, B];
+}
+
+// ---------- numbers, warm-ups, name page, certificate ----------
+const MASCOT = (pic?: string, h = "2.35in") => `<div class="trmas">${pic ? `<img src="${pic}" alt="Mascot" style="max-height:${h}">` : `<div class="none">Mascot picture</div>`}</div>`;
+/** Empty circles to count and color: one per number. */
+function countSvg(n: number): string {
+  const cols = n === 1 ? 1 : 2, rows = Math.ceil(n / cols), gx = 400 / (cols + 1), gy = 460 / (rows + 1);
+  const dots = Array.from({ length: n }, (_, i) => {
+    const r = Math.floor(i / cols), c = i % cols, inRow = r === rows - 1 && n % cols ? n % cols : cols;
+    const x = inRow === 1 ? 200 : (400 / (inRow + 1)) * (c + 1);
+    return `<circle cx="${x.toFixed(0)}" cy="${(gy * (r + 1) + 20).toFixed(0)}" r="${Math.min(44, gy / 2 - 10).toFixed(0)}" fill="#fff" stroke="${INK}" stroke-width="5" stroke-dasharray="3 12" stroke-linecap="round"/>`;
+  }).join("");
+  void gx;
+  return `<svg viewBox="0 0 400 500" width="100%"><rect x="6" y="6" width="388" height="488" rx="26" fill="#fff" stroke="${INK}" stroke-width="4"/>${dots}</svg>`;
+}
+function numberSpread(s: Section, mascot?: string): string[] {
+  const n = Math.min(10, Math.max(1, parseInt(s.data?.n ?? s.title.replace(/\D/g, ""), 10) || 1));
+  const key = String(n), st = NUM_STROKES[key] ?? [];
+  const item = NUMBER_ITEMS[n - 1];
+  const A = page("tr", `<div class="trhead"><span class="bigl">${n}</span><span class="trcue">${esc(s.data?.cue ?? "")}</span></div><div class="trglyphs"><div class="trg">${glyphSvg(st, false)}<p class="gl">Number ${n}</p></div><div class="trg">${countSvg(n)}<p class="gl">Count ${item.word}: touch each circle</p></div></div><div class="trlow">${MASCOT(mascot)}<div class="legend"><p><b>Number ${n}</b></p><div>${CUE_CHIP(st)}</div></div></div><div class="parent"><b>Parent prompt:</b> ${esc(s.data?.parent ?? "")}</div>`);
+  const N = { strokes: st };
+  const B = page("tr", `<div class="trhead"><span class="bigl">${n}</span><span class="trcue">Start at the green dot. Trace the dots, then try on your own.</span></div>${[0, 1, 2].map(() => `<div class="tline">${practiceRow([N, N, N, N, N], false)}</div>`).join("")}<div class="target">${targetSvg(st, st, ["My number", "My number"])}</div>`);
+  return [A, B];
+}
+const ID: Mapper = (p) => p;
+/** One warm-up page: rows of dotted guide paths that practice a single stroke before any letters. */
+function warmupSvg(move: string): string {
+  const parts: string[] = [];
+  const dotted = (pts: [number, number][], arrow = true) => {
+    const [sx, sy] = pts[0], [ex, ey] = pts[pts.length - 1];
+    parts.push(`<polyline points="${pts.map((q) => `${q[0].toFixed(0)},${q[1].toFixed(0)}`).join(" ")}" fill="none" stroke="${INK}" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="1 15"/>`);
+    if (arrow) parts.push(ARROW(ex, ey, angleOf(pts, ID), 1));
+    parts.push(`<circle cx="${sx.toFixed(0)}" cy="${sy.toFixed(0)}" r="11" fill="#7fb069"/>`);
+  };
+  const ell = (cx: number, cy: number, rx: number, ry: number, a0: number, a1: number): [number, number][] => Array.from({ length: 31 }, (_, i) => { const a = ((a0 + (a1 - a0) * (i / 30)) * Math.PI) / 180; return [cx + rx * Math.cos(a), cy - ry * Math.sin(a)] as [number, number]; });
+  if (move === "pull") for (let r = 0; r < 3; r++) for (let c = 0; c < 7; c++) dotted([[70 + c * 110, 30 + r * 185], [70 + c * 110, 150 + r * 185]]);
+  else if (move === "slide") for (let r = 0; r < 7; r++) dotted([[50, 40 + r * 80], [750, 40 + r * 80]]);
+  else if (move === "hop") for (let r = 0; r < 3; r++) for (let c = 0; c < 5; c++) dotted(ell(95 + c * 150, 135 + r * 165, 55, 62, 180, 0));
+  else for (let r = 0; r < 3; r++) for (let c = 0; c < 5; c++) dotted(ell(95 + c * 150, 90 + r * 185, 55, 55, 90, 430));
+  return `<svg viewBox="0 0 800 560" width="100%"><rect x="6" y="6" width="788" height="548" rx="26" fill="#fff" stroke="${INK}" stroke-width="4"/>${parts.join("")}</svg>`;
+}
+function warmup(s: Section, mascot?: string): string[] {
+  const k = s.data?.move && WARMUPS[s.data.move] ? s.data.move : (Object.keys(WARMUPS).find((x) => s.title.toLowerCase().includes(WARMUPS[x].verb.toLowerCase())) ?? "pull");
+  const w = WARMUPS[k];
+  return [page("tr", `<div class="trhead"><span class="bigl" style="font-size:36pt">${w.verb}</span><span class="trcue">${esc(s.data?.cue ?? "")}</span></div><div class="trlow" style="flex:0 0 2.2in">${MASCOT(mascot, "1.95in")}<div class="legend"><p><b>Follow the green dot, then the arrow.</b></p><div><span class="chip"><b>1</b> ${w.verb}</span></div></div></div><div class="tline">${warmupSvg(k)}</div><div class="parent"><b>Parent prompt:</b> ${esc(s.data?.parent ?? "")}</div>`)];
+}
+function namePage(s: Section, mascot?: string): string[] {
+  const row = (y: number) => `<line x1="14" y1="${y}" x2="786" y2="${y}" stroke="#9db4a0" stroke-width="3" stroke-dasharray="10 9"/><line x1="14" y1="${y + 60}" x2="786" y2="${y + 60}" stroke="#c9d7cb" stroke-width="3" stroke-dasharray="10 9"/><line x1="14" y1="${y + 120}" x2="786" y2="${y + 120}" stroke="${INK}" stroke-width="4"/>`;
+  const rows = `<svg viewBox="0 0 800 560" width="100%"><rect x="6" y="6" width="788" height="548" rx="26" fill="#fff" stroke="${INK}" stroke-width="4"/>${row(30)}${row(210)}${row(390)}</svg>`;
+  return [page("tr", `<div class="trhead"><span class="bigl" style="font-size:40pt">My Name</span><span class="trcue">${esc(s.data?.cue ?? "")}</span></div><div class="trlow" style="flex:0 0 2.4in">${MASCOT(mascot, "2.1in")}<div class="trmas" style="align-items:flex-start;justify-content:flex-start;font:600 14pt Fredoka,sans-serif;padding:0.15in">Draw yourself here!</div></div><p class="gl" style="text-align:left;margin:0">Write your name on the lines. Start each letter at the top.</p><div class="tline">${rows}</div><div class="parent"><b>Parent prompt:</b> ${esc(s.data?.parent ?? "")}</div>`)];
+}
+function certificate(s: Section, mascot?: string): string[] {
+  return [page("tr", `<div style="flex:1;border:6px double #2c3a33;border-radius:0.3in;padding:0.45in 0.4in;display:flex;flex-direction:column;align-items:center;justify-content:space-between;text-align:center;font-family:Fredoka,sans-serif"><div style="font-size:42pt;font-weight:600">Great Job!</div><div style="font-size:15pt">This certificate is awarded to</div><div style="width:5in;border-bottom:3px solid #2c3a33;height:0.5in"></div>${mascot ? `<img src="${mascot}" alt="Mascot" style="max-height:3.4in;max-width:5.2in;object-fit:contain">` : `<div class="none" style="color:#888">Mascot picture</div>`}<div style="font-size:15pt;max-width:5.5in">${esc(s.data?.cue ?? "You finished the whole book!")}</div><div style="display:flex;gap:1in;font-size:12pt"><span>Date: ______________</span><span>Signed: ______________</span></div></div>`)];
 }
 
 // ---------- gamebook ----------
@@ -269,6 +322,10 @@ export async function buildTemplateBook(book: Book, opts: TemplateBookOptions = 
       case "collage": body.push(...collage(s)); break;
       case "quotes": body.push(...quotes(s)); break;
       case "letter": body.push(...letter(s, pic)); break;
+      case "number": body.push(...numberSpread(s, pic)); break;
+      case "warmup": body.push(...warmup(s, pic)); break;
+      case "name": body.push(...namePage(s, pic)); break;
+      case "certificate": body.push(...certificate(s, pic)); break;
       default: body.push(page("pl", `${head(s)}<div class="txt">${mdToHtml(s.draft || s.summary)}</div>${pic ? `<img src="${pic}" alt="" style="max-height:5in;align-self:center">` : ""}`));
     }
   }

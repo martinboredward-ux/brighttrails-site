@@ -65,7 +65,7 @@ export function estimatePages(book: Book): number {
   for (const s of book.sections) {
     if (tpl) {
       if (s.kind === "cutout") n += 2;
-      else if (s.tpl === "letter") n += 2;
+      else if (s.tpl === "letter" || s.tpl === "number") n += 2;
       else if (s.tpl === "quotes") n += 2;
       else if (s.tpl === "checklist") n += Math.max(1, Math.ceil((s.data?.items ?? "").split("\n").filter((x) => x.trim()).length / 16));
       else n += 1;
@@ -110,7 +110,7 @@ export function picFindings(book: Book, s: Section, st: PicStats, i: number): Fi
 }
 
 import { pathCheck, fiftyWordCheck } from "./gamebook";
-import { CLAIM_WORDS, OTHER_DIRECTION, tplDef } from "../../../netlify/lib/templates";
+import { CLAIM_WORDS, OTHER_DIRECTION, PICTURE_TPLS, tplDef } from "../../../netlify/lib/templates";
 import { isLargeTrim, printCost } from "./studioMeta";
 
 /** Checks that only apply to planner, preschool tracing and gamebook books. */
@@ -133,14 +133,15 @@ export function modeChecks(book: Book): Finding[] {
   }
   if (book.mode === "tracing") {
     book.sections.forEach((s, i) => {
-      if (s.tpl !== "letter") return;
-      const where = `Letter ${s.data?.letter ?? i + 1}`;
+      if (!s.tpl || !PICTURE_TPLS.includes(s.tpl)) return;
+      const where = s.tpl === "letter" ? `Letter ${s.data?.letter ?? i + 1}` : s.title;
       const txt = Object.values(s.data ?? {}).join(" ");
-      if (!txt.trim()) out.push({ sectionId: s.id, where, level: "fix", text: "No story cue or parent prompt yet." });
+      if (!(s.data?.cue ?? "").trim()) out.push({ sectionId: s.id, where, level: "fix", text: "No story cue yet. Press this page's Fill button, or type one." });
+      if (tplDef(s.tpl)?.fields.some((f) => f.key === "parent") && !(s.data?.parent ?? "").trim()) out.push({ sectionId: s.id, where, level: "fix", text: "No parent prompt yet." });
       if (CLAIM_WORDS.test(txt)) out.push({ sectionId: s.id, where, level: "fix", text: "Medical or therapy wording found. Preschool tracing books must not make those claims." });
       if (OTHER_DIRECTION.test(txt)) out.push({ sectionId: s.id, where, level: "fix", text: "Direction words must be only: Pull down, Slide right, Hop over, Loop around." });
       if ((s.data?.parent ?? "").split(/(?<=[.!?])\s+/).filter(Boolean).length > 2) out.push({ sectionId: s.id, where, level: "fix", text: "Parent prompt is longer than 2 sentences." });
-      if (!pagePicture(book, s)) out.push({ sectionId: s.id, where, level: "note", text: `No ${mascotName(book)} pose picture on this letter yet.` });
+      if (!pagePicture(book, s)) out.push({ sectionId: s.id, where, level: "note", text: `No ${mascotName(book)} picture on this page yet.` });
     });
     const text = `${book.title} ${book.subtitle} ${book.kdp?.htmlDescription ?? ""} ${(book.kdp?.keywords ?? []).join(" ")}`;
     if (CLAIM_WORDS.test(text)) out.push({ where: "Title / KDP description", level: "fix", text: "Medical or therapy claim word in the title, subtitle, description or keywords." });

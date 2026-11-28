@@ -1,5 +1,5 @@
 import type { Action, Book, Section } from "../types";
-import { PLANNER_PACK, letterPack, type PackItem } from "../../../netlify/lib/templates";
+import { PLANNER_PACK, letterPack, numberPack, warmupPack, namePage, certificatePage, type PackItem } from "../../../netlify/lib/templates";
 import { TooltipButton } from "./TooltipButton";
 import JobStatus from "./JobStatus";
 import { pathCheck, fiftyWordCheck } from "../utils/gamebook";
@@ -20,12 +20,18 @@ export default function NewModePanel({ book, update, commit, run }: Props) {
   const setMatter = (k: keyof Matter, v: string) => update({ studio: { ...meta(book), matter: { ...m, [k]: v } } as Book["studio"] });
   const gb = mode === "gamebook" ? [...pathCheck(book), ...fiftyWordCheck(book)] : [];
   // Never add a second copy of a page that is already in the book (clicking Insert twice used to double the pack).
-  const add = (pack: PackItem[]) => {
+  // where: "end" (default), "front" (very first pages), "beforeLetters" (warm-ups), "afterLetters" (numbers go after the last letter or number).
+  const add = (pack: PackItem[], where: "end" | "front" | "beforeLetters" | "afterLetters" = "end") => {
     const have = new Set(book.sections.map((x) => x.title.trim().toLowerCase()));
     const fresh = pack.filter((x) => !have.has(x.title.trim().toLowerCase()));
     if (!fresh.length) { alert("Those pages are already in the book, so nothing was added."); return; }
     if (fresh.length < pack.length) alert(`${pack.length - fresh.length} page(s) were already in the book. Added only the ${fresh.length} missing one(s).`);
-    update({ sections: [...book.sections, ...toSections(fresh)] });
+    const secs = book.sections, news = toSections(fresh);
+    const firstLetter = secs.findIndex((x) => x.tpl === "letter");
+    let lastCounted = -1; secs.forEach((x, i) => { if (x.tpl === "letter" || x.tpl === "number") lastCounted = i; });
+    const certAt = secs.findIndex((x) => x.tpl === "certificate");
+    const at = where === "front" ? 0 : where === "beforeLetters" ? (firstLetter < 0 ? secs.length : firstLetter) : where === "afterLetters" ? (lastCounted >= 0 ? lastCounted + 1 : certAt >= 0 ? certAt : secs.length) : secs.length;
+    update({ sections: [...secs.slice(0, at), ...news, ...secs.slice(at)] });
   };
   return (
     <section className="card space-y-3">
@@ -50,6 +56,12 @@ export default function NewModePanel({ book, update, commit, run }: Props) {
         <>
           <p className="hint">One two-page spread per letter. Page A: story cue, big letter with numbered 3-4pt stroke paths and arrows, mascot pose picture, parent prompt. Page B: exactly 3 practice lines and a target box. Upload a mascot pose as the page picture of each letter section. 0.75 in margins are built in.</p>
           <TooltipButton className="btn" disabled={running} onClick={() => add(letterPack())}>Insert letters A-Z (26 spreads)</TooltipButton>
+          <div className="flex flex-wrap gap-2">
+            <TooltipButton className="btn-alt" disabled={running} tip="One page per stroke (Pull down, Slide right, Hop over, Loop around) to practice before any letters. Goes in front of the letters." onClick={() => add(warmupPack(), "beforeLetters")}>Insert 4 warm-up pages</TooltipButton>
+            <TooltipButton className="btn-alt" disabled={running} tip="Numbers 1 to 10 as two-page spreads with a counting box. Goes after the letters." onClick={() => add(numberPack(), "afterLetters")}>Insert numbers 1-10 (10 spreads)</TooltipButton>
+            <TooltipButton className="btn-alt" disabled={running} tip="A page for the child to write their name and draw themselves. Goes at the very front." onClick={() => add([namePage()], "front")}>Insert My Name page</TooltipButton>
+            <TooltipButton className="btn-alt" disabled={running} tip="A Great Job certificate. Goes at the very end." onClick={() => add([certificatePage()], "end")}>Insert certificate page</TooltipButton>
+          </div>
         </>
       )}
       {mode === "gamebook" && (
