@@ -114,7 +114,7 @@ function practiceRow(items: { strokes: Stroke[] }[], guideMid: boolean): string 
     it.strokes.forEach((st, i) => {
       const [sx, sy] = m(st.pts[0]), [ex, ey] = m(st.pts[st.pts.length - 1]);
       if (c === 0) {
-        let bx = sx; while (used.some(([ox, oy]) => Math.abs(ox - bx) < 28 && Math.abs(oy - sy) < 28)) bx += 30;
+        const dir = sx > c * cw + cw * 0.55 ? -30 : 30; let bx = sx; while (used.some(([ox, oy]) => Math.abs(ox - bx) < 28 && Math.abs(oy - sy) < 28)) bx += dir;
         used.push([bx, sy]);
         lines.push(`<polyline points="${poly(st.pts, m)}" fill="none" stroke="#aebdb2" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>${ARROW(ex, ey, angleOf(st.pts, m), 0.9)}`);
         marks.push(`<circle cx="${bx.toFixed(0)}" cy="${sy.toFixed(0)}" r="13" fill="#7fb069"/><text x="${bx.toFixed(0)}" y="${(sy + 5).toFixed(0)}" text-anchor="middle" font-size="15" font-weight="700" fill="#fff" font-family="Fredoka, sans-serif">${i + 1}</text>`);
@@ -130,9 +130,9 @@ function practiceRow(items: { strokes: Stroke[] }[], guideMid: boolean): string 
 /** Two empty boxes with only a green starting dot, for the child's own letter. */
 function targetSvg(up: Stroke[], lo: Stroke[]): string {
   const box = (x: number, label: string, st: Stroke[], lower: boolean) => {
-    const m: Mapper = ([px, py]) => [x + 70 + (px - 10) * 2.0, 40 + (py - 8) * 1.9];
+    const m: Mapper = ([px, py]) => [x + 70 + (px - 10) * 2.0, 62 + (py - 8) * 1.75];
     const [sx, sy] = m(st[0].pts[0]);
-    return `<rect x="${x}" y="6" width="384" height="268" rx="26" fill="#fff" stroke="${INK}" stroke-width="4"/><text x="${x + 22}" y="36" font-size="21" font-weight="700" fill="${INK}" font-family="Fredoka, sans-serif">${label}</text><line x1="${x + 20}" y1="${40 + (92 - 8) * 1.9}" x2="${x + 364}" y2="${40 + (92 - 8) * 1.9}" stroke="#9db4a0" stroke-width="3" stroke-dasharray="10 9"/><circle cx="${sx.toFixed(0)}" cy="${sy.toFixed(0)}" r="11" fill="#7fb069"/>${lower ? "" : ""}`;
+    return `<rect x="${x}" y="6" width="384" height="268" rx="26" fill="#fff" stroke="${INK}" stroke-width="4"/><text x="${x + 22}" y="36" font-size="21" font-weight="700" fill="${INK}" font-family="Fredoka, sans-serif">${label}</text><line x1="${x + 20}" y1="${62 + (92 - 8) * 1.75}" x2="${x + 364}" y2="${62 + (92 - 8) * 1.75}" stroke="#9db4a0" stroke-width="3" stroke-dasharray="10 9"/><circle cx="${sx.toFixed(0)}" cy="${sy.toFixed(0)}" r="11" fill="#7fb069"/>${lower ? "" : ""}`;
   };
   return `<svg viewBox="0 0 800 280" width="100%">${box(6, "My capital", up, false)}${box(410, "My small letter", lo, true)}</svg>`;
 }
