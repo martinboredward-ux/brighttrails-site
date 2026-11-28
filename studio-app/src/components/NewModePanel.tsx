@@ -19,7 +19,14 @@ export default function NewModePanel({ book, update, commit, run }: Props) {
   const m = matterOf(book);
   const setMatter = (k: keyof Matter, v: string) => update({ studio: { ...meta(book), matter: { ...m, [k]: v } } as Book["studio"] });
   const gb = mode === "gamebook" ? [...pathCheck(book), ...fiftyWordCheck(book)] : [];
-  const add = (pack: PackItem[]) => update({ sections: [...book.sections, ...toSections(pack)] });
+  // Never add a second copy of a page that is already in the book (clicking Insert twice used to double the pack).
+  const add = (pack: PackItem[]) => {
+    const have = new Set(book.sections.map((x) => x.title.trim().toLowerCase()));
+    const fresh = pack.filter((x) => !have.has(x.title.trim().toLowerCase()));
+    if (!fresh.length) { alert("Those pages are already in the book, so nothing was added."); return; }
+    if (fresh.length < pack.length) alert(`${pack.length - fresh.length} page(s) were already in the book. Added only the ${fresh.length} missing one(s).`);
+    update({ sections: [...book.sections, ...toSections(fresh)] });
+  };
   return (
     <section className="card space-y-3">
       <h2 className="text-base font-bold text-forest">{mode === "planner" ? "Planner tools" : mode === "tracing" ? "Letter-spread tools" : "Gamebook tools"}</h2>
