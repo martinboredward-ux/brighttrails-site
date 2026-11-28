@@ -44,13 +44,14 @@ export function promiseCheck(book: Book): Finding[] {
 /** KDP file checks that need no pictures: page count, trim, cover match. */
 export function structureCheck(book: Book, printedPages: number): Finding[] {
   const out: Finding[] = [];
-  const cover = (book.cover ?? {}) as { pageCount?: number; trim?: string; frontArtId?: string };
+  const cover = (book.cover ?? {}) as { pageCount?: number; trim?: string; frontArtId?: string; backBlurb?: string };
   if (printedPages % 2) out.push({ where: "Interior", level: "fix", text: `The interior has ${printedPages} pages (odd). KDP prints in sheets, so use an even number.` });
   if (printedPages && printedPages < 24) out.push({ where: "Interior", level: "fix", text: `KDP needs at least 24 pages; this has ${printedPages}.` });
   if (printedPages > 828) out.push({ where: "Interior", level: "fix", text: `KDP allows at most 828 pages; this has ${printedPages}.` });
   if (cover.pageCount && printedPages && cover.pageCount !== printedPages) out.push({ where: "Cover", level: "fix", text: `Cover Studio says ${cover.pageCount} pages but the interior has about ${printedPages}. The spine width depends on it, so set it and re-download the wrap.` });
   if (cover.trim && cover.trim !== book.trim) out.push({ where: "Cover", level: "fix", text: `Cover trim (${cover.trim}) does not match the book trim (${book.trim}).` });
   if (!cover.frontArtId) out.push({ where: "Cover", level: "note", text: "No front cover picture chosen yet." });
+  if (!cover.backBlurb?.trim()) out.push({ where: "Cover", level: "note", text: "The back cover has no blurb text yet (Cover Studio: Fill from my KDP description)." });
   return out;
 }
 

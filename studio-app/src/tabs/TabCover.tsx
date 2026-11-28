@@ -39,6 +39,18 @@ function drawTo(canvas: HTMLCanvasElement | null, src: HTMLCanvasElement, width:
 }
 
 /** Tab 3 (Cover Studio): art, framing and contrast controls, the three cover files, an AI quality check and approval. */
+/** KDP descriptions are HTML; the back cover needs plain paragraphs. Keeps list items as short lines. */
+function htmlToPlain(html: string): string {
+  return html
+    .replace(/<\s*br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|h[1-6]|div)>/gi, "\n\n")
+    .replace(/<li[^>]*>/gi, "• ")
+    .replace(/<\/li>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
 export default function TabCover({ book, update, commit, setBook, fail }: Props) {
   const s = coverDefaults(book);
   const set = (p: Partial<CoverSettings>) => update({ cover: { ...book.cover, ...s, ...p } });
@@ -158,7 +170,18 @@ export default function TabCover({ book, update, commit, setBook, fail }: Props)
             </div>
             <p className="hint">Keep it faint (3-20%) so the blurb stays readable. The barcode box stays solid white.</p>
           </div>
-          <div className="sm:col-span-2"><label className="label">Back cover blurb</label><textarea className="field min-h-24" value={s.backBlurb} onChange={(e) => set({ backBlurb: e.target.value })} placeholder="Paste your KDP description in plain text." /></div>
+          <div className="sm:col-span-2">
+            <label className="label">Back cover blurb</label>
+            <textarea className="field min-h-24" value={s.backBlurb} onChange={(e) => set({ backBlurb: e.target.value })} placeholder="Type or paste your back-cover text in plain text." />
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <button type="button" className="btn-alt" disabled={!book.kdp?.htmlDescription?.trim()} onClick={() => {
+                if (s.backBlurb?.trim() && !confirm("Replace the current blurb with your KDP description?")) return;
+                set({ backBlurb: htmlToPlain(book.kdp?.htmlDescription ?? "") });
+              }}>Fill from my KDP description (tab 4)</button>
+              {!book.kdp?.htmlDescription?.trim() && <span className="hint">Make the KDP package in tab 4 first, or type the blurb here.</span>}
+              {!s.backBlurb?.trim() && <span className="text-sm text-red-700">The back cover is empty. Studio does not write this for you automatically.</span>}
+            </div>
+          </div>
         </div>
         <div className="rounded-lg bg-sun/20 px-3 py-2 text-sm">
           Spine width: <b>{spineWidth(s.pageCount ?? 0, s.paper).toFixed(3)} in</b> · Print front: <b>{Math.round(dims.w * 300)} × {Math.round(dims.h * 300)} px</b> · Full wrap: <b>{geo.totalW.toFixed(3)} × {geo.totalH.toFixed(3)} in</b> (0.125 in bleed).
