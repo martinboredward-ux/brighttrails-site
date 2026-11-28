@@ -1,4 +1,5 @@
 import { TRIMS } from "../utils/trims";
+import BibleHealth from "../components/BibleHealth";
 import { useState } from "react";
 import type { Book } from "../types";
 import CharacterLibrary from "../components/CharacterLibrary";
@@ -135,6 +136,7 @@ export default function Tab1Details({ book, books, update, commit, fail, locked 
         <h2 className="text-base font-bold text-forest">Style Bible</h2>
         <p className="text-xs text-muted">Voice, visuals, characters and layout rules. The Book Builder sends this with every section it drafts. {locked && "Locked while an AI job is running."}</p>
         <textarea className="field min-h-[26rem] font-mono" value={book.styleBible} readOnly={locked} onChange={(e) => update({ styleBible: e.target.value })} placeholder="Generate an outline in the Book Builder to draft this, or write your own." />
+        <BibleHealth bible={book.styleBible} />
       </section>
 
       <section className="card space-y-2 lg:col-span-2">

@@ -145,6 +145,10 @@ export default function ImageEngine({ book, sectionId, initialPrompt = "", defau
         </label>
       </div>
       <textarea className="field min-h-20" value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Describe the picture. The style wording above is added for you." />
+      <div className="flex flex-wrap items-center gap-3 text-xs">
+        {prompt !== initialPrompt && <button type="button" className="underline text-accent" onClick={() => setPrompt(initialPrompt)}>You edited this prompt. Reset to the page text</button>}
+        <details><summary className="cursor-pointer text-muted">Prompt preview (what is really sent)</summary><p className="mt-1 whitespace-pre-wrap rounded border border-line p-2 font-mono">{wrapPrompt(preset, prompt, sectionId ? book.styleBible : undefined)}</p></details>
+      </div>
       {lib.length > 0 ? (
         <div className="space-y-2 rounded-lg border border-line p-2">
           <label className="flex items-center gap-2 text-sm font-semibold text-forest"><input type="checkbox" checked={useRef} onChange={(e) => setUseRef(e.target.checked)} /> Use my Character Library ({provider === "nano-banana" ? "Nano Banana" : "ChatGPT"} copies the ones ticked)</label>
