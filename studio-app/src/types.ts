@@ -77,6 +77,8 @@ export interface GuideChar { on: boolean; name: string; look: string; voice: str
 export interface BookStudio {
   /** Narrator / guide character that can be switched on or off (adds or removes its lines in the Style Bible and notes). */
   guide?: GuideChar;
+  /** Gamebook: draw the progress map at the top of every page (default on; false turns it off). */
+  progressMap?: boolean;
   detailsFill?: { at: string; filled: string[]; kept: string[]; ideas: string[] };
   flags?: Flag[];
   snapshots?: Snapshot[];

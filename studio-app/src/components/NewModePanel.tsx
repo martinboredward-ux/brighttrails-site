@@ -2,7 +2,7 @@ import type { Action, Book, Section } from "../types";
 import { PLANNER_PACK, letterPack, numberPack, warmupPack, namePage, certificatePage, type PackItem } from "../../../netlify/lib/templates";
 import { TooltipButton } from "./TooltipButton";
 import JobStatus from "./JobStatus";
-import { pathCheck, fiftyWordCheck } from "../utils/gamebook";
+import { pathCheck, fiftyWordCheck, cutOffCheck } from "../utils/gamebook";
 import { MATTER_STARTERS, matterOf, type Matter } from "../utils/matter";
 import { meta } from "../utils/studioMeta";
 
@@ -18,7 +18,7 @@ export default function NewModePanel({ book, update, commit, run }: Props) {
   const mode = book.mode;
   const m = matterOf(book);
   const setMatter = (k: keyof Matter, v: string) => update({ studio: { ...meta(book), matter: { ...m, [k]: v } } as Book["studio"] });
-  const gb = mode === "gamebook" ? [...pathCheck(book), ...fiftyWordCheck(book)] : [];
+  const gb = mode === "gamebook" ? [...cutOffCheck(book), ...pathCheck(book), ...fiftyWordCheck(book)] : [];
   // Never add a second copy of a page that is already in the book (clicking Insert twice used to double the pack).
   // where: "end" (default), "front" (very first pages), "beforeLetters" (warm-ups), "afterLetters" (numbers go after the last letter or number).
   const add = (pack: PackItem[], where: "end" | "front" | "beforeLetters" | "afterLetters" = "end") => {
@@ -67,6 +67,10 @@ export default function NewModePanel({ book, update, commit, run }: Props) {
       {mode === "gamebook" && (
         <>
           <p className="hint">Write choices as [GO: page-id] (the id is shown next to each page title). At export Studio prints the real page numbers. A page whose title says Victory, or that contains [END], is an ending. Detour pages get a caution-tape border.</p>
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <input type="checkbox" checked={book.studio?.progressMap !== false} onChange={(e) => update({ studio: { ...meta(book), progressMap: e.target.checked } as Book["studio"] })} />
+            Draw a progress map at the top of every page (numbered stops, your current stop lit, detours as side loops). Drawn by Studio, no pictures needed.
+          </label>
           <div className="space-y-1 text-sm">
             <p className="label">Path &amp; rules check</p>
             {gb.length ? <ul className="space-y-1">{gb.map((f, i) => <li key={i} className={f.level === "fix" ? "text-accent" : "text-muted"}>{f.level === "fix" ? "✗" : "○"} <b>{f.where}:</b> {f.text}</li>)}</ul> : <p className="text-green">✓ Every page can be reached and every reader can finish.</p>}

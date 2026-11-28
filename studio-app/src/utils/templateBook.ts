@@ -3,7 +3,7 @@ import { trimDims } from "./trims";
 import { fetchImageBlob } from "../api";
 import { blobToDataUrl, mdToHtml } from "../printableBook";
 import { pagePicture } from "./checks";
-import { GO_RE, pageNumbers, readerText } from "./gamebook";
+import { GO_RE, pageNumbers, readerText, linksOf, isEnding } from "./gamebook";
 import { MATTER_CSS, matterPages } from "./matter";
 import { LETTER_STROKES, LOWER_STROKES, NUM_STROKES, NUMBER_ITEMS, WARMUPS } from "../../../netlify/lib/templates";
 import type { Stroke } from "../../../netlify/lib/templates";
@@ -202,6 +202,48 @@ function certificate(s: Section, mascot?: string): string[] {
 }
 
 // ---------- gamebook ----------
+/** Progress map for the top of every gamebook page: the main trail with numbered stops, the reader's current stop highlighted, detours as small side loops. Drawn in code, so it stays right when pages move. */
+function gbMap(book: Book, s: Book["sections"][number]): string {
+  const secs = book.sections.filter((x) => x.kind !== "cutout" && x.kind !== "picture");
+  const main = secs.filter((x) => x.kind !== "detour");
+  if (main.length < 2) return "";
+  const n = main.length, W = 700, H = 118, x0 = 34, x1 = W - 34, step = (x1 - x0) / (n - 1);
+  const pos = (i: number) => ({ x: x0 + step * i, y: 40 + (i % 2 ? 7 : -7) });
+  const idx = new Map(main.map((m, i) => [m.id, i]));
+  const anchorOf = (d: Book["sections"][number]) => {
+    const from = main.findIndex((m) => linksOf(m).includes(d.id));
+    if (from >= 0) return from;
+    let a = 0;
+    for (const x of secs) { if (x.id === d.id) break; if (x.kind !== "detour") a = idx.get(x.id) ?? a; }
+    return a;
+  };
+  const onDetour = s.kind === "detour";
+  const cur = onDetour ? anchorOf(s) : (idx.get(s.id) ?? 0);
+  const r = n > 14 ? 9 : 11;
+  let o = "";
+  for (let i = 0; i < n - 1; i++) {
+    const a = pos(i), b = pos(i + 1), done = i < cur;
+    o += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${done ? "#2c3a33" : "#aeb8b0"}" stroke-width="${done ? 4 : 3}" ${done ? "" : 'stroke-dasharray="2 7" stroke-linecap="round"'}/>`;
+  }
+  const seen = new Map<number, number>();
+  for (const d of secs.filter((x) => x.kind === "detour")) {
+    const a = anchorOf(d), k = seen.get(a) ?? 0; seen.set(a, k + 1);
+    const p = pos(a), cx = p.x + k * 30, cy = p.y + 44, here = d.id === s.id;
+    o += `<path d="M ${p.x} ${p.y + r} Q ${p.x} ${cy - 6} ${cx} ${cy - 9}" fill="none" stroke="${here ? "#2c3a33" : "#aeb8b0"}" stroke-width="${here ? 3.5 : 2.5}" ${here ? "" : 'stroke-dasharray="2 5" stroke-linecap="round"'}/>`;
+    o += `<circle cx="${cx}" cy="${cy}" r="${here ? 12 : 8}" fill="${here ? "#f2c200" : "#fff"}" stroke="${here ? "#222" : "#aeb8b0"}" stroke-width="${here ? 3 : 2}" ${here ? "" : 'stroke-dasharray="3 3"'}/>`;
+    if (here) o += `<text x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="14" font-weight="800" fill="#222" font-family="Arial,sans-serif">!</text>`;
+  }
+  main.forEach((m, i) => {
+    const p = pos(i), end = isEnding(m), isCur = i === cur, done = i < cur;
+    const fill = isCur ? "#b4411f" : end ? "#e0a800" : done ? "#2f7d4f" : "#fff";
+    const stroke = isCur ? (onDetour ? "#f2c200" : "#b4411f") : end ? "#8a6500" : done ? "#2f7d4f" : "#9aa59d";
+    const rr = isCur ? r + 4 : r;
+    o += `<circle cx="${p.x}" cy="${p.y}" r="${rr}" fill="${fill}" stroke="${stroke}" stroke-width="${isCur && onDetour ? 4 : 2.5}"/>`;
+    o += `<text x="${p.x}" y="${p.y + 4.5}" text-anchor="middle" font-size="${r > 10 ? 13 : 11}" font-weight="800" fill="${isCur || done || end ? "#fff" : "#6b766e"}" font-family="Arial,sans-serif">${end && !isCur ? "★" : i + 1}</text>`;
+  });
+  return `<svg class="gbmap" viewBox="0 0 ${W} ${H}" role="img" aria-label="Progress map: stop ${cur + 1} of ${n}">${o}</svg>`;
+}
+
 const miniMd = (t: string, nums: Map<string, number>) => mdToHtml(t.replace(GO_RE, (_m, id) => (nums.has(id) ? `**turn to page ${nums.get(id)}**` : `**(missing page ${id})**`)).replace(/\[END\]/gi, "**THE END**"));
 
 const CSS = (w: number, h: number) => `
@@ -275,7 +317,7 @@ ${MATTER_CSS}
 .gb h2 { font-size: 22pt; margin: 0; } .gb .txt { font-size: 13pt; line-height: 1.45; } .gb .txt p { margin: 0 0 0.1in; } .gb .txt strong { color: #b4411f; }
 .gb.detour { border: 0.28in solid transparent; border-image: repeating-linear-gradient(45deg, #f2c200 0 0.22in, #222 0.22in 0.44in) 40; padding: 0.55in; }
 .gb .tag { display: inline-block; align-self: flex-start; background: #f2c200; color: #222; font: 700 11pt Fredoka, sans-serif; padding: 0.04in 0.14in; border-radius: 999px; letter-spacing: 1px; }
-.gb img { max-width: 100%; max-height: 3in; object-fit: contain; align-self: center; }
+.gb .gbmap { width: 100%; height: auto; max-height: 1.15in; align-self: center; } .gb img { max-width: 100%; max-height: 3in; object-fit: contain; align-self: center; }
 @media print { html, body { background: #fff; } .page { margin: 0; } .tip { display: none; } }
 `;
 
@@ -308,7 +350,7 @@ export async function buildTemplateBook(book: Book, opts: TemplateBookOptions = 
     if (s.kind === "cutout") { body.push(page("cutpic", pic ? `<img src="${pic}" alt="${esc(s.title)}">` : `<div class="hint">Cut-out picture not added yet for: ${esc(s.title)}</div>`), `<section class="page blank" aria-label="Blank back of cut-out sheet"></section>`); continue; }
     if (book.mode === "gamebook") {
       const n = nums.get(s.id) ?? 0;
-      body.push(page(`gb${s.kind === "detour" ? " detour" : ""}`, `${s.kind === "detour" ? `<span class="tag">DETOUR</span>` : ""}<h2>${esc(s.title)}</h2>${pic ? `<img src="${pic}" alt="">` : ""}<div class="txt">${miniMd(readerText(s.draft) || s.summary, nums)}</div><div class="pgno">${n}</div>`));
+      body.push(page(`gb${s.kind === "detour" ? " detour" : ""}`, `${book.studio?.progressMap === false ? "" : gbMap(book, s)}${s.kind === "detour" ? `<span class="tag">DETOUR</span>` : ""}<h2>${esc(s.title)}</h2>${pic ? `<img src="${pic}" alt="">` : ""}<div class="txt">${miniMd(readerText(s.draft) || s.summary, nums)}</div><div class="pgno">${n}</div>`));
       continue;
     }
     switch (s.tpl) {
