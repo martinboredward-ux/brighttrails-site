@@ -74,6 +74,7 @@ export interface GeneratedImage {
 export interface Flag { id: string; sectionId?: string; where: string; note: string; at: string; done?: boolean }
 export interface Snapshot { id: string; at: string; label: string; title: string; subtitle: string; notes: string; styleBible: string; sections: Section[] }
 export interface BookStudio {
+  detailsFill?: { at: string; filled: string[]; kept: string[]; ideas: string[] };
   flags?: Flag[];
   snapshots?: Snapshot[];
   launch?: Record<string, boolean>;
@@ -88,7 +89,7 @@ export interface BookStudio {
   sentPages?: Record<string, string>;
 }
 export interface TitleIdeas { at: string; options: { title: string; subtitle: string; why: string }[]; searches: string[]; results?: string }
-export type Action = "generate_outline" | "draft_section" | "draft_all" | "review_book" | "extract_workbook" | "market_research" | "pre_review" | "apply_review" | "apply_polish" | "import_review" | "title_ideas" | "originality_review" | "fill_template";
+export type Action = "generate_outline" | "draft_section" | "draft_all" | "review_book" | "extract_workbook" | "market_research" | "pre_review" | "apply_review" | "apply_polish" | "import_review" | "title_ideas" | "originality_review" | "fill_template" | "fill_details";
 export interface CoverSettings {
   title?: string; subtitle?: string; author?: string; seriesPill?: string;
   pageCount?: number; trim?: Trim; paper?: PaperType;

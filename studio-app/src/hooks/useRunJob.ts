@@ -6,7 +6,7 @@ import { withSnapshot } from "../utils/studioMeta";
 interface Args { book: Book; save: () => Promise<Book | null>; setBook: Dispatch<SetStateAction<Book | null>>; fail: (e: unknown) => void; commit?: (p: Partial<Book>) => Promise<void> }
 
 /** Actions that rewrite the author's text: a restore point is saved first. */
-const SNAPSHOT_BEFORE: Action[] = ["apply_review", "apply_polish", "fill_template"];
+const SNAPSHOT_BEFORE: Action[] = ["apply_review", "apply_polish", "fill_template", "fill_details"];
 
 /** Saves the book, then starts a background AI job on it. The app polls until the job finishes. */
 /** What each AI review looked at the last time it ran this visit, so an unchanged book is not reviewed twice. */
@@ -42,6 +42,7 @@ export function useRunJob({ book, save, setBook, fail, commit }: Args) {
 
 export const JOB_LABEL: Record<string, string> = {
   generate_outline: "Generating outline (Gemini)",
+  fill_details: "Suggesting title, subtitle, audience and Style Bible (Gemini)",
   draft_section: "Drafting section (Claude)",
   draft_all: "Drafting all sections (Claude)",
   review_book: "Proofreading and formatting QA (Gemini)",

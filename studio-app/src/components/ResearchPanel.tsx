@@ -16,7 +16,7 @@ export default function ResearchPanel({ book, update, commit, run }: Props) {
   };
   return (
     <section className="card space-y-3">
-      <h2 className="text-base font-bold text-forest">Market research &amp; positioning</h2>
+      <h2 className="text-base font-bold text-forest">Steps 2-3 · Market research &amp; positioning</h2>
       <p className="hint">Gemini reads your title, audience, notes and series and writes a niche analysis: target buyer, positioning angle, market fit, 5 must-include features and keyword gaps. It has no live Amazon data, so check the competing books yourself before you commit.</p>
       <div className="flex flex-wrap gap-2">
         <TooltipButton className="btn" disabled={running} onClick={() => run("market_research")}>Run Market Research</TooltipButton>

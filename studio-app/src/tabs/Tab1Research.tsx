@@ -3,6 +3,7 @@ import type { Book } from "../types";
 import { useRunJob } from "../hooks/useRunJob";
 import ResearchPanel from "../components/ResearchPanel";
 import PreReviewPanel from "../components/PreReviewPanel";
+import StepGuide from "../components/StepGuide";
 import Tab1Details from "./Tab1Details";
 
 interface Props {
@@ -20,9 +21,11 @@ export default function Tab1Research({ book, books, update, commit, save, setBoo
   const run = useRunJob({ book, save, setBook, fail, commit });
   return (
     <div className="space-y-4">
-      <ResearchPanel book={book} update={update} commit={commit} run={(a) => run(a)} />
+      <StepGuide book={book} update={update} commit={commit} run={(a) => run(a)} locked={locked} />
+      <div id="step-research" className="scroll-mt-4"><ResearchPanel book={book} update={update} commit={commit} run={(a) => run(a)} /></div>
       <Tab1Details book={book} books={books} update={update} commit={commit} fail={fail} locked={locked} />
-      <PreReviewPanel book={book} update={update} commit={commit} run={(a) => run(a)} />
+      <div id="step-review" className="scroll-mt-4"><PreReviewPanel book={book} update={update} commit={commit} run={(a) => run(a)} /></div>
+      <p className="rounded-lg bg-forest/10 px-3 py-2 text-sm font-semibold text-forest">Finished steps 1-6? Go to tab 2 · Book Builder.</p>
     </div>
   );
 }

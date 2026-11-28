@@ -22,7 +22,7 @@ export default function PreReviewPanel({ book, update, commit, run }: Props) {
   });
   return (
     <section className="card space-y-3">
-      <h2 className="text-base font-bold text-forest">Review #1: Idea, Market &amp; Age-Fit Review</h2>
+      <h2 className="text-base font-bold text-forest">Steps 5-6 · Review #1: Idea, Market &amp; Age-Fit Review, then apply the fixes</h2>
       <p className="hint">Runs before outlining on Market Research + Notes + Style Bible + the target age. It judges market positioning, the hook, storyline options (Option A vs B), age-appropriateness (an 18-month to 4-year-old toddler needs very different text than a Grade 1-3 reader), pacing and character roles. The later proofread is a separate review at the end of tab 2.</p>
       <div>
         <label className="label" htmlFor="rq">Quick question (optional)</label>

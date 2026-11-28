@@ -249,6 +249,38 @@ Return ONLY JSON: {"review": string, "reviewFixes": [{"id": string, "title": str
       return { review: String(data.review ?? "").trim() || "No problems found.", reviewFixes: cleanFixes(data.reviewFixes, ["sections"]), reviewSelected: [] };
     }
 
+    case "fill_details": {
+      const text = await gemini(
+        `${ctx}
+
+NOTES AND IDEAS
+${book.notes || "(none yet)"}
+
+MARKET RESEARCH
+${book.research || "(none yet)"}
+
+Suggest the core details for this book from the notes and research. Return ONLY JSON: {"title": string, "subtitle": string, "audience": string, "mode": "activity"|"storybook"|"nonfiction"|"planner"|"gamebook"|"tracing", "styleBible": string}.
+- title: a strong, searchable title (max 8 words). subtitle: keyword-rich, under 150 characters, says who it is for and what is inside, no claims we cannot deliver.
+- audience: plain words, include the age range (for example "Girls ages 8-12, and the parents who buy for them").
+- mode: the best-fitting book type.
+- styleBible: 200-400 words covering voice, reading level, visual style, recurring characters or motifs, layout rules for the trim size, and a line starting "Avoid:" with things never to do. Use the reserved-names rules above; never reuse a reserved name or animal.`,
+      );
+      const d = parseJson<{ title?: string; subtitle?: string; audience?: string; mode?: string; styleBible?: string }>(text);
+      const patch: Partial<Book> = {};
+      const filled: string[] = [], kept: string[] = [];
+      const sub = String(d.subtitle ?? "").trim().slice(0, 200);
+      if (!book.subtitle?.trim() && sub) { patch.subtitle = sub; filled.push("Subtitle"); } else if (book.subtitle?.trim()) kept.push("Subtitle");
+      const aud = String(d.audience ?? "").trim().slice(0, 200);
+      if (!book.audience?.trim() && aud) { patch.audience = aud; filled.push("Audience"); } else if (book.audience?.trim()) kept.push("Audience");
+      const sb = String(d.styleBible ?? "").trim().slice(0, 8000);
+      if (!book.styleBible?.trim() && sb) { patch.styleBible = sb; filled.push("Style Bible"); } else if (book.styleBible?.trim()) kept.push("Style Bible");
+      const ideas: string[] = [];
+      if (d.title && d.title.trim() && d.title.trim() !== book.title) ideas.push(`Title idea: ${d.title.trim()}`);
+      if (d.mode && d.mode !== book.mode) ideas.push(`Studio type idea: ${d.mode}`);
+      const prev = (book.studio ?? {}) as Record<string, unknown>;
+      return { ...patch, studio: { ...prev, detailsFill: { at: new Date().toISOString(), filled, kept, ideas } } };
+    }
+
     case "market_research": {
       const text = await gemini(
         `${ctx}
