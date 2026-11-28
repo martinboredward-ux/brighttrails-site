@@ -8,7 +8,7 @@ export const COLORING_WRAPPER = "Children's coloring book page ONLY: pure white 
 export const COLORING_GUARDRAIL = "One single full-page scene with generous margins.";
 
 
-const PROSE_RULE = /\b(voice|reading level|lap-?read|read-?aloud|sentence fragments?|onomatop\w*|worksheets?|word bank|answer key|spelling|vocabulary|phonics|rhythm|narrat\w*|dialogue|story text|tone of|prose|writing|word count|paragraphs?)\b/i;
+const PROSE_RULE = /\b(voice|reading level|lap-?read|read-?aloud|sentence fragments?|onomatop\w*|worksheets?|word bank|answer key|spelling|vocabulary|phonics|rhythm|narrat\w*|dialogue|story text|tone of|prose|writing|word count|paragraphs?|humou?r|(?<!skin )tone(?!s)|emotional beats?|affirmations?)\b/i;
 
 /** Keeps only the visual lines of a Style Bible (looks, colors, characters, setting). Writing rules are dropped. */
 export function visualBible(bible: string | undefined): string {
@@ -26,17 +26,23 @@ export function visualBible(bible: string | undefined): string {
   return keep.join(" ");
 }
 
-export function bibleSummary(bible: string | undefined): string {
+const AVOID_LINE = /^(avoid|never|do not|don't|no |not )/i;
+
+export function bibleSummary(bible: string | undefined, cap = 1200): string {
   const flat = visualBible(bible) || (bible ?? "").replace(/[#*_`>|]/g, " ").replace(/\s+/g, " ").trim();
   if (!flat) return "";
-  // Cut at a sentence end so a prompt never stops mid-sentence.
-  let cut = flat;
-  if (flat.length > 700) {
-    const head = flat.slice(0, 700);
+  // The Avoid / Never lines are always kept: they are what stops wrong styles, so they must not be cut off the end.
+  const sentences = flat.split(/(?<=[.!?])\s+/);
+  const avoid = sentences.filter((x) => AVOID_LINE.test(x.trim())).join(" ").slice(0, 320);
+  const rest = sentences.filter((x) => !AVOID_LINE.test(x.trim())).join(" ");
+  const room = Math.max(250, cap - avoid.length - 1);
+  let cut = rest;
+  if (rest.length > room) {
+    const head = rest.slice(0, room);
     const end = Math.max(head.lastIndexOf(". "), head.lastIndexOf("! "), head.lastIndexOf("? "));
-    cut = end > 250 ? head.slice(0, end + 1) : head.replace(/\s+\S*$/, "");
+    cut = end > 200 ? head.slice(0, end + 1) : head.replace(/\s+\S*$/, "");
   }
-  return `Book style and characters (follow exactly, never change a character's species or look): ${cut}\n\n`;
+  return `Book style and characters (follow exactly, never change a character's species or look): ${cut}${avoid ? ` ${avoid}` : ""}\n\n`;
 }
 
 export function wrapPrompt(preset: StylePreset, prompt: string, styleBible?: string): string {
@@ -57,12 +63,41 @@ function wrapCore(preset: StylePreset, prompt: string): string {
 
 const NOT_A_SCENE = /dot[- ]to[- ]dot|maze|sequenc|world map|\bmap\b|chart|inverted|black background|night sky|\b\d+(\.\d+)?\s*(pt|mm|in)\b|trim|gutter|stroke|margin|track width/i;
 
-/** What the picture box starts with: the section's [IMAGE_PROMPT] if it has one, else a cleaned-up scene from its summary. */
+const NUM_WORDS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 };
+const NUM = "(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|\\d{1,2})";
+const COUNT_RE = new RegExp(`\\b(?:count|find|spot|see|look for|circle|point to|can you find|there (?:are|is)|how many)\\b[^.?!\\n]{0,40}?\\b(${NUM})\\s+((?:[a-z-]+\\s){0,2}[a-z-]{3,})`, "gi");
+const NOT_A_THING = /^(?:of|the|more|times|different|ways|steps|things|minutes?|seconds?|pages?|words?|letters?|colors?|colours?|questions?)$/i;
+
+/** Things the page asks the child to count or find, with the exact number, e.g. "3 traffic cones". Read from the whole section, not just the summary. */
+export function countCues(s: Section): { n: number; thing: string }[] {
+  const text = `${s.summary}\n${s.draft}`.replace(/[*_#`]/g, " ");
+  const seen = new Map<string, number>();
+  for (const m of text.matchAll(COUNT_RE)) {
+    const n = NUM_WORDS[m[1].toLowerCase()] ?? Number(m[1]);
+    const words = m[2].trim().toLowerCase().split(/\s+/);
+    while (words.length > 1 && /^(?:along|on|in|at|near|by|with|around|down|up|from|to|and|that|the|a)$/.test(words[words.length - 1])) words.pop();
+    const last = words[words.length - 1];
+    if (!n || n > 12 || NOT_A_THING.test(last) || NOT_A_THING.test(words[0])) continue;
+    const thing = words.join(" ");
+    if (!seen.has(thing)) seen.set(thing, n);
+  }
+  return [...seen].map(([thing, n]) => ({ n, thing })).slice(0, 4);
+}
+
+/** "Exactly 3 traffic cones" style lines that go FIRST in the picture prompt so the picture matches the worksheet. */
+export function countLine(s: Section): string {
+  const c = countCues(s);
+  if (!c.length) return "";
+  return `MUST SHOW, clearly visible and separate from each other: ${c.map((x) => `exactly ${x.n} ${x.thing}`).join("; ")}. Do not draw more or fewer. `;
+}
+
+/** What the picture box starts with: the section's [IMAGE_PROMPT] if it has one, else a cleaned-up scene from its summary. Exact counts the page asks for always come first. */
 export function defaultScenePrompt(s: Section): string {
   const tagged = parseTagged(s.draft)?.IMAGE_PROMPT?.replace(/\s+/g, " ").trim();
-  if (tagged) return tagged;
+  const counts = countLine(s);
+  if (tagged) return counts && !/exactly \d/i.test(tagged) ? counts + tagged : tagged;
   const sentences = `${s.summary}`.split(/(?<=[.!?])\s+/).filter((x) => x.trim() && !NOT_A_SCENE.test(x));
-  return `${s.title}. ${sentences.slice(0, 2).join(" ")}`.trim();
+  return `${counts}${s.title}. ${sentences.slice(0, 2).join(" ")}`.trim();
 }
 
 export type LibKind = "character" | "badge" | "prop" | "cover" | "page" | "puzzle";

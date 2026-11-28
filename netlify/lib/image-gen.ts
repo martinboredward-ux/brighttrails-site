@@ -35,7 +35,7 @@ const WRAPPERS: Record<StylePreset, (p: string) => string> = {
 };
 
 
-const PROSE_RULE = /\b(voice|reading level|lap-?read|read-?aloud|sentence fragments?|onomatop\w*|worksheets?|word bank|answer key|spelling|vocabulary|phonics|rhythm|narrat\w*|dialogue|story text|tone of|prose|writing|word count|paragraphs?)\b/i;
+const PROSE_RULE = /\b(voice|reading level|lap-?read|read-?aloud|sentence fragments?|onomatop\w*|worksheets?|word bank|answer key|spelling|vocabulary|phonics|rhythm|narrat\w*|dialogue|story text|tone of|prose|writing|word count|paragraphs?|humou?r|(?<!skin )tone(?!s)|emotional beats?|affirmations?)\b/i;
 
 /** Keeps only the visual lines of a Style Bible (looks, colors, characters, setting). Writing rules are dropped. */
 export function visualBible(bible: string | undefined): string {
@@ -53,17 +53,23 @@ export function visualBible(bible: string | undefined): string {
   return keep.join(" ");
 }
 
-export function bibleSummary(bible: string | undefined): string {
+const AVOID_LINE = /^(avoid|never|do not|don't|no |not )/i;
+
+export function bibleSummary(bible: string | undefined, cap = 1200): string {
   const flat = visualBible(bible) || (bible ?? "").replace(/[#*_`>|]/g, " ").replace(/\s+/g, " ").trim();
   if (!flat) return "";
-  // Cut at a sentence end so a prompt never stops mid-sentence.
-  let cut = flat;
-  if (flat.length > 700) {
-    const head = flat.slice(0, 700);
+  // The Avoid / Never lines are always kept: they are what stops wrong styles, so they must not be cut off the end.
+  const sentences = flat.split(/(?<=[.!?])\s+/);
+  const avoid = sentences.filter((x) => AVOID_LINE.test(x.trim())).join(" ").slice(0, 320);
+  const rest = sentences.filter((x) => !AVOID_LINE.test(x.trim())).join(" ");
+  const room = Math.max(250, cap - avoid.length - 1);
+  let cut = rest;
+  if (rest.length > room) {
+    const head = rest.slice(0, room);
     const end = Math.max(head.lastIndexOf(". "), head.lastIndexOf("! "), head.lastIndexOf("? "));
-    cut = end > 250 ? head.slice(0, end + 1) : head.replace(/\s+\S*$/, "");
+    cut = end > 200 ? head.slice(0, end + 1) : head.replace(/\s+\S*$/, "");
   }
-  return `Book style and characters (follow exactly, never change a character's species or look): ${cut}\n\n`;
+  return `Book style and characters (follow exactly, never change a character's species or look): ${cut}${avoid ? ` ${avoid}` : ""}\n\n`;
 }
 
 export function wrapPrompt(preset: StylePreset, prompt: string, styleBible?: string): string {
