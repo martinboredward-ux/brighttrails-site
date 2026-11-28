@@ -135,7 +135,7 @@ export function defaultScenePrompt(s: Section, mascot = ""): string {
     const items = /thermometer|banner/.test(t)
       ? "4 tall vertical progress thermometers (empty tubes with tick marks, nothing filled in) and 5 blank ribbon banners of different shapes (no words)"
       : "12 separate icons and round badges: a mountain with a flag, a rocket, a stack of gold coins, a briefcase, a target with an arrow, a trophy, a star ribbon rosette, a crown, a lightbulb, a laptop, a key, a rising bar chart";
-    return `${items}. Each item stands alone as a flat sticker with its own clean outline, drawn on its own with about an inch of empty white space around it. No panels, boxes, frames, borders, scenery, landscapes, photos or background tint: only the separate items floating on plain white.`;
+    return `Tall portrait page (2:3, taller than wide), items in a neat grid with even spacing: ${items}. Each item stands alone as a flat sticker with its own clean outline, drawn on its own with about an inch of empty white space around it. No panels, boxes, frames, borders, scenery, landscapes, photos or background tint: only the separate items floating on plain white.`;
   }
   const tagged = parseTagged(s.draft)?.IMAGE_PROMPT?.replace(/\s+/g, " ").trim();
   const counts = countLine(s);
