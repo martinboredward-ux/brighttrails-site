@@ -73,7 +73,10 @@ export interface GeneratedImage {
 }
 export interface Flag { id: string; sectionId?: string; where: string; note: string; at: string; done?: boolean }
 export interface Snapshot { id: string; at: string; label: string; title: string; subtitle: string; notes: string; styleBible: string; sections: Section[] }
+export interface GuideChar { on: boolean; name: string; look: string; voice: string }
 export interface BookStudio {
+  /** Narrator / guide character that can be switched on or off (adds or removes its lines in the Style Bible and notes). */
+  guide?: GuideChar;
   detailsFill?: { at: string; filled: string[]; kept: string[]; ideas: string[] };
   flags?: Flag[];
   snapshots?: Snapshot[];

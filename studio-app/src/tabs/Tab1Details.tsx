@@ -1,15 +1,36 @@
 import { TRIMS } from "../utils/trims";
 import BibleHealth from "../components/BibleHealth";
 import { useState } from "react";
-import type { Book } from "../types";
+import type { Book, GuideChar } from "../types";
 import CharacterLibrary from "../components/CharacterLibrary";
 
 interface Props { book: Book; books: Book[]; update: (p: Partial<Book>) => void; commit: (p: Partial<Book>) => Promise<void>; fail: (e: unknown) => void; locked: boolean }
+
+const DEFAULT_GUIDE: GuideChar = {
+  on: false,
+  name: "Maya",
+  look: "Maya, polished female founder: sleek high topknot, tailored blazer over silk blouse, trousers, gold hoop earrings, smart wristwatch.",
+  voice: "Maya is the narrator. She speaks directly to the reader in a warm, confident, first-person voice (\"Hi, I'm Maya...\") and appears on guided and phase pages as the guide.",
+};
 
 const MAX_IMPORT = 300_000; // characters; keeps the saved book comfortably small
 
 export default function Tab1Details({ book, books, update, commit, fail, locked }: Props) {
   const [target, setTarget] = useState<"notes" | "styleBible">("notes");
+  const g: GuideChar = { ...DEFAULT_GUIDE, ...(book.studio?.guide ?? {}) };
+  const [guideMsg, setGuideMsg] = useState("");
+  const setGuide = (next: GuideChar, patch: Partial<Book> = {}) => update({ ...patch, studio: { ...(book.studio ?? {}), guide: next } });
+  const strip = (text: string, line: string) => (line.trim() && text.includes(line.trim()) ? text.replace(line.trim(), "").replace(/\n{3,}/g, "\n\n").trim() : text);
+  const add = (text: string, line: string) => (line.trim() && !text.includes(line.trim()) ? `${text.trim()}${text.trim() ? "\n\n" : ""}${line.trim()}` : text);
+  const toggleGuide = (on: boolean) => {
+    if (locked) return;
+    if (on) { setGuide({ ...g, on }, { styleBible: add(book.styleBible, g.look), notes: add(book.notes, g.voice) }); setGuideMsg(`${g.name} is ON: her look was added to the Style Bible and her voice to the notes.`); }
+    else {
+      const sb = strip(book.styleBible, g.look), nt = strip(book.notes, g.voice);
+      setGuide({ ...g, on }, { styleBible: sb, notes: nt });
+      setGuideMsg(sb === book.styleBible && nt === book.notes ? `${g.name} is OFF. Her lines were not found in the Style Bible or notes (already removed or edited by hand).` : `${g.name} is OFF: her lines were removed from the Style Bible and notes.`);
+    }
+  };
   const [importMsg, setImportMsg] = useState("");
   const others = books.filter((b) => b.id !== book.id);
   const linked = new Set(book.linkedBookIds ?? []);
@@ -131,6 +152,23 @@ export default function Tab1Details({ book, books, update, commit, fail, locked 
 
       <section className="card space-y-2">
         <h2 className="text-base font-bold text-forest">Style Bible</h2>
+        <div className="rounded-lg border border-line p-3 space-y-2">
+          <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold">
+            <input type="checkbox" checked={g.on} disabled={locked} onChange={(e) => toggleGuide(e.target.checked)} />
+            Narrator / guide character: {g.name || "guide"} {g.on ? "(ON)" : "(OFF)"}
+          </label>
+          <p className="hint">ON adds her look to the Style Bible (so picture prompts include her) and her voice to the notes (so the AI writes in her voice). OFF removes exactly those lines. After switching, run Fill the words again on pages you want rewritten.</p>
+          <details>
+            <summary className="cursor-pointer text-xs font-semibold text-forest">Edit her name, look and voice</summary>
+            <div className="mt-2 space-y-2">
+              <input className="field" value={g.name} disabled={g.on} onChange={(e) => setGuide({ ...g, name: e.target.value })} aria-label="Guide name" />
+              <textarea className="field min-h-[3.5rem]" value={g.look} disabled={g.on} onChange={(e) => setGuide({ ...g, look: e.target.value })} aria-label="Guide look" />
+              <textarea className="field min-h-[3.5rem]" value={g.voice} disabled={g.on} onChange={(e) => setGuide({ ...g, voice: e.target.value })} aria-label="Guide voice" />
+              {g.on && <p className="hint">Switch her OFF to edit these, then ON again.</p>}
+            </div>
+          </details>
+          {guideMsg && <p className="hint">{guideMsg}</p>}
+        </div>
         <p className="text-xs text-muted">Voice, visuals, characters and layout rules. The Book Builder sends this with every section it drafts. {locked && "Locked while an AI job is running."}</p>
         <textarea className="field min-h-[26rem] font-mono" value={book.styleBible} readOnly={locked} onChange={(e) => update({ styleBible: e.target.value })} placeholder="Generate an outline in the Book Builder to draft this, or write your own." />
         <BibleHealth bible={book.styleBible} />
