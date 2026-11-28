@@ -56,6 +56,8 @@ function wrapCore(preset: StylePreset, prompt: string): string {
     case "library_bw": return `Black-and-white children's book art on a PURE WHITE background: clean uniform black outlines, hollow shapes ready for coloring, no gray shading, no stippling, no solid black fills, no lettering or numbers. Subject: ${p}`;
     case "library_color": return `Warm, friendly children's picture-book art on a plain white background: flat storybook colors, clean outlines, no lettering or numbers. Subject: ${p}`;
     case "cover": return `${COVER_SAFE} Subject: ${p}`;
+    case "planner": return `Modern full-color editorial illustration for an adult planner: refined palette, crisp elegant contours, generous negative space and margins, polished professional look. NOT a kids or cartoon style, no coloring-book outlines, no text or lettering. Subject: ${p}`;
+    case "cutout": return `Full-color cut-out clip-art sheet on a PURE WHITE background: several separate icons or badges with clean outlines, generous empty space between every item, nothing touching the page edge, one consistent refined palette, no text or lettering. Subject: ${p}`;
     case "aplus": return `Clean marketing illustration for an online book listing, uncluttered, friendly, no text or lettering. Subject: ${p}`;
     default: return `Warm, friendly children's picture book illustration, soft colors, clear simple shapes, no text or lettering. Scene: ${p}`;
   }

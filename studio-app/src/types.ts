@@ -64,7 +64,7 @@ export interface Book {
 }
 export type ImageProvider = "openai-mini" | "openai-1.5" | "nano-banana" | "upload";
 export type ImageAspect = "portrait" | "square" | "landscape";
-export type StylePreset = "coloring" | "storybook" | "cover" | "aplus" | "library_bw" | "library_color";
+export type StylePreset = "coloring" | "storybook" | "cover" | "aplus" | "library_bw" | "library_color" | "planner" | "cutout";
 export interface GeneratedImage {
   id: string; sectionId?: string; prompt: string; provider: ImageProvider; modelUsed: string;
   aspect: ImageAspect; stylePreset: StylePreset; quality: "low" | "medium"; createdAt: string;

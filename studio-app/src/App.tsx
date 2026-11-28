@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Book } from "./types";
-import { AuthError, clearPassword, createBook, getBook, getPassword, listBooks, removeBook, saveBook, setPassword } from "./api";
+import { AuthError, clearPassword, getBook, getPassword, listBooks, removeBook, saveBook, setPassword } from "./api";
 import { exportBundle, download, type ExportAssets } from "./exportZip";
 import Tab1Research from "./tabs/Tab1Research";
 import TabCover from "./tabs/TabCover";
@@ -9,6 +9,8 @@ import Tab2Builder from "./tabs/Tab2Builder";
 import Tab3Kdp from "./tabs/Tab3Kdp";
 import Tab4APlus from "./tabs/Tab4APlus";
 import TabTools from "./tabs/TabTools";
+import Preflight from "./components/Preflight";
+import Dashboard from "./components/Dashboard";
 import { ThemeToggle, useTheme } from "./theme";
 import { TooltipButton } from "./components/TooltipButton";
 import StudioSettings from "./components/StudioSettings";
@@ -69,6 +71,7 @@ export default function App() {
   const [book, setBook] = useState<Book | null>(null);
   const [dirty, setDirty] = useState(false);
   const [tab, setTab] = useState(0);
+  const [view, setView] = useState<"book" | "new" | "portfolio">("book");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const assets = useRef<ExportAssets>({ pdf: null });
@@ -140,16 +143,7 @@ export default function App() {
     try { setBook(await getBook(id)); setDirty(false); assets.current = { pdf: null }; } catch (e) { fail(e); }
   };
 
-  const add = async () => {
-    try {
-      const b = await createBook({ title: "New book", mode: "activity" });
-      setBooks((bs) => [...bs, b]);
-      setBook(b);
-      setDirty(false);
-      setTab(0);
-    } catch (e) { fail(e); }
-  };
-
+  const add = async () => { setView("new"); };
   const del = async () => {
     if (!book || !confirm(`Delete "${book.title}"? This cannot be undone.`)) return;
     try {
@@ -192,6 +186,7 @@ export default function App() {
             ))}
           </ul>
           <TooltipButton className="btn-alt w-full" onClick={add}>+ New book</TooltipButton>
+          <TooltipButton className="btn-alt w-full" onClick={() => setView(view === "portfolio" ? "book" : "portfolio")}>{view === "portfolio" ? "Back to my book" : "Portfolio overview"}</TooltipButton>
           <StudioSettings />
           <TooltipButton className="text-xs text-muted underline" onClick={() => { clearPassword(); setAuthed(false); }}>Sign out</TooltipButton>
         </div>
@@ -204,7 +199,11 @@ export default function App() {
             <TooltipButton className="underline" onClick={() => setError("")}>Dismiss</TooltipButton>
           </div>
         )}
-        {!book ? (
+        {view === "new" ? (
+          <Preflight fail={fail} onCancel={() => setView("book")} onCreated={(b) => { setBooks((bs) => [...bs, b]); setBook(b); setDirty(false); setTab(0); setView("book"); }} />
+        ) : view === "portfolio" ? (
+          <Dashboard books={books} onOpen={(id) => { setView("book"); void pick(id); }} />
+        ) : !book ? (
           <div className="card text-sm">No books yet. Create one with “New book”.</div>
         ) : (
           <>

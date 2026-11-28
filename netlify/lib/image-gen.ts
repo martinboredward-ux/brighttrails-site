@@ -31,6 +31,8 @@ const WRAPPERS: Record<StylePreset, (p: string) => string> = {
   coloring: (p) => `${COLORING_WRAPPER} ${COLORING_GUARDRAIL} Subject: ${p}`,
   storybook: (p) => `Warm, friendly children's picture book illustration, soft colors, clear simple shapes, no text or lettering. Scene: ${p}`,
   cover: (p) => `Bright, appealing children's book COVER artwork, no lettering of any kind. COMPOSITION CRITICAL: Place the character and kite (or other main subject) smaller in the LOWER 60% of the frame (below the horizontal midline). The entire TOP 35-40% MUST be completely empty open sky and soft clouds ONLY: no character head, hair, hands, kite tips or objects in the top 35%. Keep faces clear and fully visible, keep the bottom 12% a simple calm ground area, and make the scene still work if the edges are trimmed. Subject: ${p}`,
+  planner: (p) => `Modern full-color editorial illustration for an adult planner: refined palette, crisp elegant contours, generous negative space and margins, polished professional look. NOT a kids or cartoon style, no coloring-book outlines, no text or lettering. Subject: ${p}`,
+  cutout: (p) => `Full-color cut-out clip-art sheet on a PURE WHITE background: several separate icons or badges with clean outlines, generous empty space between every item, nothing touching the page edge, one consistent refined palette, no text or lettering. Subject: ${p}`,
   aplus: (p) => `Clean marketing illustration for an online book listing, uncluttered, friendly, no text or lettering. Subject: ${p}`,
 };
 

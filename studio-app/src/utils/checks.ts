@@ -94,3 +94,41 @@ export function picFindings(book: Book, s: Section, st: PicStats, i: number): Fi
   if (Math.abs(got - want) / want > 0.35 && s.kind !== "cutout") add(`The picture shape (${st.w}×${st.h}) is very different from the page shape, so it will be small or cropped.`, "note");
   return out;
 }
+
+import { pathCheck, fiftyWordCheck } from "./gamebook";
+import { CLAIM_WORDS, OTHER_DIRECTION, tplDef } from "../../../netlify/lib/templates";
+import { isLargeTrim, printCost } from "./studioMeta";
+
+/** Checks that only apply to planner, preschool tracing and gamebook books. */
+export function modeChecks(book: Book): Finding[] {
+  const out: Finding[] = [];
+  if (book.mode === "gamebook") return [...pathCheck(book), ...fiftyWordCheck(book)];
+  if (book.mode === "planner") {
+    book.sections.forEach((s, i) => {
+      const where = `Page ${i + 1}: ${s.title}`;
+      if (s.tpl && tplDef(s.tpl) && !Object.values(s.data ?? {}).some((v) => v.trim())) out.push({ sectionId: s.id, where, level: "fix", text: "This template page has no words yet. Use Fill the words with AI, or type them." });
+      if (s.kind === "cutout" && !pagePicture(book, s)) out.push({ sectionId: s.id, where, level: "fix", text: "This cut-out sheet has no picture yet." });
+    });
+    const pages = estimatePages(book);
+    const cost = printCost("standardColor", pages, isLargeTrim(book.trim));
+    if (cost === null) out.push({ where: "Whole book", level: "note", text: `Standard color needs 72-600 pages (this is about ${pages}). Premium color or black and white follow different rules; check the calculator in Tab 6.` });
+    else out.push({ where: "Whole book", level: "note", text: `Full-color interior at about ${pages} pages costs about $${cost.toFixed(2)} to print (standard color). Every page prints in color; check the price in Tab 6.` });
+    const all = book.sections.map((s) => Object.values(s.data ?? {}).join(" ") + s.draft).join(" ");
+    if (/\b202[0-5]\b/.test(all)) out.push({ where: "Whole book", level: "note", text: "Found an older year (2020-2025) in the text. A 2027 planner should not mention it." });
+  }
+  if (book.mode === "tracing") {
+    book.sections.forEach((s, i) => {
+      if (s.tpl !== "letter") return;
+      const where = `Letter ${s.data?.letter ?? i + 1}`;
+      const txt = Object.values(s.data ?? {}).join(" ");
+      if (!txt.trim()) out.push({ sectionId: s.id, where, level: "fix", text: "No story cue or parent prompt yet." });
+      if (CLAIM_WORDS.test(txt)) out.push({ sectionId: s.id, where, level: "fix", text: "Medical or therapy wording found. Preschool tracing books must not make those claims." });
+      if (OTHER_DIRECTION.test(txt)) out.push({ sectionId: s.id, where, level: "fix", text: "Direction words must be only: Pull down, Slide right, Hop over, Loop around." });
+      if ((s.data?.parent ?? "").split(/(?<=[.!?])\s+/).filter(Boolean).length > 2) out.push({ sectionId: s.id, where, level: "fix", text: "Parent prompt is longer than 2 sentences." });
+      if (!pagePicture(book, s)) out.push({ sectionId: s.id, where, level: "note", text: "No Dash pose picture on this letter yet." });
+    });
+    const text = `${book.title} ${book.subtitle} ${book.kdp?.htmlDescription ?? ""} ${(book.kdp?.keywords ?? []).join(" ")}`;
+    if (CLAIM_WORDS.test(text)) out.push({ where: "Title / KDP description", level: "fix", text: "Medical or therapy claim word in the title, subtitle, description or keywords." });
+  }
+  return out;
+}

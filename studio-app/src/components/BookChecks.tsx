@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { Book } from "../types";
 import { fetchImageBlob } from "../api";
 import { useBlobUrl } from "../blobUrl";
-import { estimatePages, pagePicture, picFindings, picStats, promiseCheck, structureCheck, type Finding } from "../utils/checks";
+import { estimatePages, modeChecks, pagePicture, picFindings, picStats, promiseCheck, structureCheck, type Finding } from "../utils/checks";
 import { TooltipButton } from "./TooltipButton";
 
 function Row({ f }: { f: Finding }) {
@@ -22,7 +22,7 @@ export default function BookChecks({ book }: { book: Book }) {
   const promises = promiseCheck(book);
   const pages = estimatePages(book);
   const structure = structureCheck(book, pages);
-  const all = [...structure, ...promises, ...(scan ?? [])];
+  const all = [...structure, ...modeChecks(book), ...promises, ...(scan ?? [])];
   const fixes = all.filter((f) => f.level === "fix").length;
 
   const scanPics = async () => {

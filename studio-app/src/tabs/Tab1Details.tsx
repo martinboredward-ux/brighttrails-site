@@ -53,6 +53,9 @@ export default function Tab1Details({ book, books, update, commit, fail, locked 
               <option value="activity">Activity (coloring, tracing, STEM)</option>
               <option value="storybook">Storybook</option>
               <option value="nonfiction">Nonfiction / workbook</option>
+              <option value="planner">Planner / guided workbook (full color)</option>
+              <option value="gamebook">Trivia gamebook (ages 9-12)</option>
+              <option value="tracing">Preschool letter tracing</option>
             </select>
           </div>
           <div>

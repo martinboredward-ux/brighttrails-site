@@ -128,6 +128,9 @@ export default function ImageEngine({ book, sectionId, initialPrompt = "", defau
             <option value="storybook">Storybook</option>
             <option value="cover">Cover</option>
             <option value="aplus">A+ illustration</option>
+            <option value="planner">Planner (full color, adult)</option>
+            <option value="cutout">Cut-out sheet (full color)</option>
+            <option value="library_bw">Black-and-white character / pose</option>
           </select>
         </label>
         <label className="text-xs text-muted">Shape

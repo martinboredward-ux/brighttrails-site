@@ -2,6 +2,7 @@ import type { Book, Section } from "./types";
 import { fetchImageBlob } from "./api";
 import { trimDims, trimLabel } from "./utils/trims";
 import { rankText, widgetSvg } from "./utils/activitySvgWidgets";
+import { MATTER_CSS, matterPages } from "./utils/matter";
 
 export interface PrintableOptions {
   /** Insert a blank page behind every printed page so markers do not bleed through. */
@@ -141,7 +142,7 @@ export function parseSection(s: Section): Partial<Record<Part, string>> {
   return res;
 }
 
-function blobToDataUrl(blob: Blob): Promise<string> {
+export function blobToDataUrl(blob: Blob): Promise<string> {
   return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = () => rej(new Error("Could not read a picture")); r.readAsDataURL(blob); });
 }
 
@@ -283,6 +284,7 @@ ${w * h < 90 ? `.story { font-size: 12pt; } .head h2 { font-size: 20pt; } .title
 .play { flex: 0 0 auto; border: 4px dashed #000; border-radius: 0.3in; padding: 0.2in 0.28in; }
 .play .ph { font-family: 'Fredoka', sans-serif; font-size: 16pt; letter-spacing: 1px; margin: 0 0 0.08in; }
 .play p { font-size: 17pt; line-height: 1.35; margin: 0; }
+${MATTER_CSS}
 @media print {
   html, body { background: #fff; }
   .page { margin: 0; }
@@ -344,6 +346,9 @@ export async function buildPrintableBook(book: Book, opts: PrintableOptions): Pr
   </div>
 </section>`);
   }
+
+  const matter = matterPages(book);
+  for (const m of matter.front) add(m);
 
   // A coloring page is the picture alone (no text), always with a blank back so markers cannot bleed through.
   const addColoring = (s: { id: string; title: string }) => {
@@ -479,6 +484,7 @@ export async function buildPrintableBook(book: Book, opts: PrintableOptions): Pr
 
   }
 
+  for (const m of matter.back) add(m);
   if (opts.evenPages !== false && pages.length % 2 === 1) pages.push(`<section class="page blank" aria-label="Blank page to make the page count even"></section>`);
 
   return `<!doctype html>

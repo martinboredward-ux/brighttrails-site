@@ -161,7 +161,8 @@ async function run(p: Payload): Promise<Partial<Book>> {
   // Linked books (series memory) travel with every prompt below.
   currentAction = p.action;
   const reserved = reservedPromptBlock(await getReserved(), book);
-  const ctx = bookContext(book) + (reserved ? `\n${reserved}` : "") + (await seriesContext(book));
+  const gbIds = book.mode === "gamebook" ? `\nPAGE IDS (use exactly these in [GO: id] links): ${book.sections.map((s, i) => `${i + 1}=${s.id} (${s.title})`).join("; ")}` : "";
+  const ctx = bookContext(book) + (reserved ? `\n${reserved}` : "") + gbIds + (await seriesContext(book));
 
   switch (p.action) {
     case "generate_outline": {
