@@ -93,7 +93,7 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
     }
   };
 
-  const runJob = useRunJob({ book, save, setBook, fail });
+  const runJob = useRunJob({ book, save, setBook, fail, commit });
   const run2 = (a: Action) => runJob(a, { model });
   const tagged = isTaggedMode(book.mode);
   const untagged = book.sections.filter((s) => s.draft.trim() && !parseTagged(s.draft)).length;

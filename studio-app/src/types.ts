@@ -57,6 +57,8 @@ export interface Book {
   ignoredAssetNames: string[];
   /** Library item of type Prop stamped in the corner of printable pages (for example a Compass Rose). */
   cornerPropId: string;
+  /** Studio extras (flags for Claude, snapshots, launch checklist, target date, book type). */
+  studio?: BookStudio;
   jobStatus: JobStatus; jobAction: string; jobError: string; jobUpdatedAt: string;
   createdAt: string; updatedAt: string;
 }
@@ -69,7 +71,24 @@ export interface GeneratedImage {
   /** "puzzle": fills the worksheet box instead of being the page picture. */
   slot?: "puzzle";
 }
-export type Action = "generate_outline" | "draft_section" | "draft_all" | "review_book" | "extract_workbook" | "market_research" | "pre_review" | "apply_review" | "apply_polish";
+export interface Flag { id: string; sectionId?: string; where: string; note: string; at: string; done?: boolean }
+export interface Snapshot { id: string; at: string; label: string; title: string; subtitle: string; notes: string; styleBible: string; sections: Section[] }
+export interface BookStudio {
+  flags?: Flag[];
+  snapshots?: Snapshot[];
+  launch?: Record<string, boolean>;
+  targetDate?: string;
+  bookType?: string;
+  outsideReview?: string;
+  titleIdeas?: TitleIdeas;
+  originality?: string;
+  paperFor?: string;
+  listPrice?: number;
+  seriesKit?: boolean;
+  sentPages?: Record<string, string>;
+}
+export interface TitleIdeas { at: string; options: { title: string; subtitle: string; why: string }[]; searches: string[]; results?: string }
+export type Action = "generate_outline" | "draft_section" | "draft_all" | "review_book" | "extract_workbook" | "market_research" | "pre_review" | "apply_review" | "apply_polish" | "import_review" | "title_ideas" | "originality_review" | "fill_template";
 export interface CoverSettings {
   title?: string; subtitle?: string; author?: string; seriesPill?: string;
   pageCount?: number; trim?: Trim; paper?: PaperType;

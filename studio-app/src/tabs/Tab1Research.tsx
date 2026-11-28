@@ -17,7 +17,7 @@ interface Props {
 
 /** Tab 1: research, core inputs (including the Character & Badge Library), then the pre-outline review. */
 export default function Tab1Research({ book, books, update, commit, save, setBook, fail, locked }: Props) {
-  const run = useRunJob({ book, save, setBook, fail });
+  const run = useRunJob({ book, save, setBook, fail, commit });
   return (
     <div className="space-y-4">
       <ResearchPanel book={book} update={update} commit={commit} run={(a) => run(a)} />

@@ -8,11 +8,12 @@ import ReadinessCard from "./components/ReadinessCard";
 import Tab2Builder from "./tabs/Tab2Builder";
 import Tab3Kdp from "./tabs/Tab3Kdp";
 import Tab4APlus from "./tabs/Tab4APlus";
+import TabTools from "./tabs/TabTools";
 import { ThemeToggle, useTheme } from "./theme";
 import { TooltipButton } from "./components/TooltipButton";
 import StudioSettings from "./components/StudioSettings";
 
-const TABS = ["1 · Research & Style Bible", "2 · Book Builder", "3 · Cover Studio", "4 · KDP Package", "5 · A+ Content"] as const;
+const TABS = ["1 · Research & Style Bible", "2 · Book Builder", "3 · Cover Studio", "4 · KDP Package", "5 · A+ Content", "6 · Studio Tools"] as const;
 
 function Login({ onDone }: { onDone: () => void }) {
   const [theme, toggleTheme] = useTheme();
@@ -232,6 +233,7 @@ export default function App() {
             {tab === 2 && <TabCover book={book} update={update} commit={commit} setBook={setBook} fail={fail} />}
             {tab === 3 && <Tab3Kdp book={book} update={update} save={save} setBook={setBook} fail={fail} />}
             {tab === 4 && <Tab4APlus book={book} update={update} setBook={setBook} fail={fail} />}
+            {tab === 5 && <TabTools book={book} update={update} commit={commit} save={save} setBook={setBook} fail={fail} onNewBook={(b) => { setBooks((bs) => [...bs, b]); setBook(b); setDirty(false); setTab(0); }} />}
           </>
         )}
       </main>
