@@ -5,7 +5,8 @@ import { blobToDataUrl, mdToHtml } from "../printableBook";
 import { pagePicture } from "./checks";
 import { GO_RE, pageNumbers } from "./gamebook";
 import { MATTER_CSS, matterPages } from "./matter";
-import { LETTER_STROKES } from "../../../netlify/lib/templates";
+import { LETTER_STROKES, LOWER_STROKES } from "../../../netlify/lib/templates";
+import type { Stroke } from "../../../netlify/lib/templates";
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const lines = (t?: string) => (t ?? "").split("\n").map((x) => x.trim()).filter(Boolean);
@@ -75,30 +76,75 @@ function quotes(s: Section): string[] {
 }
 
 // ---------- preschool letter spreads ----------
-const ARROW = (x: number, y: number, ang: number) => `<polygon points="0,-7 14,0 0,7" transform="translate(${x} ${y}) rotate(${ang})" fill="#e2603c"/>`;
-function strokeSvg(ch: string): string {
-  const strokes = LETTER_STROKES[ch] ?? [];
+const INK = "#2c3a33";
+const ARROW = (x: number, y: number, ang: number, k = 1) => `<polygon points="0,${-7 * k} ${14 * k},0 0,${7 * k}" transform="translate(${x.toFixed(0)} ${y.toFixed(0)}) rotate(${ang.toFixed(0)})" fill="#e2603c"/>`;
+type Mapper = (p: [number, number]) => [number, number];
+const angleOf = (pts: [number, number][], m: Mapper) => {
+  const a = m(pts[Math.max(0, pts.length - 4)]), b = m(pts[pts.length - 1]);
+  return (Math.atan2(b[1] - a[1], b[0] - a[0]) * 180) / Math.PI;
+};
+/** One big letter: dotted stroke paths, orange arrows, green numbered start badges (badges that would overlap sit side by side). */
+function glyphSvg(strokes: Stroke[], lower: boolean): string {
+  const m: Mapper = lower ? ([x, y]) => [x * 4, y * 4] : ([x, y]) => [x * 4, y * 5];
+  const guides = lower
+    ? `<line x1="14" y1="32" x2="386" y2="32" stroke="#9db4a0" stroke-width="3" stroke-dasharray="10 9"/><line x1="14" y1="200" x2="386" y2="200" stroke="#9db4a0" stroke-width="3" stroke-dasharray="10 9"/><line x1="14" y1="368" x2="386" y2="368" stroke="${INK}" stroke-width="4"/>`
+    : `<line x1="14" y1="40" x2="386" y2="40" stroke="#9db4a0" stroke-width="3" stroke-dasharray="10 9"/><line x1="14" y1="460" x2="386" y2="460" stroke="${INK}" stroke-width="4"/>`;
   const badges: [number, number][] = [];
-  const paths = strokes.map((st, i) => {
-    const pts = st.pts.map(([x, y]) => `${(x * 4).toFixed(0)},${(y * 4.6).toFixed(0)}`);
-    const [sx, sy] = pts[0].split(",").map(Number);
-    const [ex, ey] = pts[pts.length - 1].split(",").map(Number), [px, py] = (pts[pts.length - 2] ?? pts[0]).split(",").map(Number);
-    const ang = (Math.atan2(ey - py, ex - px) * 180) / Math.PI;
-    // Two strokes that start at the same dot (like the apex of A) get number badges side by side, not stacked.
+  const marks: string[] = [];
+  const body = strokes.map((st, i) => {
+    const pts = st.pts.map(m);
+    const [sx, sy] = pts[0], [ex, ey] = pts[pts.length - 1];
     let bx = sx; const by = sy;
-    while (badges.some(([ox, oy]) => Math.abs(ox - bx) < 40 && Math.abs(oy - by) < 40)) bx += 42;
+    while (badges.some(([ox, oy]) => Math.abs(ox - bx) < 42 && Math.abs(oy - by) < 42)) bx += 44;
     badges.push([bx, by]);
-    return `<polyline points="${pts.join(" ")}" fill="none" stroke="#2c3a33" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="2 24" opacity=".9"/>${ARROW(ex, ey, ang)}<circle cx="${bx}" cy="${by}" r="19" fill="#7fb069"/><text x="${bx}" y="${by + 7}" text-anchor="middle" font-size="22" font-weight="700" fill="#fff" font-family="Fredoka, sans-serif">${i + 1}</text>`;
-  }).join("");
-  return `<svg viewBox="0 0 400 460" width="100%" style="max-height:5.2in"><rect x="6" y="6" width="388" height="448" rx="26" fill="#fff" stroke="#2c3a33" stroke-width="4"/>${paths}</svg>`;
+    marks.push(`<circle cx="${bx.toFixed(0)}" cy="${by.toFixed(0)}" r="19" fill="#7fb069"/><text x="${bx.toFixed(0)}" y="${(by + 7).toFixed(0)}" text-anchor="middle" font-size="22" font-weight="700" fill="#fff" font-family="Fredoka, sans-serif">${i + 1}</text>`);
+    return `<polyline points="${pts.map((q) => q.map((v) => v.toFixed(0)).join(",")).join(" ")}" fill="none" stroke="${INK}" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="2 24" opacity=".9"/>${ARROW(ex, ey, angleOf(st.pts, m))}`;
+  }).join("") + marks.join("");
+  return `<svg viewBox="0 0 400 500" width="100%"><rect x="6" y="6" width="388" height="488" rx="26" fill="#fff" stroke="${INK}" stroke-width="4"/>${guides}${body}</svg>`;
 }
-const traceLetters = (txt: string, size: number) => `<svg viewBox="0 0 800 130" width="100%"><line x1="10" y1="100" x2="790" y2="100" stroke="#2c3a33" stroke-width="3"/><line x1="10" y1="30" x2="790" y2="30" stroke="#9db4a0" stroke-width="2" stroke-dasharray="8 8"/><text x="20" y="100" font-size="${size}" font-family="Fredoka, 'Nunito', sans-serif" font-weight="600" fill="none" stroke="#2c3a33" stroke-width="3.5" stroke-dasharray="6 7" letter-spacing="14">${txt}</text></svg>`;
+/** Shared mapping for practice rows: both capitals and small letters sit on one baseline (y 161), cap/ascender line at 14. */
+const rowMap = (cx0: number): Mapper => ([x, y]) => [cx0 + 16 + (x - 10) * 1.6, 14 + (y - 8) * 1.75];
+const poly = (pts: [number, number][], m: Mapper) => pts.map(m).map((q) => `${q[0].toFixed(0)},${q[1].toFixed(0)}`).join(" ");
+function practiceRow(items: { strokes: Stroke[] }[], guideMid: boolean): string {
+  const W = 800, H = 225, cw = W / items.length;
+  const guides = `<line x1="8" y1="14" x2="792" y2="14" stroke="#9db4a0" stroke-width="2.5" stroke-dasharray="9 8"/>${guideMid ? `<line x1="8" y1="76" x2="792" y2="76" stroke="#c9d7cb" stroke-width="2.5" stroke-dasharray="9 8"/>` : ""}<line x1="8" y1="161" x2="792" y2="161" stroke="${INK}" stroke-width="3.5"/><line x1="${cw}" y1="2" x2="${cw}" y2="${H - 2}" stroke="#d6ded8" stroke-width="2"/>`;
+  const cells = items.map((it, c) => {
+    const m = rowMap(c * cw);
+    const lines: string[] = [], marks: string[] = [], used: [number, number][] = [];
+    it.strokes.forEach((st, i) => {
+      const [sx, sy] = m(st.pts[0]), [ex, ey] = m(st.pts[st.pts.length - 1]);
+      if (c === 0) {
+        let bx = sx; while (used.some(([ox, oy]) => Math.abs(ox - bx) < 28 && Math.abs(oy - sy) < 28)) bx += 30;
+        used.push([bx, sy]);
+        lines.push(`<polyline points="${poly(st.pts, m)}" fill="none" stroke="#aebdb2" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>${ARROW(ex, ey, angleOf(st.pts, m), 0.9)}`);
+        marks.push(`<circle cx="${bx.toFixed(0)}" cy="${sy.toFixed(0)}" r="13" fill="#7fb069"/><text x="${bx.toFixed(0)}" y="${(sy + 5).toFixed(0)}" text-anchor="middle" font-size="15" font-weight="700" fill="#fff" font-family="Fredoka, sans-serif">${i + 1}</text>`);
+      } else {
+        lines.push(`<polyline points="${poly(st.pts, m)}" fill="none" stroke="${INK}" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="1 14"/>`);
+        marks.push(`<circle cx="${sx.toFixed(0)}" cy="${sy.toFixed(0)}" r="9" fill="#7fb069"/>`);
+      }
+    });
+    return lines.join("") + marks.join("");
+  }).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%">${guides}${cells}</svg>`;
+}
+/** Two empty boxes with only a green starting dot, for the child's own letter. */
+function targetSvg(up: Stroke[], lo: Stroke[]): string {
+  const box = (x: number, label: string, st: Stroke[], lower: boolean) => {
+    const m: Mapper = ([px, py]) => [x + 70 + (px - 10) * 2.0, 40 + (py - 8) * 1.9];
+    const [sx, sy] = m(st[0].pts[0]);
+    return `<rect x="${x}" y="6" width="384" height="268" rx="26" fill="#fff" stroke="${INK}" stroke-width="4"/><text x="${x + 22}" y="36" font-size="21" font-weight="700" fill="${INK}" font-family="Fredoka, sans-serif">${label}</text><line x1="${x + 20}" y1="${40 + (92 - 8) * 1.9}" x2="${x + 364}" y2="${40 + (92 - 8) * 1.9}" stroke="#9db4a0" stroke-width="3" stroke-dasharray="10 9"/><circle cx="${sx.toFixed(0)}" cy="${sy.toFixed(0)}" r="11" fill="#7fb069"/>${lower ? "" : ""}`;
+  };
+  return `<svg viewBox="0 0 800 280" width="100%">${box(6, "My capital", up, false)}${box(410, "My small letter", lo, true)}</svg>`;
+}
+const CUE_CHIP = (st: Stroke[]) => st.map((x, i) => `<span class="chip"><b>${i + 1}</b> ${x.cue}</span>`).join("");
 function letter(s: Section, mascot?: string): string[] {
   const ch = (s.data?.letter ?? s.title.replace(/^Letter\s+/i, "")[0] ?? "A").toUpperCase();
-  const cues = [...new Set((LETTER_STROKES[ch] ?? []).map((x) => x.cue))].join(" · ");
-  const A = page("tr", `<div class="trhead"><span class="bigl">${ch}${ch.toLowerCase()}</span><span class="trcue">${esc(s.data?.cue ?? "")}</span></div><div class="trbody"><div class="trglyph">${strokeSvg(ch)}</div><div class="trmas">${mascot ? `<img src="${mascot}" alt="Mascot">` : `<div class="none">Mascot pose picture</div>`}<p class="strokes">${esc(cues)}</p></div></div><div class="parent"><b>Parent prompt:</b> ${esc(s.data?.parent ?? "")}</div>`);
-  const L = [`${ch} ${ch} ${ch} ${ch}`, `${ch.toLowerCase()} ${ch.toLowerCase()} ${ch.toLowerCase()} ${ch.toLowerCase()}`, `${ch}${ch.toLowerCase()} ${ch}${ch.toLowerCase()}`];
-  const B = page("tr", `<div class="trhead"><span class="bigl">${ch}${ch.toLowerCase()}</span><span class="trcue">Your turn. Three short lines.</span></div>${L.map((x) => `<div class="tline">${traceLetters(x, 96)}</div>`).join("")}<div class="target"><span>My letter</span></div>`);
+  const lc = ch.toLowerCase();
+  const up = LETTER_STROKES[ch] ?? [], lo = LOWER_STROKES[lc] ?? [];
+  const A = page("tr", `<div class="trhead"><span class="bigl">${ch}${lc}</span><span class="trcue">${esc(s.data?.cue ?? "")}</span></div><div class="trglyphs"><div class="trg">${glyphSvg(up, false)}<p class="gl">Capital ${ch}</p></div><div class="trg">${glyphSvg(lo, true)}<p class="gl">Small ${lc}</p></div></div><div class="trlow"><div class="trmas">${mascot ? `<img src="${mascot}" alt="Mascot">` : `<div class="none">Mascot pose picture</div>`}</div><div class="legend"><p><b>Capital ${ch}</b></p><div>${CUE_CHIP(up)}</div><p><b>Small ${lc}</b></p><div>${CUE_CHIP(lo)}</div></div></div><div class="parent"><b>Parent prompt:</b> ${esc(s.data?.parent ?? "")}</div>`);
+  const U = { strokes: up }, Lw = { strokes: lo };
+  const rows = [practiceRow([U, U, U, U, U], false), practiceRow([Lw, Lw, Lw, Lw, Lw], true), practiceRow([U, Lw, U, Lw, U], true)];
+  const B = page("tr", `<div class="trhead"><span class="bigl">${ch}${lc}</span><span class="trcue">Start at the green dot. Trace the dots, then try on your own.</span></div>${rows.map((x) => `<div class="tline">${x}</div>`).join("")}<div class="target">${targetSvg(up, lo)}</div>`);
   return [A, B];
 }
 
@@ -166,11 +212,12 @@ ${MATTER_CSS}
 /* preschool tracing: high contrast, 0.75in margins, bold 3-4pt lines */
 .page.tr { background: #fff; gap: 0.14in; }
 .trhead { display: flex; align-items: center; gap: 0.25in; } .bigl { font-size: 54pt; line-height: 1; color: #2c3a33; } .trcue { font-size: 15pt; flex: 1; line-height: 1.3; }
-.trbody { display: grid; grid-template-columns: 1.35fr 1fr; gap: 0.22in; flex: 1; min-height: 0; } .trglyph { min-height: 0; }
-.trmas { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.1in; border: 3px solid #2c3a33; border-radius: 0.2in; padding: 0.1in; } .trmas img { max-width: 100%; max-height: 3.4in; object-fit: contain; } .trmas .none { color: #888; font-size: 12pt; }
-.strokes { font: 600 12pt Fredoka, sans-serif; text-align: center; margin: 0; }
+.trglyphs { display: grid; grid-template-columns: 1fr 1fr; gap: 0.2in; } .trg { text-align: center; } .trg svg { display: block; } .gl { margin: 0.04in 0 0; font: 600 12pt Fredoka, sans-serif; }
+.trlow { display: grid; grid-template-columns: 1fr 1.25fr; gap: 0.2in; align-items: stretch; flex: 1; min-height: 0; }
+.trmas { display: flex; align-items: center; justify-content: center; border: 3px solid #2c3a33; border-radius: 0.2in; padding: 0.08in; overflow: hidden; } .trmas img { max-width: 100%; max-height: 2.35in; object-fit: contain; } .trmas .none { color: #888; font-size: 12pt; text-align: center; }
+.legend { display: flex; flex-direction: column; justify-content: center; gap: 0.04in; } .legend p { margin: 0.05in 0 0; font: 600 13pt Fredoka, sans-serif; } .chip { display: inline-block; border: 2px solid #7fb069; border-radius: 0.3in; padding: 0.02in 0.12in; margin: 0.03in 0.06in 0.03in 0; font: 600 11.5pt Fredoka, sans-serif; } .chip b { background: #7fb069; color: #fff; border-radius: 50%; display: inline-block; width: 0.22in; height: 0.22in; text-align: center; line-height: 0.22in; margin-right: 0.04in; }
 .parent { border: 3px solid #2c3a33; border-radius: 0.15in; padding: 0.12in 0.2in; font-size: 13pt; }
-.tline { border-bottom: 0; } .target { flex: 0 0 auto; height: 1.5in; border: 4px solid #2c3a33; border-radius: 0.2in; display: flex; align-items: flex-start; padding: 0.1in 0.2in; font: 600 14pt Fredoka, sans-serif; }
+.tline { border-bottom: 0; } .target { flex: 0 0 auto; }
 /* gamebook */
 .gb h2 { font-size: 22pt; margin: 0; } .gb .txt { font-size: 13pt; line-height: 1.45; } .gb .txt p { margin: 0 0 0.1in; } .gb .txt strong { color: #b4411f; }
 .gb.detour { border: 0.28in solid transparent; border-image: repeating-linear-gradient(45deg, #f2c200 0 0.22in, #222 0.22in 0.44in) 40; padding: 0.55in; }
