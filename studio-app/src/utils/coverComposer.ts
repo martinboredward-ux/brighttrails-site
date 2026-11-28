@@ -29,6 +29,8 @@ export function coverDefaults(book: Book): CoverSettings {
     trim: c.trim ?? book.trim,
     paper: paper as PaperType,
     frontArtId: c.frontArtId,
+    backArtId: c.backArtId,
+    backArtStrength: c.backArtStrength ?? 12,
     backBlurb: c.backBlurb ?? "",
     barcodeCorner: c.barcodeCorner ?? true,
     fit: c.fit ?? "fill",
@@ -45,7 +47,7 @@ export function coverDefaults(book: Book): CoverSettings {
 
 /** What the author approved: everything that changes how the cover looks. */
 export const coverSig = (s: CoverSettings) =>
-  JSON.stringify([s.title, s.subtitle, s.author, s.seriesPill, s.trim, s.frontArtId, s.fit, s.padColor, s.shift, s.titlePlacement, s.scrim, s.textColor, s.textEffect, s.topSky]);
+  JSON.stringify([s.title, s.subtitle, s.author, s.seriesPill, s.trim, s.frontArtId, s.backArtId, s.backArtStrength, s.fit, s.padColor, s.shift, s.titlePlacement, s.scrim, s.textColor, s.textEffect, s.topSky]);
 export const coverApproved = (s: CoverSettings) => !!s.approvedSig && s.approvedSig === coverSig(s);
 
 const FONT = '"Nunito","Poppins","Segoe UI",system-ui,sans-serif';
@@ -257,7 +259,7 @@ export async function renderCheckJpeg(s: CoverSettings, fallbackTrim: Trim, art:
   return btoa(bin);
 }
 
-export interface WrapOptions { guides?: boolean }
+export interface WrapOptions { guides?: boolean; backArt?: Img | null }
 
 /** Full paperback wrap at 300 dpi: back (blurb) + spine + front, with bleed. */
 export function renderWrapCanvas(s: CoverSettings, fallbackTrim: Trim, art: Img | null, opts: WrapOptions = {}): HTMLCanvasElement {
@@ -266,6 +268,15 @@ export function renderWrapCanvas(s: CoverSettings, fallbackTrim: Trim, art: Img 
   const bleed = BLEED * DPI, tw = g.trimW * DPI, th = g.trimH * DPI, sp = g.spine * DPI;
   const spineX = bleed + tw, frontX = bleed + tw + sp;
   ctx.fillStyle = "#fbf4e4"; ctx.fillRect(0, 0, bleed + tw, c.height);
+  if (opts.backArt) {
+    // Faint picture behind the blurb (fill the back panel, keep the proportions). Strength is capped so text stays readable.
+    const a = opts.backArt, pw = bleed + tw, k = Math.max(pw / a.width, c.height / a.height);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0, 0, pw, c.height); ctx.clip();
+    ctx.globalAlpha = Math.min(Math.max((s.backArtStrength ?? 12) / 100, 0), 0.3);
+    ctx.drawImage(a, (pw - a.width * k) / 2, (c.height - a.height * k) / 2, a.width * k, a.height * k);
+    ctx.restore();
+  }
   ctx.fillStyle = "#15382a"; ctx.fillRect(spineX, 0, sp, c.height);
   drawFront(ctx, s, art, { x: frontX, y: 0, w: bleed + tw, h: c.height }, { x: frontX, y: bleed, w: tw, h: th });
   const safe = bleed + 0.25 * DPI;
@@ -304,11 +315,11 @@ export function renderWrapCanvas(s: CoverSettings, fallbackTrim: Trim, art: Img 
   }
   return c;
 }
-export const renderWrapPng = (s: CoverSettings, fallbackTrim: Trim, art: Img | null) => toBlob(renderWrapCanvas(s, fallbackTrim, art));
+export const renderWrapPng = (s: CoverSettings, fallbackTrim: Trim, art: Img | null, backArt: Img | null = null) => toBlob(renderWrapCanvas(s, fallbackTrim, art, { backArt }));
 
-export function renderWrapPdf(s: CoverSettings, fallbackTrim: Trim, art: Img | null): Blob {
+export function renderWrapPdf(s: CoverSettings, fallbackTrim: Trim, art: Img | null, backArt: Img | null = null): Blob {
   const g = wrapGeometry(s, fallbackTrim);
-  const c = renderWrapCanvas(s, fallbackTrim, art);
+  const c = renderWrapCanvas(s, fallbackTrim, art, { backArt });
   const pdf = new jsPDF({ orientation: g.totalW > g.totalH ? "landscape" : "portrait", unit: "in", format: [g.totalW, g.totalH] });
   pdf.addImage(c.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, g.totalW, g.totalH);
   return pdf.output("blob");

@@ -43,6 +43,7 @@ export default function TabCover({ book, update, commit, setBook, fail }: Props)
   const s = coverDefaults(book);
   const set = (p: Partial<CoverSettings>) => update({ cover: { ...book.cover, ...s, ...p } });
   const [art, setArt] = useState<HTMLImageElement | null>(null);
+  const [backArt, setBackArt] = useState<HTMLImageElement | null>(null);
   const [guides, setGuides] = useState(true);
   const [msg, setMsg] = useState("");
   const [checking, setChecking] = useState(false);
@@ -68,10 +69,18 @@ export default function TabCover({ book, update, commit, setBook, fail }: Props)
   }, [s.frontArtId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    let live = true;
+    setBackArt(null);
+    if (!s.backArtId) return;
+    fetchImageBlob(s.backArtId).then(blobToImage).then((img) => { if (live) setBackArt(img); }).catch(fail);
+    return () => { live = false; };
+  }, [s.backArtId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
     drawTo(printRef.current, renderPrintFrontCanvas(s, book.trim, art), 420);
     drawTo(ebookRef.current, renderEbookCanvas(s, art), 360);
-    drawTo(wrapRef.current, renderWrapCanvas(s, book.trim, art, { guides }), 900);
-  }, [JSON.stringify(s), art, guides, book.trim]); // eslint-disable-line react-hooks/exhaustive-deps
+    drawTo(wrapRef.current, renderWrapCanvas(s, book.trim, art, { guides, backArt }), 900);
+  }, [JSON.stringify(s), art, backArt, guides, book.trim]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const uploadArt = async (f: File | undefined) => {
     if (!f) return;
@@ -90,8 +99,8 @@ export default function TabCover({ book, update, commit, setBook, fail }: Props)
   const run = (fn: () => Promise<void> | void) => async () => { try { await fn(); } catch (e) { fail(e); } };
   const printPng = run(async () => download(`${book.slug}-print-front-${Math.round(dims.w * 300)}x${Math.round(dims.h * 300)}.png`, await renderPrintFront(s, book.trim, art)));
   const ebookPng = run(async () => download(`${book.slug}-ebook-cover-1600x2560.png`, await renderEbookCover(s, art)));
-  const wrapPng = run(async () => download(`${book.slug}-paperback-wrap.png`, await renderWrapPng(s, book.trim, art)));
-  const wrapPdf = run(() => download(`${book.slug}-paperback-wrap.pdf`, renderWrapPdf(s, book.trim, art)));
+  const wrapPng = run(async () => download(`${book.slug}-paperback-wrap.png`, await renderWrapPng(s, book.trim, art, backArt)));
+  const wrapPdf = run(() => download(`${book.slug}-paperback-wrap.pdf`, renderWrapPdf(s, book.trim, art, backArt)));
   const sendToAplus = run(async () => {
     if (!book.kdp?.aPlusModules?.length) { setMsg("Make the KDP package first (tab 4), then send the cover to A+ Module 1."); return; }
     const id = await uploadImage(book.id, await renderEbookCover(s, art));
@@ -138,6 +147,17 @@ export default function TabCover({ book, update, commit, setBook, fail }: Props)
               {(["standardColor", "premiumColor", "white", "cream"] as PaperType[]).map((p) => <option key={p} value={p}>{PAPER_LABEL[p]}</option>)}
             </select></div>
           <div className="flex items-end"><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={s.barcodeCorner !== false} onChange={(e) => set({ barcodeCorner: e.target.checked })} /> Keep the barcode corner open</label></div>
+          <div className="sm:col-span-2 space-y-1">
+            <label className="label">Back cover picture (optional, faint behind the blurb)</label>
+            <div className="flex flex-wrap items-center gap-2">
+              <select className="field !w-auto" value={s.backArtId ?? ""} onChange={(e) => set({ backArtId: e.target.value || undefined })}>
+                <option value="">None (plain cream)</option>
+                {pictures.map((i, n) => <option key={i.id} value={i.id}>Picture {n + 1}{i.id === s.frontArtId ? " (front cover)" : ""}</option>)}
+              </select>
+              {s.backArtId && <label className="flex items-center gap-2 text-sm">Strength {s.backArtStrength ?? 12}%<input type="range" min={3} max={20} value={s.backArtStrength ?? 12} onChange={(e) => set({ backArtStrength: Number(e.target.value) })} /></label>}
+            </div>
+            <p className="hint">Keep it faint (3-20%) so the blurb stays readable. The barcode box stays solid white.</p>
+          </div>
           <div className="sm:col-span-2"><label className="label">Back cover blurb</label><textarea className="field min-h-24" value={s.backBlurb} onChange={(e) => set({ backBlurb: e.target.value })} placeholder="Paste your KDP description in plain text." /></div>
         </div>
         <div className="rounded-lg bg-sun/20 px-3 py-2 text-sm">

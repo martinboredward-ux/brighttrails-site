@@ -72,7 +72,7 @@ export type Action = "generate_outline" | "draft_section" | "draft_all" | "revie
 export interface CoverSettings {
   title?: string; subtitle?: string; author?: string; seriesPill?: string;
   pageCount?: number; trim?: Trim; paper?: PaperType;
-  frontArtId?: string; backBlurb?: string; barcodeCorner?: boolean;
+  frontArtId?: string; /** Optional faint picture behind the back-cover blurb. */ backArtId?: string; backArtStrength?: number; backBlurb?: string; barcodeCorner?: boolean;
   /** Framing and contrast controls. */
   fit?: "fill" | "fit"; padColor?: string; shift?: "top" | "center" | "bottom";
   titlePlacement?: "top" | "bottom" | "split"; scrim?: "none" | "softDark" | "softLight" | "pill";
