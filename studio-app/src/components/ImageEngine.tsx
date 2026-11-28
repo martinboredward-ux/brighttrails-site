@@ -84,7 +84,8 @@ export default function ImageEngine({ book, sectionId, initialPrompt = "", defau
       setStatus(`Done with ${image.modelUsed}. ${generatedThisVisit} picture${generatedThisVisit === 1 ? "" : "s"} generated this visit.`);
       onDone(image);
     } catch (e) {
-      setStatus("");
+      // Keep the real reason on screen (the pop-up can disappear before it is read).
+      setStatus(`Picture failed: ${e instanceof Error ? e.message : String(e)}`);
       fail(e);
     } finally { setBusy(false); }
   };

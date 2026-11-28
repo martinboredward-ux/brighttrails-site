@@ -14,8 +14,12 @@ async function call<T>(url: string, init: RequestInit = {}): Promise<T> {
   });
   if (res.status === 401) throw new AuthError("Wrong password");
   const text = await res.text();
-  const data = text ? JSON.parse(text) : {};
-  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  let data: Record<string, unknown> = {};
+  try { data = text ? JSON.parse(text) : {}; } catch {
+    // Not JSON: usually a Netlify error page (timeout, paused site, function crash). Show its status and the start of the text.
+    throw new Error(`The server answered ${res.status} with a page instead of data: ${text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 160)}`);
+  }
+  if (!res.ok) throw new Error(String(data.error ?? `Request failed (${res.status})`));
   return data as T;
 }
 
