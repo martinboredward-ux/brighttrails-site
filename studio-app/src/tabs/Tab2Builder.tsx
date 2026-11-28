@@ -20,6 +20,7 @@ import PolishPanel from "../components/PolishPanel";
 import JobStatus from "../components/JobStatus";
 import ReservedScan from "../components/ReservedScan";
 import PictureCheck from "../components/PictureCheck";
+import BookChecks from "../components/BookChecks";
 import { useRunJob } from "../hooks/useRunJob";
 import { TooltipButton } from "../components/TooltipButton";
 
@@ -177,6 +178,8 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
       {book.mode === "activity" && <WidgetLibrary book={book} />}
 
       <BulkUpload book={book} onDone={addImage} fail={fail} />
+
+      <BookChecks book={book} />
 
       <section className="card space-y-3">
         <div className="flex items-center justify-between">
