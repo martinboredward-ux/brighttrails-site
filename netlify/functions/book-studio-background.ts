@@ -2,6 +2,7 @@ import type { Config } from "@netlify/functions";
 import Anthropic from "@anthropic-ai/sdk";
 import { checkAuth, json } from "../lib/studio-auth.ts";
 import { geminiGenerate } from "../lib/gemini.ts";
+import { getReserved, logUsage, reservedPromptBlock } from "../lib/studio-settings.ts";
 import { getBook, putBook, type Book, type Section } from "../lib/studio-store.ts";
 import { seriesContext } from "../lib/series-context.ts";
 import { automatedChecks, cleanFixes, diffSummary, parseJson } from "../lib/review-utils.ts";
@@ -42,10 +43,12 @@ AI disclosure setting: ${b.aiDisclosure}
 Notes: ${b.notes || "(none)"}`;
 }
 
-const gemini = (prompt: string, json = false) => geminiGenerate(prompt, { json });
+let currentAction = "job";
+const gemini = (prompt: string, json = false) => geminiGenerate(prompt, { json, label: currentAction });
 
 async function claude(prompt: string, which: keyof typeof MODELS): Promise<string> {
   const client = new Anthropic();
+  await logUsage(`text:${MODELS[which] ?? MODELS.haiku}:${currentAction}`);
   const msg = await client.messages.create({
     model: MODELS[which] ?? MODELS.haiku,
     max_tokens: 4000,
@@ -149,7 +152,9 @@ async function run(p: Payload): Promise<Partial<Book>> {
   if (!book) throw new Error("Book not found");
   const which = p.model === "sonnet" ? "sonnet" : "haiku";
   // Linked books (series memory) travel with every prompt below.
-  const ctx = bookContext(book) + (await seriesContext(book));
+  currentAction = p.action;
+  const reserved = reservedPromptBlock(await getReserved(), book);
+  const ctx = bookContext(book) + (reserved ? `\n${reserved}` : "") + (await seriesContext(book));
 
   switch (p.action) {
     case "generate_outline": {

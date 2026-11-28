@@ -69,8 +69,8 @@ export default function ImageEngine({ book, sectionId, initialPrompt = "", defau
 
   const run = async () => {
     if (!prompt.trim()) { setStatus("Write a prompt first."); return; }
-    if (sectionId && book.images.some((i) => i.sectionId === sectionId && i.provider !== "upload" && i.slot !== "puzzle")
-      && !confirm("This page already has a picture. Generating another uses Netlify credits. Use your $0 prompt in ChatGPT instead, or press OK to generate anyway.")) return;
+    const hasPic = !!sectionId && book.images.some((i) => i.sectionId === sectionId && i.provider !== "upload" && i.slot !== "puzzle");
+    if (!confirm((hasPic ? "This page already has a picture. " : "") + "Generate a picture in Studio? Each one uses Netlify AI credits (pictures are most of the cost). A free ChatGPT or Nano Banana picture, uploaded here, costs nothing. Press OK to generate.")) return;
     setBusy(true);
     setNotes([]);
     setStatus("Starting…");

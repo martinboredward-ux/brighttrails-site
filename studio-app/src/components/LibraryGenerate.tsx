@@ -37,6 +37,7 @@ export default function LibraryGenerate({ book, commit, fail, initial, compact, 
   const run = async () => {
     if (!name.trim()) { setStatus("Type a name first."); return; }
     if (lib.length >= 40) { setStatus("The library holds up to 40 pictures."); return; }
+    if (!confirm("Generate this picture in Studio? It uses Netlify AI credits. Press OK to generate.")) return;
     setBusy(true); setStatus("Starting…");
     try {
       // Other Library items are sent as references so the new picture matches the same cast.

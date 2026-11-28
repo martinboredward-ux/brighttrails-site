@@ -18,6 +18,7 @@ import WidgetLibrary from "../components/WidgetLibrary";
 import BulkUpload from "../components/BulkUpload";
 import PolishPanel from "../components/PolishPanel";
 import JobStatus from "../components/JobStatus";
+import ReservedScan from "../components/ReservedScan";
 import { useRunJob } from "../hooks/useRunJob";
 import { TooltipButton } from "../components/TooltipButton";
 
@@ -171,6 +172,7 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
 
       <ArtChecklist book={book} commit={commit} fail={fail} onDone={addImage} />
 
+      <ReservedScan book={book} />
       {book.mode === "activity" && <WidgetLibrary book={book} />}
 
       <BulkUpload book={book} onDone={addImage} fail={fail} />

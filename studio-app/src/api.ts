@@ -134,3 +134,11 @@ export const coverIdeas = (payload: Record<string, unknown>) =>
 export interface CoverCheck { ok: boolean; summary: string; checks: { name: string; pass: boolean; note: string }[] }
 export const checkCover = (payload: Record<string, unknown>) =>
   call<CoverCheck>("/api/studio/cover-check", { method: "POST", body: JSON.stringify(payload) });
+
+export interface ReservedItem { name: string; owner?: string; note?: string }
+export interface Reserved { names: ReservedItem[]; animals: ReservedItem[]; allowed: string[] }
+export interface UsageDay { day: string; images: number; byKey: Record<string, number> }
+export interface StudioSettings { reserved: Reserved; limits: { imagesPerDay: number }; usage: UsageDay[] }
+export const getSettings = () => call<StudioSettings>("/api/studio/settings");
+export const putSettings = (p: { reserved?: Reserved; limits?: { imagesPerDay: number } }) =>
+  call<StudioSettings>("/api/studio/settings", { method: "PUT", body: JSON.stringify(p) });

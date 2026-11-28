@@ -1,6 +1,7 @@
 import type { Config } from "@netlify/functions";
 import { checkAuth, json } from "../lib/studio-auth.ts";
 import { IMAGE_ID_RE, getBook, imageStore } from "../lib/studio-store.ts";
+import { imageCap, logUsage } from "../lib/studio-settings.ts";
 
 // POST validates the request and starts a background job (pictures can take a minute or more,
 // longer than a normal function may run). GET ?jobId= reports progress.
@@ -51,6 +52,10 @@ export default async (req: Request): Promise<Response> => {
       if (!IMAGE_ID_RE.test(r) || !r.startsWith(`${bookId}__`)) return json({ error: "Reference images must belong to this book" }, 400);
     }
     const sectionId = body.sectionId ? String(body.sectionId).slice(0, 60) : undefined;
+
+    const cap = await imageCap();
+    if (!cap.ok) return json({ error: `Daily picture limit reached (${cap.used} of ${cap.cap} today). Make the picture in ChatGPT or Nano Banana and upload it, or raise the limit in Studio settings.` }, 429);
+    await logUsage(`image:${provider}:${stylePreset}`, { image: true });
 
     const jobId = crypto.randomUUID();
     const job = { id: jobId, bookId, status: "queued", createdAt: new Date().toISOString() };

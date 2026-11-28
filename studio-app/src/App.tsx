@@ -10,6 +10,7 @@ import Tab3Kdp from "./tabs/Tab3Kdp";
 import Tab4APlus from "./tabs/Tab4APlus";
 import { ThemeToggle, useTheme } from "./theme";
 import { TooltipButton } from "./components/TooltipButton";
+import StudioSettings from "./components/StudioSettings";
 
 const TABS = ["1 · Research & Style Bible", "2 · Book Builder", "3 · Cover Studio", "4 · KDP Package", "5 · A+ Content"] as const;
 
@@ -190,6 +191,7 @@ export default function App() {
             ))}
           </ul>
           <TooltipButton className="btn-alt w-full" onClick={add}>+ New book</TooltipButton>
+          <StudioSettings />
           <TooltipButton className="text-xs text-muted underline" onClick={() => { clearPassword(); setAuthed(false); }}>Sign out</TooltipButton>
         </div>
       </aside>

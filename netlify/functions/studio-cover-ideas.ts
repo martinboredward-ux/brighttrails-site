@@ -2,6 +2,7 @@ import type { Config } from "@netlify/functions";
 import Anthropic from "@anthropic-ai/sdk";
 import { checkAuth, json } from "../lib/studio-auth.ts";
 import { parseJson } from "../lib/review-utils.ts";
+import { getReserved, logUsage, reservedPromptBlock } from "../lib/studio-settings.ts";
 
 export const config: Config = { path: "/api/studio/cover-ideas" };
 
@@ -29,10 +30,12 @@ export default async (req: Request): Promise<Response> => {
   const matchRule = refs.length
     ? `\nThe ${refs.length} attached picture(s) are the author's BEST finished covers. Study their look (palette, outline style, how large the characters are, composition, how much sky is left for the title, mood). Every concept must feel like it belongs to the same family. Also return "lookNotes": 3-4 plain sentences describing that shared look so it can be pasted into an image prompt (no mention of text or titles).`
     : "";
+  const reserved = reservedPromptBlock(await getReserved(), { title: b.title, seriesName: b.seriesPill });
   const prompt = `You are a children's-book cover art director for Amazon KDP. The author is weakest at covers, so be concrete and decisive.
 
 Book: "${clip(b.title, 200)}"${b.subtitle ? ` | Subtitle: "${clip(b.subtitle, 200)}"` : ""}
 Audience: ${clip(b.audience, 120) || "children"} | Type: ${clip(b.mode, 30)} | Series line: ${clip(b.seriesPill, 120) || "none"} | Trim: ${clip(b.trim, 20)}
+${reserved}
 Named characters: ${(b.characters ?? []).map((c) => clip(c, 40)).filter(Boolean).join(", ") || "none"}
 Visual style notes: ${clip(b.styleBible, 900) || "none"}
 Contents:
@@ -48,6 +51,7 @@ Return ONLY JSON: {"lookNotes":string (empty string when no pictures are attache
 "name" is 2-4 words. "why" is one sentence on why it sells. "scene" is 2-3 sentences describing only the picture (subject, pose, setting, colors, mood), with no mention of text. "tips" is 3 short, book-specific cover tips.${matchRule}`;
   try {
     const which = b.model === "sonnet" ? "sonnet" : "haiku";
+    await logUsage(`text:${MODELS[which]}:cover_ideas`);
     const msg = await new Anthropic().messages.create({ model: MODELS[which], max_tokens: 2200, messages: [{ role: "user", content: [...refs.map((data) => ({ type: "image" as const, source: { type: "base64" as const, media_type: "image/jpeg" as const, data } })), { type: "text" as const, text: prompt }] }] });
     const text = msg.content.map((c) => (c.type === "text" ? c.text : "")).join("").trim();
     const raw = parseJson<{ lookNotes?: string; concepts?: Record<string, unknown>[]; tips?: unknown[] }>(text);

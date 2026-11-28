@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { logUsage } from "./studio-settings.ts";
 
 // Model IDs the AI Gateway has announced, in the order we try them.
 // GEMINI_MODEL (Netlify environment variable) is always tried first, so the model can be
@@ -22,7 +23,7 @@ function isModelNotFound(err: unknown): boolean {
   return /NOT_FOUND|\b404\b|is not found|not supported for generateContent/i.test(e?.message ?? "");
 }
 
-export async function geminiGenerate(prompt: string, opts: { json?: boolean; temperature?: number; image?: { mimeType: string; data: string } } = {}): Promise<string> {
+export async function geminiGenerate(prompt: string, opts: { json?: boolean; temperature?: number; image?: { mimeType: string; data: string }; label?: string } = {}): Promise<string> {
   const ai = new GoogleGenAI({});
   const config: Record<string, unknown> = {};
   if (opts.json) config.responseMimeType = "application/json";
@@ -35,6 +36,7 @@ export async function geminiGenerate(prompt: string, opts: { json?: boolean; tem
       const contents = opts.image ? [{ role: "user", parts: [{ text: prompt }, { inlineData: { mimeType: opts.image.mimeType, data: opts.image.data } }] }] : prompt;
       const res = await ai.models.generateContent({ model, contents, config });
       working = model;
+      await logUsage(`text:${model}:${opts.label ?? "other"}`);
       return (res.text ?? "").trim();
     } catch (err) {
       if (!isModelNotFound(err)) throw err; // quota, auth, bad request: do not hide these
