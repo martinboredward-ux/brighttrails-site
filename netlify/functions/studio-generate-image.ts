@@ -68,11 +68,13 @@ export default async (req: Request): Promise<Response> => {
       body: JSON.stringify(payload),
     });
     if (!start.ok && start.status !== 202) {
+      console.error(`[studio-image] could not start background job: HTTP ${start.status} ${(await start.text().catch(() => "")).slice(0, 200)}`);
       await store.setJSON(`job__${jobId}`, { ...job, status: "error", error: `Could not start the image job (${start.status})` });
       return json({ error: `Could not start the image job (${start.status})` }, 502);
     }
     return json({ jobId }, 202);
   } catch (err) {
+    console.error(`[studio-image] request failed: ${err instanceof Error ? err.message : String(err)}`);
     return json({ error: err instanceof Error ? err.message : String(err) }, 500);
   }
 };
