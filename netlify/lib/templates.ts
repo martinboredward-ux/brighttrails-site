@@ -124,7 +124,7 @@ export const LOWER_STROKES: Record<string, Stroke[]> = {
   z: L(R(ln([26, 50], [74, 50])), D(ln([74, 50], [26, 92])), R(ln([26, 92], [74, 92]))),
 };
 
-export const LETTER_WORDS: Record<string, string> = { A: "apple", B: "ball", C: "cat", D: "duck", E: "egg", F: "fish", G: "goat", H: "hat", I: "igloo", J: "jam", K: "kite", L: "leaf", M: "moon", N: "nest", O: "orange", P: "pig", Q: "queen", R: "rain", S: "sun", T: "tree", U: "umbrella", V: "van", W: "web", X: "box", Y: "yo-yo", Z: "zebra" };
+export const LETTER_WORDS: Record<string, string> = { A: "apple", B: "ball", C: "cat", D: "duck", E: "egg", F: "fish", G: "goat", H: "hat", I: "igloo", J: "jam", K: "kite", L: "leaf", M: "moon", N: "nest", O: "orange", P: "pig", Q: "queen", R: "rain", S: "sun", T: "tree", U: "umbrella", V: "van", W: "web", X: "xylophone", Y: "yo-yo", Z: "zebra" };
 
 export function letterPack(): PackItem[] {
   return Object.keys(LETTER_STROKES).map((ch) => ({ title: `Letter ${ch}${ch.toLowerCase()}`, tpl: "letter", kind: "template" as const, summary: `Trace ${ch} and ${ch.toLowerCase()}. Picture word: ${LETTER_WORDS[ch]}.`, data: { letter: ch } }));
