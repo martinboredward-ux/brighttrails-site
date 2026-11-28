@@ -106,7 +106,7 @@ export function defaultScenePrompt(s: Section, mascot = ""): string {
     const ch = (s.data?.letter ?? s.title.replace(/^Letter\s+/i, "")[0] ?? "A").toUpperCase();
     const word = LETTER_WORDS[ch] ?? "";
     const who = mascot || "the mascot";
-    return `A single small sticker-style illustration: ${who}, the mascot from the attached reference picture (copy it exactly: same animal, face, ears, headband and outfit), standing full body with a happy smile and one hand pointing to the right${word ? `, next to one small ${word}` : ""}. Black-and-white clean line art, isolated in the middle of a completely blank white page with wide empty margins. Just the character${word ? ` and the ${word}` : ""}, nothing else on the page, no text.`;
+    return `A single small sticker-style illustration: ${who}, the mascot from the attached reference picture (copy it exactly: same animal, face, ears, headband and outfit), standing full body with a happy smile and one hand pointing to the right${word ? `, next to one small ${word}` : ""}. Black-and-white clean line art, drawn large so the character and prop fill about two-thirds of the picture, centered on a completely blank white background. Just the character${word ? ` and the ${word}` : ""}, nothing else on the page, no text.`;
   }
   const tagged = parseTagged(s.draft)?.IMAGE_PROMPT?.replace(/\s+/g, " ").trim();
   const counts = countLine(s);
