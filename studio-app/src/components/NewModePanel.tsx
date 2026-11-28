@@ -25,7 +25,7 @@ export default function NewModePanel({ book, update, commit, run }: Props) {
       <h2 className="text-base font-bold text-forest">{mode === "planner" ? "Planner tools" : mode === "tracing" ? "Letter-spread tools" : "Gamebook tools"}</h2>
       {mode === "planner" && (
         <>
-          <p className="hint">A full-color planner: Studio draws the pages (prompts, checklists, thermometer, funnel, sprints, weekly sheet, KPI table, collage canvas, cut-out quote strips). AI writes only the words. Cut-out sheets are picture pages with a blank back. Remember: KDP prints every page in color for a color interior (see the calculator in Tab 6).</p>
+          <p className="hint">A full-color planner: Studio draws the pages (prompts, checklists, thermometer, funnel, sprints, weekly sheet, KPI table, collage canvas, cut-out quote boxes). AI writes only the words. Cut-out sheets are picture pages with a blank back. Remember: KDP prints every page in color for a color interior (see the calculator in Tab 6).</p>
           <div className="flex flex-wrap gap-2">
             <TooltipButton className="btn" disabled={running} onClick={() => add(PLANNER_PACK)}>Insert the full 2027 planner pack ({PLANNER_PACK.length} pages)</TooltipButton>
             <TooltipButton className="btn-alt" disabled={running} tip="For pictures you made in ChatGPT that are already finished pages. Each page with a picture is printed as that picture alone, full page, with no heading or notes. Cut-out sheets and template pages are left alone." engine="$0 Free · Runs in your browser" onClick={() => {

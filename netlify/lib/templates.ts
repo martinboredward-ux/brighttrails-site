@@ -20,7 +20,7 @@ export const TEMPLATES: TplDef[] = [
     fields: [{ key: "intro", label: "Intro (1 sentence)", lines: 2, hint: "Short intro" }, { key: "metrics", label: "Metrics (one per line)", lines: 8, hint: "Leads this month" }] },
   { id: "collage", label: "Vision collage canvas", modes: ["planner"], ai: "A vision collage page: a one-sentence instruction and 4 theme labels for areas of the board (for example 'Wealth', 'Impact').",
     fields: [{ key: "intro", label: "Instruction (1-2 sentences)", lines: 2, hint: "Glue your cut-outs here" }, { key: "zones", label: "Zone labels (one per line, up to 6)", lines: 5, hint: "Wealth" }] },
-  { id: "quotes", label: "Quote strips (cut-out)", modes: ["planner"], ai: "8 short affirmation lines for cut-out quote strips, one per line, each under 9 words, confident and professional.",
+  { id: "quotes", label: "Quote boxes (cut-out)", modes: ["planner"], ai: "12 short affirmation lines for cut-out quote boxes, one per line. Mix 1-3 word labels (like Choose joy, Money flows, Own your power) with short phrases under 9 words. Confident, warm and professional, never childish.",
     fields: [{ key: "lines", label: "Quotes (one per line)", lines: 8, hint: "I build with clarity and calm." }] },
   { id: "letter", label: "Letter spread (A + B)", modes: ["tracing"], ai: "For one letter of a preschool tracing book (ages 4-6): a one-sentence story cue about Dash the bunny acting out the stroke, and a calm parent prompt of at most 2 sentences. Use ONLY these stroke phrases for directions: Pull down, Slide right, Hop over, Loop around.",
     fields: [{ key: "cue", label: "Story cue (1 sentence)", lines: 2, hint: "Dash pulls down a long line for the letter." }, { key: "parent", label: "Parent prompt (max 2 sentences)", lines: 2, hint: "Trace with your finger first." }] },
@@ -46,7 +46,7 @@ export const PLANNER_PACK: PackItem[] = [
   { title: "Phase 4: 90-Day Sprint 4", tpl: "sprint", kind: "template", summary: "Quarter four sprint." },
   { title: "Cut-Out Sheet 1: Icons & Badges", kind: "cutout", summary: "Full-color cut-out icons and badges, single-sided." },
   { title: "Cut-Out Sheet 2: Thermometers & Banners", kind: "cutout", summary: "Full-color cut-out progress thermometers and banners, single-sided." },
-  { title: "Cut-Out Sheet 3: Quote Strips", tpl: "quotes", kind: "template", summary: "Affirmation strips to cut out." },
+  { title: "Cut-Out Sheet 3: Quote Boxes", tpl: "quotes", kind: "template", summary: "Affirmation boxes to cut out." },
 ];
 
 /** Stroke order for the letter spreads. Each stroke is a polyline in a 0-100 box (y down). Phrases are the four allowed cues. */

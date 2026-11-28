@@ -61,8 +61,17 @@ function collage(s: Section): string[] {
   return [page("pl", `${head(s)}${intro(s)}<div class="canvas"${PIC ? ` style="background:linear-gradient(rgba(255,255,255,.72),rgba(255,255,255,.72)),url(${PIC}) center/cover"` : ""}>${z.map((x) => `<div class="zone"><span>${esc(x)}</span></div>`).join("")}</div><p class="hint">Cut out your favorites from the sheets at the back and glue them in the zones.</p>`)];
 }
 function quotes(s: Section): string[] {
-  const q = lines(s.data?.lines);
-  return [page("pl cut", `${head(s)}<p class="hint">✂ Cut along the dashed lines. Printed on one side only.</p><div class="strips">${q.map((x) => `<div class="strip">${esc(x)}</div>`).join("")}</div>`), `<section class="page blank"></section>`];
+  const q = lines(s.data?.lines), per = 10, out: string[] = [];
+  const glyph = ["✦", "♡", "✿", "✧", "❀", "☼"];
+  for (let k = 0; k < Math.max(q.length, 1); k += per) {
+    const chunk = q.slice(k, k + per);
+    const boxes = chunk.map((x, n) => {
+      const i = k + n, len = x.length, fs = len <= 12 ? 25 : len <= 24 ? 21 : len <= 40 ? 17 : 14.5;
+      return `<div class="qb q${i % 6}" style="font-size:${fs}pt;min-height:${[1.1, 1.4, 0.95, 1.25][i % 4]}in"><span class="qg">${glyph[i % 6]}</span><span class="qt">${esc(x)}</span></div>`;
+    }).join("");
+    out.push(page("pl cut", `${k ? "" : head(s)}<p class="hint">✂ Cut around each box. Printed on one side only.</p><div class="qboxes">${boxes}</div>`), `<section class="page blank"></section>`);
+  }
+  return out;
 }
 
 // ---------- preschool letter spreads ----------
@@ -132,6 +141,15 @@ h1,h2,h3,.kick,.lbl,.mh,.bigl,.trcue { font-family: 'Fredoka','Nunito',sans-seri
 .hdrpic { width: 100%; height: 1.7in; object-fit: cover; border-radius: 0.2in; flex: 0 0 auto; }
 .canvas { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 0.14in; border: 3px dashed #c9a24b; border-radius: 0.2in; padding: 0.14in; background: #fff; }
 .zone { border: 2px dotted #b9c9b5; border-radius: 0.14in; padding: 0.08in; } .zone span { font: 600 12pt Fredoka, sans-serif; color: #8a6d1f; }
+.qboxes { column-count: 2; column-gap: 0.28in; flex: 1; }
+.qb { break-inside: avoid; margin: 0 0 0.26in; border-radius: 0.2in; padding: 0.16in 0.2in; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; line-height: 1.15; position: relative; box-shadow: inset 0 0 0 3px rgba(255,255,255,.6); outline: 1.2px dashed #b9a98a; outline-offset: 5px; }
+.qg { font-size: 12pt; opacity: .7; margin-bottom: 0.04in; }
+.q0 { background: #f4b6a6; color: #5b2a1f; font-family: 'Playfair Display', Georgia, serif; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; }
+.q1 { background: #bfe3dc; color: #1f4a45; font-family: Fredoka, sans-serif; font-weight: 600; }
+.q2 { background: #22463f; color: #f6e9c8; font-family: Caveat, 'Segoe Script', cursive; font-weight: 700; }
+.q3 { background: #f8dfdb; color: #7a3b2e; font-family: 'Playfair Display', Georgia, serif; font-style: italic; font-weight: 600; }
+.q4 { background: #ecd9a8; color: #4a3a12; font-family: Fredoka, sans-serif; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+.q5 { background: #7fb7c9; color: #fff; font-family: Caveat, 'Segoe Script', cursive; font-weight: 700; }
 .strips { display: flex; flex-direction: column; gap: 0.18in; flex: 1; justify-content: space-around; }
 .strip { border: 2.5px dashed #c9a24b; border-radius: 0.12in; background: #fff; text-align: center; font: 600 18pt Fredoka, sans-serif; padding: 0.2in 0.1in; color: #22352b; }
 .cutpic { align-items: center; justify-content: center; padding: 0.4in; } .cutpic img { max-width: 100%; max-height: 100%; object-fit: contain; }
@@ -205,7 +223,7 @@ export async function buildTemplateBook(book: Book, opts: TemplateBookOptions = 
   if (opts.evenPages !== false && all.length % 2) all.push(`<section class="page blank" aria-label="Blank page to make the page count even"></section>`);
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(book.title)} (${w} x ${h} in interior)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Nunito:wght@400;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Caveat:wght@700&display=swap" rel="stylesheet">
 <style>${CSS(w, h)}</style></head><body>
 <div class="tip">Press Ctrl+P (Cmd+P on Mac), choose Save as PDF, paper size ${w} × ${h} in, Margins None, Background graphics ON. ${all.length} pages. This note does not print.</div>
 ${all.join("\n")}
