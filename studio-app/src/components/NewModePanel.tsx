@@ -28,6 +28,12 @@ export default function NewModePanel({ book, update, commit, run }: Props) {
           <p className="hint">A full-color planner: Studio draws the pages (prompts, checklists, thermometer, funnel, sprints, weekly sheet, KPI table, collage canvas, cut-out quote strips). AI writes only the words. Cut-out sheets are picture pages with a blank back. Remember: KDP prints every page in color for a color interior (see the calculator in Tab 6).</p>
           <div className="flex flex-wrap gap-2">
             <TooltipButton className="btn" disabled={running} onClick={() => add(PLANNER_PACK)}>Insert the full 2027 planner pack ({PLANNER_PACK.length} pages)</TooltipButton>
+            <TooltipButton className="btn-alt" disabled={running} tip="For pictures you made in ChatGPT that are already finished pages. Each page with a picture is printed as that picture alone, full page, with no heading or notes. Cut-out sheets and template pages are left alone." engine="$0 Free · Runs in your browser" onClick={() => {
+              const hit = book.sections.filter((x) => !x.kind && book.images.some((im) => im.sectionId === x.id));
+              if (!hit.length) { alert("No written page has a picture yet."); return; }
+              if (!confirm(`Make ${hit.length} page(s) full-page picture pages? Their written notes stay saved but will not print.`)) return;
+              update({ sections: book.sections.map((x) => (hit.includes(x) ? { ...x, kind: "picture" as const } : x)) });
+            }}>Make every page that has a picture a full-page picture</TooltipButton>
             <TooltipButton className="btn-alt" disabled={running} onClick={() => add(PLANNER_PACK.filter((p) => p.kind === "cutout" || p.tpl === "quotes"))}>Insert cut-out sheets only</TooltipButton>
             <TooltipButton className="btn-alt" disabled={running} onClick={() => update({ sections: [...book.sections, { id: `s${Date.now().toString(36)}`, title: "Cut-out sheet", summary: "Full-color single-sided cut-out sheet.", draft: "", kind: "cutout" }] })}>+ one cut-out sheet</TooltipButton>
           </div>

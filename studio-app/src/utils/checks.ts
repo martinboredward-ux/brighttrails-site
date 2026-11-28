@@ -22,7 +22,7 @@ export function promiseCheck(book: Book): Finding[] {
     const puzzle = !!puzzlePicture(book, s);
     const pic = !!pagePicture(book, s);
     const add = (text: string, level: Finding["level"] = "fix") => out.push({ sectionId: s.id, where, level, text });
-    if (s.kind === "template" || s.kind === "cutout") return;
+    if (s.kind === "template" || s.kind === "cutout" || s.kind === "picture") return;
     if (book.mode !== "nonfiction" && s.draft.trim() && !pic) add("No picture on this page yet.", "note");
     if (book.mode === "activity" && s.kind !== "coloring") {
       if (has(t, /dot[- ]?markers?|press (a |your )?(dot|marker)|round targets?|dab/) && w !== "dotmarker" && !puzzle) add("The text asks for dot markers, but no Dot-Marker Targets widget or puzzle picture is on this page. Pick the widget in Tab 2.");
@@ -121,6 +121,7 @@ export function modeChecks(book: Book): Finding[] {
       const where = `Page ${i + 1}: ${s.title}`;
       if (s.tpl && tplDef(s.tpl) && !Object.values(s.data ?? {}).some((v) => v.trim())) out.push({ sectionId: s.id, where, level: "fix", text: "This template page has no words yet. Use Fill the words with AI, or type them." });
       if (s.kind === "cutout" && !pagePicture(book, s)) out.push({ sectionId: s.id, where, level: "fix", text: "This cut-out sheet has no picture yet." });
+      if (s.kind === "picture" && !pagePicture(book, s)) out.push({ sectionId: s.id, where, level: "fix", text: "This full-page picture page has no picture yet." });
     });
     const pages = estimatePages(book);
     const cost = printCost("standardColor", pages, isLargeTrim(book.trim));

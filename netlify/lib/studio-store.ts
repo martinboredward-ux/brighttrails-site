@@ -17,8 +17,8 @@ export interface Section {
   title: string;
   summary: string;
   draft: string;
-  /** "coloring": a picture-only page. "template": a code-drawn page (planner, tracing). "cutout": single-sided cut-out sheet. "detour": gamebook detour page. */
-  kind?: "coloring" | "template" | "cutout" | "detour";
+  /** "coloring": a picture-only page. "template": a code-drawn page (planner, tracing). "cutout": single-sided cut-out sheet. "picture": a finished full-page picture (planner pages made in ChatGPT), printed alone. "detour": gamebook detour page. */
+  kind?: "coloring" | "template" | "cutout" | "detour" | "picture";
   tpl?: string;
   data?: Record<string, string>;
 }

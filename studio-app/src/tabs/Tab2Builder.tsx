@@ -102,7 +102,7 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
   const run2 = (a: Action) => runJob(a, { model });
   const tagged = isTaggedMode(book.mode);
   const untagged = book.sections.filter((s) => s.draft.trim() && !parseTagged(s.draft)).length;
-  const empty = book.sections.filter((s) => !["coloring", "template", "cutout"].includes(String(s.kind)) && !s.draft.trim()).length;
+  const empty = book.sections.filter((s) => !["coloring", "template", "cutout", "picture"].includes(String(s.kind)) && !s.draft.trim()).length;
   const draftAll = () => {
     if (!book.sections.length) return;
     let onlyEmpty = true;
@@ -149,7 +149,7 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
   };
 
   const newMode = book.mode === "planner" || book.mode === "tracing" || book.mode === "gamebook";
-  const presetFor = (sec: Book["sections"][number]) => (sec.kind === "cutout" ? "cutout" : book.mode === "planner" ? "planner" : book.mode === "tracing" ? "library_bw" : book.mode === "activity" ? "coloring" : "storybook") as import("../types").StylePreset;
+  const presetFor = (sec: Book["sections"][number]) => (sec.kind === "cutout" ? "cutout" : sec.kind === "picture" ? "planner" : book.mode === "planner" ? "planner" : book.mode === "tracing" ? "library_bw" : book.mode === "activity" ? "coloring" : "storybook") as import("../types").StylePreset;
   const [tplBusy, setTplBusy] = useState(false);
   const makeTemplateHtml = async () => {
     setTplBusy(true);
@@ -227,7 +227,7 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
                 <TooltipButton className="flex-1 text-left text-sm font-semibold" onClick={() => setOpen(open === s.id ? null : s.id)}>
                   {i + 1}. {s.title} {s.draft ? <span className="text-xs font-normal text-green">· drafted</span> : null}
                 </TooltipButton>
-                <TooltipButton className="btn-alt !px-3 !py-1" disabled={running || s.kind === "coloring" || s.kind === "cutout" || !!s.tpl} tip={s.kind === "coloring" || s.kind === "cutout" ? "A picture-only page has no text to draft." : s.tpl ? "Template pages are written with Fill the words with AI." : undefined} onClick={() => run("draft_section", s.id)}>Draft</TooltipButton>
+                <TooltipButton className="btn-alt !px-3 !py-1" disabled={running || s.kind === "coloring" || s.kind === "cutout" || s.kind === "picture" || !!s.tpl} tip={s.kind === "coloring" || s.kind === "cutout" ? "A picture-only page has no text to draft." : s.tpl ? "Template pages are written with Fill the words with AI." : undefined} onClick={() => run("draft_section", s.id)}>Draft</TooltipButton>
                 <TooltipButton className="btn-alt !px-3 !py-1" onClick={() => copy(s.id, hybridPrompt("section", s))}>{copied === s.id ? "Copied" : "$0 prompt"}</TooltipButton>
                 <TooltipButton className="text-xs underline" onClick={() => flag(s.id, s.title)}>Flag for Claude</TooltipButton>
                 <TooltipButton className="text-xs text-accent underline" disabled={running} onClick={() => update({ sections: book.sections.filter((x) => x.id !== s.id) })}>Remove</TooltipButton>
@@ -240,7 +240,7 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
                     <label className="text-xs text-muted">Page type
                       <select className="field mt-1 !w-auto" value={s.kind ?? ""} onChange={(e) => setSection(s.id, { kind: (e.target.value || undefined) as Book["sections"][number]["kind"] })}>
                         <option value="">{book.mode === "planner" ? "Written page" : "Normal page"}</option>
-                        {book.mode === "planner" && <><option value="template">Template page (drawn by Studio)</option><option value="cutout">Cut-out sheet (picture only, blank back)</option></>}
+                        {book.mode === "planner" && <><option value="template">Template page (drawn by Studio)</option><option value="picture">Full-page picture (finished page art, printed alone)</option><option value="cutout">Cut-out sheet (picture only, blank back)</option></>}
                         {book.mode === "gamebook" && <option value="detour">Detour page (caution-tape border)</option>}
                       </select>
                     </label>
@@ -268,7 +268,7 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
                     </div>
                   )}
                   <textarea className="field min-h-16" value={s.summary} readOnly={running} onChange={(e) => setSection(s.id, { summary: e.target.value })} placeholder="Summary" />
-                  {!s.tpl && s.kind !== "cutout" && <textarea className="field min-h-48 font-mono" value={s.draft} readOnly={running} onChange={(e) => setSection(s.id, { draft: e.target.value })} placeholder="Draft spec (paste from your web chat or let the Draft button write it)" />}
+                  {!s.tpl && s.kind !== "cutout" && s.kind !== "picture" && <textarea className="field min-h-48 font-mono" value={s.draft} readOnly={running} onChange={(e) => setSection(s.id, { draft: e.target.value })} placeholder="Draft spec (paste from your web chat or let the Draft button write it)" />}
                   <h3 className="pt-1 text-sm font-bold text-forest">Pictures for this section</h3>
                   <ImageEngine key={`${s.id}:${defaultScenePrompt(s)}`} book={book} sectionId={s.id} initialPrompt={defaultScenePrompt(s)} defaultAspect={book.trim === "8.5x8.5" ? "square" : book.mode === "activity" || newMode ? "portrait" : "landscape"} defaultPreset={presetFor(s)} onDone={addImage} fail={fail} commit={commit} pinned={pins[s.id]} />
                   <ImageGallery book={book} images={book.images.filter((i) => i.sectionId === s.id)} selected={pdfPick} onToggle={togglePick} onCharacter={toggleLibrary} onRemoved={removeImage} fail={fail} />

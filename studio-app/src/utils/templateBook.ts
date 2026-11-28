@@ -128,6 +128,7 @@ h1,h2,h3,.kick,.lbl,.mh,.bigl,.trcue { font-family: 'Fredoka','Nunito',sans-seri
 .kpi { width: 100%; border-collapse: collapse; font-size: 11.5pt; flex: 1; }
 .kpi th { background: #b9c9b5; padding: 0.07in; border: 1.5px solid #fff; font-family: Fredoka, sans-serif; }
 .kpi td { border: 1.5px solid #b9c9b5; background: #fff; height: 0.52in; padding: 0 0.08in; }
+.page.fullpic { padding: 0; } .fullpic img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .hdrpic { width: 100%; height: 1.7in; object-fit: cover; border-radius: 0.2in; flex: 0 0 auto; }
 .canvas { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 0.14in; border: 3px dashed #c9a24b; border-radius: 0.2in; padding: 0.14in; background: #fff; }
 .zone { border: 2px dotted #b9c9b5; border-radius: 0.14in; padding: 0.08in; } .zone span { font: 600 12pt Fredoka, sans-serif; color: #8a6d1f; }
@@ -178,6 +179,7 @@ export async function buildTemplateBook(book: Book, opts: TemplateBookOptions = 
   for (const s of book.sections) {
     const pic = imgs.get(s.id);
     PIC = pic ?? "";
+    if (s.kind === "picture") { body.push(page("fullpic", pic ? `<img src="${pic}" alt="${esc(s.title)}">` : `<div class="hint">Full-page picture not added yet for: ${esc(s.title)}</div>`)); continue; }
     if (s.kind === "cutout") { body.push(page("cutpic", pic ? `<img src="${pic}" alt="${esc(s.title)}">` : `<div class="hint">Cut-out picture not added yet for: ${esc(s.title)}</div>`), `<section class="page blank" aria-label="Blank back of cut-out sheet"></section>`); continue; }
     if (book.mode === "gamebook") {
       const n = nums.get(s.id) ?? 0;
