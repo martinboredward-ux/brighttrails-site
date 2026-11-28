@@ -56,13 +56,16 @@ export default function BookChecks({ book }: { book: Book }) {
             <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-8">
               {book.sections.map((s, i) => {
                 const pic = pagePicture(book, s);
-                const words = s.draft.trim().split(/\s+/).filter(Boolean).length;
-                const flag = s.kind !== "coloring" && book.mode !== "nonfiction" && !s.draft.trim() ? "empty" : words > 330 ? "long" : "";
+                // Template pages keep their words in fields (cue, prompts, items...), not in the draft text, so count both.
+                const text = `${s.draft} ${s.data ? Object.values(s.data).join(" ") : ""}`;
+                const words = text.trim().split(/\s+/).filter(Boolean).length;
+                const picOnly = s.kind === "coloring" || s.kind === "cutout" || s.kind === "picture";
+                const flag = !picOnly && book.mode !== "nonfiction" && !words ? "empty" : words > 330 ? "long" : "";
                 return (
                   <li key={s.id} className={`space-y-1 rounded p-1 text-[11px] ${flag ? "bg-accent/10" : ""}`}>
                     <Thumb id={pic?.id} />
                     <p className="line-clamp-2 font-semibold">{i + 1}. {s.title}</p>
-                    <p className="text-muted">{s.kind === "coloring" ? "coloring page" : `${words} words`}{flag === "empty" ? " · empty" : flag === "long" ? " · may overflow" : ""}</p>
+                    <p className="text-muted">{s.kind === "coloring" ? "coloring page" : s.kind === "cutout" ? "cut-out sheet" : s.kind === "picture" ? "full-page picture" : `${words} words`}{flag === "empty" ? " · empty" : flag === "long" ? " · may overflow" : ""}</p>
                   </li>
                 );
               })}
