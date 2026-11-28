@@ -1,3 +1,4 @@
+import TabSteps from "../components/TabSteps";
 import { useEffect, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type { Book, CoverSettings, GeneratedImage, PaperType } from "../types";
@@ -6,6 +7,7 @@ import { blobToImage, compressImage } from "../imageTools";
 import { useBlobUrl } from "../blobUrl";
 import { download } from "../exportZip";
 import ImageEngine from "../components/ImageEngine";
+import CoverIdeas from "../components/CoverIdeas";
 import { TooltipButton, Tip } from "../components/TooltipButton";
 import { TRIMS, trimAspect, trimDims, type Trim } from "../utils/trims";
 import { PAPER_LABEL, coverApproved, coverDefaults, coverSig, renderCheckJpeg, renderEbookCanvas, renderEbookCover, renderPrintFront, renderPrintFrontCanvas, renderWrapCanvas, renderWrapPdf, renderWrapPng, spineWidth, wrapGeometry } from "../utils/coverComposer";
@@ -38,10 +40,23 @@ function drawTo(canvas: HTMLCanvasElement | null, src: HTMLCanvasElement, width:
 }
 
 /** Tab 3 (Cover Studio): art, framing and contrast controls, the three cover files, an AI quality check and approval. */
+/** KDP descriptions are HTML; the back cover needs plain paragraphs. Keeps list items as short lines. */
+function htmlToPlain(html: string): string {
+  return html
+    .replace(/<\s*br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|h[1-6]|div)>/gi, "\n\n")
+    .replace(/<li[^>]*>/gi, "• ")
+    .replace(/<\/li>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
 export default function TabCover({ book, update, commit, setBook, fail }: Props) {
   const s = coverDefaults(book);
   const set = (p: Partial<CoverSettings>) => update({ cover: { ...book.cover, ...s, ...p } });
   const [art, setArt] = useState<HTMLImageElement | null>(null);
+  const [backArt, setBackArt] = useState<HTMLImageElement | null>(null);
   const [guides, setGuides] = useState(true);
   const [msg, setMsg] = useState("");
   const [checking, setChecking] = useState(false);
@@ -67,10 +82,18 @@ export default function TabCover({ book, update, commit, setBook, fail }: Props)
   }, [s.frontArtId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    let live = true;
+    setBackArt(null);
+    if (!s.backArtId) return;
+    fetchImageBlob(s.backArtId).then(blobToImage).then((img) => { if (live) setBackArt(img); }).catch(fail);
+    return () => { live = false; };
+  }, [s.backArtId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
     drawTo(printRef.current, renderPrintFrontCanvas(s, book.trim, art), 420);
     drawTo(ebookRef.current, renderEbookCanvas(s, art), 360);
-    drawTo(wrapRef.current, renderWrapCanvas(s, book.trim, art, { guides }), 900);
-  }, [JSON.stringify(s), art, guides, book.trim]); // eslint-disable-line react-hooks/exhaustive-deps
+    drawTo(wrapRef.current, renderWrapCanvas(s, book.trim, art, { guides, backArt }), 900);
+  }, [JSON.stringify(s), art, backArt, guides, book.trim]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const uploadArt = async (f: File | undefined) => {
     if (!f) return;
@@ -89,8 +112,8 @@ export default function TabCover({ book, update, commit, setBook, fail }: Props)
   const run = (fn: () => Promise<void> | void) => async () => { try { await fn(); } catch (e) { fail(e); } };
   const printPng = run(async () => download(`${book.slug}-print-front-${Math.round(dims.w * 300)}x${Math.round(dims.h * 300)}.png`, await renderPrintFront(s, book.trim, art)));
   const ebookPng = run(async () => download(`${book.slug}-ebook-cover-1600x2560.png`, await renderEbookCover(s, art)));
-  const wrapPng = run(async () => download(`${book.slug}-paperback-wrap.png`, await renderWrapPng(s, book.trim, art)));
-  const wrapPdf = run(() => download(`${book.slug}-paperback-wrap.pdf`, renderWrapPdf(s, book.trim, art)));
+  const wrapPng = run(async () => download(`${book.slug}-paperback-wrap.png`, await renderWrapPng(s, book.trim, art, backArt)));
+  const wrapPdf = run(() => download(`${book.slug}-paperback-wrap.pdf`, renderWrapPdf(s, book.trim, art, backArt)));
   const sendToAplus = run(async () => {
     if (!book.kdp?.aPlusModules?.length) { setMsg("Make the KDP package first (tab 4), then send the cover to A+ Module 1."); return; }
     const id = await uploadImage(book.id, await renderEbookCover(s, art));
@@ -122,7 +145,15 @@ export default function TabCover({ book, update, commit, setBook, fail }: Props)
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      <section className="card space-y-3">
+      <div className="lg:col-span-2"><TabSteps title="Tab 3 order: work down this list, then go to tab 4" steps={[
+        { label: "Check the cover details", hint: "Title, subtitle, author, trim", target: "c-details", done: !!(s.title?.trim() && s.subtitle?.trim()) },
+        { label: "Get the front art", hint: "Suggest 3 covers, pick one, make the picture, upload it", target: "c-art", done: !!s.frontArtId },
+        { label: "Set framing and text contrast", hint: "Fill or Fit, shift, text color", target: "c-frame" },
+        { label: "Write the back blurb and set the page count", hint: "In Cover details; the page count sets the spine", target: "c-details", done: !!(s.backBlurb?.trim() && s.pageCount) },
+        { label: "Run the cover quality check", target: "c-check" },
+        { label: "Download the front, Kindle cover and paperback wrap", target: "c-export" },
+      ]} /></div>
+      <section id="c-details" className="card space-y-3">
         <h2 className="text-base font-bold text-forest">Cover details</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="sm:col-span-2"><label className="label">Title</label><input className="field" value={s.title} onChange={(e) => set({ title: e.target.value })} /></div>
@@ -137,7 +168,29 @@ export default function TabCover({ book, update, commit, setBook, fail }: Props)
               {(["standardColor", "premiumColor", "white", "cream"] as PaperType[]).map((p) => <option key={p} value={p}>{PAPER_LABEL[p]}</option>)}
             </select></div>
           <div className="flex items-end"><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={s.barcodeCorner !== false} onChange={(e) => set({ barcodeCorner: e.target.checked })} /> Keep the barcode corner open</label></div>
-          <div className="sm:col-span-2"><label className="label">Back cover blurb</label><textarea className="field min-h-24" value={s.backBlurb} onChange={(e) => set({ backBlurb: e.target.value })} placeholder="Paste your KDP description in plain text." /></div>
+          <div className="sm:col-span-2 space-y-1">
+            <label className="label">Back cover picture (optional, faint behind the blurb)</label>
+            <div className="flex flex-wrap items-center gap-2">
+              <select className="field !w-auto" value={s.backArtId ?? ""} onChange={(e) => set({ backArtId: e.target.value || undefined })}>
+                <option value="">None (plain cream)</option>
+                {pictures.map((i, n) => <option key={i.id} value={i.id}>Picture {n + 1}{i.id === s.frontArtId ? " (front cover)" : ""}</option>)}
+              </select>
+              {s.backArtId && <label className="flex items-center gap-2 text-sm">Strength {s.backArtStrength ?? 12}%<input type="range" min={3} max={20} value={s.backArtStrength ?? 12} onChange={(e) => set({ backArtStrength: Number(e.target.value) })} /></label>}
+            </div>
+            <p className="hint">Keep it faint (3-20%) so the blurb stays readable. The barcode box stays solid white.</p>
+          </div>
+          <div className="sm:col-span-2">
+            <label className="label">Back cover blurb</label>
+            <textarea className="field min-h-24" value={s.backBlurb} onChange={(e) => set({ backBlurb: e.target.value })} placeholder="Type or paste your back-cover text in plain text." />
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <button type="button" className="btn-alt" disabled={!book.kdp?.htmlDescription?.trim()} onClick={() => {
+                if (s.backBlurb?.trim() && !confirm("Replace the current blurb with your KDP description?")) return;
+                set({ backBlurb: htmlToPlain(book.kdp?.htmlDescription ?? "") });
+              }}>Fill from my KDP description (tab 4)</button>
+              {!book.kdp?.htmlDescription?.trim() && <span className="hint">Make the KDP package in tab 4 first, or type the blurb here.</span>}
+              {!s.backBlurb?.trim() && <span className="text-sm text-red-700">The back cover is empty. Studio does not write this for you automatically.</span>}
+            </div>
+          </div>
         </div>
         <div className="rounded-lg bg-sun/20 px-3 py-2 text-sm">
           Spine width: <b>{spineWidth(s.pageCount ?? 0, s.paper).toFixed(3)} in</b> · Print front: <b>{Math.round(dims.w * 300)} × {Math.round(dims.h * 300)} px</b> · Full wrap: <b>{geo.totalW.toFixed(3)} × {geo.totalH.toFixed(3)} in</b> (0.125 in bleed).
@@ -145,7 +198,7 @@ export default function TabCover({ book, update, commit, setBook, fail }: Props)
         </div>
       </section>
 
-      <section className="card space-y-3">
+      <section id="c-frame" className="card space-y-3">
         <h2 className="text-base font-bold text-forest">Framing &amp; contrast</h2>
         <Seg label="Picture" value={s.fit ?? "fill"} onPick={(v) => set({ fit: v })} opts={[["fill", "Fill (crop)"], ["fit", "Fit (with color pad)"]]} />
         {s.fit === "fit" && <div><label className="label">Pad color (sky)</label><input type="color" className="h-9 w-16 rounded border border-line" value={s.padColor} onChange={(e) => set({ padColor: e.target.value })} /></div>}
@@ -160,9 +213,10 @@ export default function TabCover({ book, update, commit, setBook, fail }: Props)
         <p className="hint">Wide art is cropped to the cover shape. If the sides of your picture are cut off, choose Fit with a sky color, or move the picture up or down with the shift buttons. The author name always sits at the bottom.</p>
       </section>
 
-      <section className="card space-y-3 lg:col-span-2">
+      <section id="c-art" className="card space-y-3 lg:col-span-2">
         <h2 className="text-base font-bold text-forest">Front cover art</h2>
         <p className="hint">Pick a picture from this book, upload your own, or make cover-safe art below. It leaves the top 30% as open sky for the title and keeps faces in the middle.</p>
+        <CoverIdeas book={book} s={s} aspect={trimAspect(s.trim ?? book.trim)} set={set} commit={commit} fail={fail} />
         <Tip what="Uploads a PNG or JPG from your computer as the cover art." engine="$0 Free · Runs in your browser">
           <label className="btn-alt cursor-pointer">Upload cover art<input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={(e) => { void uploadArt(e.target.files?.[0]); e.target.value = ""; }} /></label>
         </Tip>
@@ -178,7 +232,7 @@ export default function TabCover({ book, update, commit, setBook, fail }: Props)
         {msg && <p className="text-sm font-semibold text-forest">{msg}</p>}
       </section>
 
-      <section className="card space-y-3">
+      <section id="c-export" className="card space-y-3">
         <h2 className="text-base font-bold text-forest">Print front cover</h2>
         <canvas ref={printRef} className="max-h-[30rem] w-auto rounded-lg border border-line" aria-label="Print front cover preview" />
         <TooltipButton className="btn" onClick={printPng}>Download print front PNG ({Math.round(dims.w * 300)}×{Math.round(dims.h * 300)})</TooltipButton>
@@ -206,7 +260,7 @@ export default function TabCover({ book, update, commit, setBook, fail }: Props)
         </div>
       </section>
 
-      <section className="card space-y-3 lg:col-span-2">
+      <section id="c-check" className="card space-y-3 lg:col-span-2">
         <h2 className="text-base font-bold text-forest">Cover quality check</h2>
         <p className="hint">Gemini looks at the rendered front cover and checks title and author spelling, text readability, whether text covers a face, and KDP trim and AI-disclosure basics. Costs a small Gemini call. Mark the cover approved when you are happy.</p>
         <div className="flex flex-wrap items-center gap-2">

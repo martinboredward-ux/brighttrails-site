@@ -5,9 +5,9 @@ import { PATTERNS, buildActivityPdf, type ImagePage, type Pattern } from "../act
 import { fetchImageBlob } from "../api";
 import { blobToImage } from "../imageTools";
 import { buildPrintableBook, parseTagged } from "../printableBook";
-import { defaultScenePrompt } from "../imagePrompts";
+import { defaultScenePrompt, mascotName } from "../imagePrompts";
 import { CLEAN_RULES, formatFor, isTaggedMode } from "../draftFormat";
-import { WIDGETS, RANKS } from "../utils/activitySvgWidgets";
+import { WIDGETS, RANKS, suggestWidget } from "../utils/activitySvgWidgets";
 import { buildDocx, buildPrintInterior } from "../utils/nonfictionExporter";
 import ImageEngine from "../components/ImageEngine";
 import ImageGallery from "../components/ImageGallery";
@@ -16,8 +16,16 @@ import AssetDetector from "../components/AssetDetector";
 import ArtChecklist from "../components/ArtChecklist";
 import WidgetLibrary from "../components/WidgetLibrary";
 import BulkUpload from "../components/BulkUpload";
+import TabSteps from "../components/TabSteps";
 import PolishPanel from "../components/PolishPanel";
 import JobStatus from "../components/JobStatus";
+import ReservedScan from "../components/ReservedScan";
+import PictureCheck from "../components/PictureCheck";
+import BookChecks from "../components/BookChecks";
+import TemplateSection from "../components/TemplateSection";
+import NewModePanel from "../components/NewModePanel";
+import { buildTemplateBook } from "../utils/templateBook";
+import { addFlag } from "../utils/studioMeta";
 import { useRunJob } from "../hooks/useRunJob";
 import { TooltipButton } from "../components/TooltipButton";
 
@@ -47,11 +55,15 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
   const [pdfBusy, setPdfBusy] = useState(false);
   const [htmlBusy, setHtmlBusy] = useState(false);
   const [backing, setBacking] = useState(false);
+  const [copyrightPage, setCopyrightPage] = useState(true);
+  const [evenPages, setEvenPages] = useState(true);
+  const [htmlMsg, setHtmlMsg] = useState("");
   const [picLayout, setPicLayout] = useState<"page" | "inline">(book.mode === "storybook" ? "inline" : "page");
   const makeHtml = async () => {
     setHtmlBusy(true);
     try {
-      const html = await buildPrintableBook(book, { backingPages: backing, pictureLayout: picLayout });
+      const html = await buildPrintableBook(book, { backingPages: backing, pictureLayout: picLayout, copyrightPage, evenPages });
+      setHtmlMsg(`This printable book has ${(html.match(/<section class="page/g) ?? []).length} pages. Put that number in Cover Studio so the spine is right.`);
       download(`${book.slug}-printable-book.html`, new Blob([html], { type: "text/html" }));
     } catch (e) { fail(e); } finally { setHtmlBusy(false); }
   };
@@ -86,11 +98,11 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
     }
   };
 
-  const runJob = useRunJob({ book, save, setBook, fail });
+  const runJob = useRunJob({ book, save, setBook, fail, commit });
   const run2 = (a: Action) => runJob(a, { model });
   const tagged = isTaggedMode(book.mode);
   const untagged = book.sections.filter((s) => s.draft.trim() && !parseTagged(s.draft)).length;
-  const empty = book.sections.filter((s) => !s.draft.trim()).length;
+  const empty = book.sections.filter((s) => !["coloring", "template", "cutout", "picture"].includes(String(s.kind)) && !s.draft.trim()).length;
   const draftAll = () => {
     if (!book.sections.length) return;
     let onlyEmpty = true;
@@ -136,12 +148,38 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
     } catch (e) { fail(e); } finally { setPdfBusy(false); }
   };
 
+  const newMode = book.mode === "planner" || book.mode === "tracing" || book.mode === "gamebook";
+  const presetFor = (sec: Book["sections"][number]) => (sec.kind === "cutout" ? "cutout" : sec.kind === "picture" ? "planner" : book.mode === "planner" ? "planner" : book.mode === "tracing" ? "library_bw" : book.mode === "activity" ? "coloring" : "storybook") as import("../types").StylePreset;
+  const [tplBusy, setTplBusy] = useState(false);
+  const makeTemplateHtml = async () => {
+    setTplBusy(true);
+    try {
+      const html = await buildTemplateBook(book, { copyrightPage, evenPages });
+      setHtmlMsg(`This printable book has ${(html.match(/<section class="page/g) ?? []).length} pages. Put that number in Cover Studio so the spine is right.`);
+      download(`${book.slug}-printable-book.html`, new Blob([html], { type: "text/html" }));
+    } catch (e) { fail(e); } finally { setTplBusy(false); }
+  };
+  const flag = (sid: string, title: string) => {
+    const note = (window.prompt(`Note for Claude about "${title}"`) ?? "").trim();
+    if (note) void commit({ studio: addFlag(book, sid, title, note) });
+  };
+
   const setSection = (id: string, patch: Partial<Book["sections"][number]>) =>
     update({ sections: book.sections.map((s) => (s.id === id ? { ...s, ...patch } : s)) });
 
   return (
     <div className="space-y-4">
-      <section className="card space-y-3">
+      <TabSteps title="Tab 2 order: work down this list, then go to tab 3" steps={[
+        { label: "Make the outline", hint: "Outline & draft: Generate outline (needs tab 1 done)", target: "b-outline", done: book.sections.length > 0 },
+        { label: "See what art you need", hint: "Asset detector and Art checklist", target: "b-assets", done: book.images.length > 0 },
+        { label: "Draft the pages", hint: "Draft all, or fill template pages with AI", target: "b-outline", done: book.sections.some((x) => x.draft.trim() || (x.data && Object.keys(x.data).length > 0)) },
+        { label: "Add pictures to each page", hint: "Pictures for each section, or Upload many pictures", target: "b-pictures", done: book.sections.length > 0 && book.sections.every((x) => book.images.some((i) => i.sectionId === x.id)) },
+        { label: "Read the Checks & preview", hint: "Fix the red items (free, no AI)", target: "b-checks" },
+        { label: "Proofread and polish", hint: "Run Review #2, tick fixes, apply", target: "b-polish", done: !!book.review.trim() },
+        { label: "Export the printable book", hint: "Then print to PDF for KDP", target: "b-export" },
+      ]} />
+
+      <section id="b-outline" className="card space-y-3">
         <div className="flex flex-wrap items-center gap-3">
           <h2 className="text-base font-bold text-forest">Outline &amp; draft</h2>
           <label className="ml-auto flex items-center gap-2 text-sm">
@@ -163,15 +201,20 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
         <JobStatus book={book} only={["generate_outline", "draft_section", "draft_all", "extract_workbook"]} />
       </section>
 
-      <AssetDetector book={book} commit={commit} fail={fail} pins={pins} onPin={pin} />
+      <div id="b-assets"><AssetDetector book={book} commit={commit} fail={fail} pins={pins} onPin={pin} /></div>
 
       <ArtChecklist book={book} commit={commit} fail={fail} onDone={addImage} />
 
+      {newMode && <NewModePanel book={book} update={update} commit={commit} run={(a) => run2(a)} />}
+
+      <ReservedScan book={book} />
       {book.mode === "activity" && <WidgetLibrary book={book} />}
 
-      <BulkUpload book={book} onDone={addImage} fail={fail} />
+      <div id="b-pictures"><BulkUpload book={book} onDone={addImage} fail={fail} /></div>
 
-      <section className="card space-y-3">
+      <div id="b-checks"><BookChecks book={book} /></div>
+
+      <section id="b-sections" className="card space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-bold text-forest">Sections ({book.sections.length})</h2>
           <TooltipButton className="btn-alt" disabled={running} onClick={() => update({ sections: [...book.sections, { id: `s${Date.now().toString(36)}`, title: "New section", summary: "", draft: "" }] })}>+ Add section</TooltipButton>
@@ -184,19 +227,38 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
                 <TooltipButton className="flex-1 text-left text-sm font-semibold" onClick={() => setOpen(open === s.id ? null : s.id)}>
                   {i + 1}. {s.title} {s.draft ? <span className="text-xs font-normal text-green">· drafted</span> : null}
                 </TooltipButton>
-                <TooltipButton className="btn-alt !px-3 !py-1" disabled={running} onClick={() => run("draft_section", s.id)}>Draft</TooltipButton>
+                <TooltipButton className="btn-alt !px-3 !py-1" disabled={running || s.kind === "coloring" || s.kind === "cutout" || s.kind === "picture" || !!s.tpl} tip={s.kind === "coloring" || s.kind === "cutout" ? "A picture-only page has no text to draft." : s.tpl ? "Template pages are written with Fill the words with AI." : undefined} onClick={() => run("draft_section", s.id)}>Draft</TooltipButton>
                 <TooltipButton className="btn-alt !px-3 !py-1" onClick={() => copy(s.id, hybridPrompt("section", s))}>{copied === s.id ? "Copied" : "$0 prompt"}</TooltipButton>
+                <TooltipButton className="text-xs underline" onClick={() => flag(s.id, s.title)}>Flag for Claude</TooltipButton>
                 <TooltipButton className="text-xs text-accent underline" disabled={running} onClick={() => update({ sections: book.sections.filter((x) => x.id !== s.id) })}>Remove</TooltipButton>
               </div>
               {open === s.id && (
                 <div className="space-y-2 border-t border-line p-3">
                   <input className="field" value={s.title} readOnly={running} onChange={(e) => setSection(s.id, { title: e.target.value })} />
+                  {book.mode === "gamebook" && <p className="text-xs text-muted">Page id for links: <code className="rounded bg-forest/10 px-1">{s.id}</code> (write [GO: {s.id}] in another page to send the reader here).</p>}
+                  {(book.mode === "planner" || book.mode === "gamebook") && (
+                    <label className="text-xs text-muted">Page type
+                      <select className="field mt-1 !w-auto" value={s.kind ?? ""} onChange={(e) => setSection(s.id, { kind: (e.target.value || undefined) as Book["sections"][number]["kind"] })}>
+                        <option value="">{book.mode === "planner" ? "Written page" : "Normal page"}</option>
+                        {book.mode === "planner" && <><option value="template">Template page (drawn by Studio)</option><option value="picture">Full-page picture (finished page art, printed alone)</option><option value="cutout">Cut-out sheet (picture only, blank back)</option></>}
+                        {book.mode === "gamebook" && <option value="detour">Detour page (caution-tape border)</option>}
+                      </select>
+                    </label>
+                  )}
+                  {s.tpl && <TemplateSection s={s} locked={running} onChange={(p) => setSection(s.id, p)} />}
+                  {!newMode && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={s.kind === "coloring"} onChange={(e) => setSection(s.id, { kind: e.target.checked ? "coloring" : undefined })} /> Coloring page: picture only, no text (a blank back is added)</label>}
                   {book.mode === "activity" && (
                     <div className="grid gap-2 sm:grid-cols-2">
                       <label className="text-xs text-muted">Activity widget (worksheet page)
                         <select className="field mt-1" value={s.widget ?? "wordbank"} onChange={(e) => setSection(s.id, { widget: e.target.value as WidgetKind })}>
                           {WIDGETS.map((w) => <option key={w.id} value={w.id}>{w.label}</option>)}
                         </select>
+                        {(() => {
+                          const sug = suggestWidget(s);
+                          if (!sug || (s.widget ?? "wordbank") === sug) return null;
+                          const label = WIDGETS.find((w) => w.id === sug)?.label ?? sug;
+                          return <span className="mt-1 flex items-center gap-2 text-accent">This page's text asks for: {label}. <button type="button" className="underline" onClick={() => setSection(s.id, { widget: sug })}>Use it</button></span>;
+                        })()}
                       </label>
                       <label className="text-xs text-muted">Rank badge (corner stamp)
                         <select className="field mt-1" value={s.rank ?? 0} onChange={(e) => setSection(s.id, { rank: Number(e.target.value) as 0 | 1 | 2 | 3 })}>
@@ -206,10 +268,11 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
                     </div>
                   )}
                   <textarea className="field min-h-16" value={s.summary} readOnly={running} onChange={(e) => setSection(s.id, { summary: e.target.value })} placeholder="Summary" />
-                  <textarea className="field min-h-48 font-mono" value={s.draft} readOnly={running} onChange={(e) => setSection(s.id, { draft: e.target.value })} placeholder="Draft spec (paste from your web chat or let the Draft button write it)" />
+                  {!s.tpl && s.kind !== "cutout" && s.kind !== "picture" && <textarea className="field min-h-48 font-mono" value={s.draft} readOnly={running} onChange={(e) => setSection(s.id, { draft: e.target.value })} placeholder="Draft spec (paste from your web chat or let the Draft button write it)" />}
                   <h3 className="pt-1 text-sm font-bold text-forest">Pictures for this section</h3>
-                  <ImageEngine key={`${s.id}:${defaultScenePrompt(s)}`} book={book} sectionId={s.id} initialPrompt={defaultScenePrompt(s)} defaultAspect={book.trim === "8.5x8.5" ? "square" : book.mode === "activity" ? "portrait" : "landscape"} defaultPreset={book.mode === "activity" ? "coloring" : "storybook"} onDone={addImage} fail={fail} commit={commit} pinned={pins[s.id]} />
+                  <ImageEngine key={`${s.id}:${defaultScenePrompt(s, mascotName(book))}`} book={book} sectionId={s.id} initialPrompt={defaultScenePrompt(s, mascotName(book))} defaultAspect={book.trim === "8.5x8.5" ? "square" : book.mode === "activity" || newMode ? "portrait" : "landscape"} defaultPreset={presetFor(s)} onDone={addImage} fail={fail} commit={commit} pinned={pins[s.id]} />
                   <ImageGallery book={book} images={book.images.filter((i) => i.sectionId === s.id)} selected={pdfPick} onToggle={togglePick} onCharacter={toggleLibrary} onRemoved={removeImage} fail={fail} />
+                  <PictureCheck book={book} sectionId={s.id} fail={fail} />
                 </div>
               )}
             </li>
@@ -217,7 +280,7 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
         </ul>
       </section>
 
-      <PolishPanel book={book} update={update} commit={commit} run={(a) => run2(a)} />
+      <div id="b-polish"><PolishPanel book={book} update={update} commit={commit} run={(a) => run2(a)} /></div>
 
       <section className="card space-y-3">
         <h2 className="text-base font-bold text-forest">Book images ({book.images.length})</h2>
@@ -226,7 +289,7 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
       </section>
 
       {book.mode === "nonfiction" && (
-        <section className="card space-y-3">
+        <section id="b-export" className="card space-y-3">
           <h2 className="text-base font-bold text-forest">Manuscript exports <span className="text-xs font-normal text-green">· runs in your browser, $0</span></h2>
           <p className="hint">Both exports use your chapters and the Companion Workbook, with a title page, copyright page and contents. The print interior uses the trim size from tab 1 ({book.trim.replace("x", " × ")} in).</p>
           <div className="flex flex-wrap gap-2">
@@ -256,11 +319,27 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
               {!(book.characters ?? []).some((c) => c.kind === "prop") && <span className="hint">Add a Type: Prop item (for example a Compass Rose) to the Library on tab 1.</span>}
             </label>
           )}
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={copyrightPage} onChange={(e) => setCopyrightPage(e.target.checked)} /> Add a copyright page after the title page</label>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={evenPages} onChange={(e) => setEvenPages(e.target.checked)} /> Add one blank page at the end if the page count would be odd</label>
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={backing} onChange={(e) => setBacking(e.target.checked)} /> Insert a blank backing page after every page (stops marker bleed-through)</label>
           {(untagged > 0 || empty > 0) && <p className="rounded-lg bg-sun/30 px-3 py-2 text-sm text-forest">{empty > 0 ? `${empty} section${empty === 1 ? " has" : "s have"} no draft yet. ` : ""}{untagged > 0 ? `${untagged} section${untagged === 1 ? " is" : "s are"} in the older draft format, so some boxes would print empty. ` : ""}Use “Draft all sections” above to fill them in.</p>}
           <div className="flex flex-wrap items-center gap-3">
             <TooltipButton className="btn" onClick={makeHtml} disabled={htmlBusy || !book.sections.length}>{htmlBusy ? "Building…" : "Export Printable Book (.HTML)"}</TooltipButton>
+            {htmlMsg && <span className="text-sm font-semibold text-forest">{htmlMsg}</span>}
             <span className="hint">Open the downloaded HTML in Chrome/Edge and press Ctrl+P → Save as PDF (Margins: None, Size: Letter) for a print-ready KDP interior!</span>
+          </div>
+        </section>
+      )}
+
+      {newMode && (
+        <section className="card space-y-3">
+          <h2 className="text-base font-bold text-forest">Printable book (full color HTML, {book.trim.replace("x", " × ")} in)</h2>
+          <p className="hint">Builds the title page, copyright page, your front matter, every page and your back matter at the trim size. Open the file in Chrome or Edge, press Ctrl+P, Save as PDF, Margins None, Background graphics ON.</p>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={copyrightPage} onChange={(e) => setCopyrightPage(e.target.checked)} /> Add a copyright page</label>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={evenPages} onChange={(e) => setEvenPages(e.target.checked)} /> Add one blank page at the end if the page count would be odd</label>
+          <div className="flex flex-wrap items-center gap-3">
+            <TooltipButton className="btn" onClick={makeTemplateHtml} disabled={tplBusy || !book.sections.length}>{tplBusy ? "Building…" : "Export Printable Book (.HTML)"}</TooltipButton>
+            {htmlMsg && <span className="text-sm font-semibold text-forest">{htmlMsg}</span>}
           </div>
         </section>
       )}

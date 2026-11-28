@@ -1,6 +1,7 @@
 import type { Config } from "@netlify/functions";
 import { checkAuth, json } from "../lib/studio-auth.ts";
 import { IMAGE_ID_RE, getBook, imageStore } from "../lib/studio-store.ts";
+import { imageCap, logUsage } from "../lib/studio-settings.ts";
 
 // POST validates the request and starts a background job (pictures can take a minute or more,
 // longer than a normal function may run). GET ?jobId= reports progress.
@@ -9,7 +10,7 @@ export const config: Config = { path: "/api/studio/generate-image" };
 const PROVIDERS = ["openai-mini", "openai-1.5", "nano-banana"];
 const QUALITIES = ["low", "medium"];
 const ASPECTS = ["portrait", "square", "landscape"];
-const PRESETS = ["coloring", "storybook", "cover", "aplus", "library_bw", "library_color"];
+const PRESETS = ["coloring", "storybook", "cover", "aplus", "library_bw", "library_color", "planner", "cutout"];
 const MAX_REFS = 6;
 const JOB_ID_RE = /^[0-9a-f-]{36}$/;
 
@@ -52,6 +53,10 @@ export default async (req: Request): Promise<Response> => {
     }
     const sectionId = body.sectionId ? String(body.sectionId).slice(0, 60) : undefined;
 
+    const cap = await imageCap();
+    if (!cap.ok) return json({ error: `Daily picture limit reached (${cap.used} of ${cap.cap} today). Make the picture in ChatGPT or Nano Banana and upload it, or raise the limit in Studio settings.` }, 429);
+    await logUsage(`image:${provider}:${stylePreset}`, { image: true });
+
     const jobId = crypto.randomUUID();
     const job = { id: jobId, bookId, status: "queued", createdAt: new Date().toISOString() };
     await store.setJSON(`job__${jobId}`, job);
@@ -59,15 +64,18 @@ export default async (req: Request): Promise<Response> => {
     const payload = { jobId, bookId, provider, quality, aspect, stylePreset, prompt, referenceImageIds, sectionId };
     const start = await fetch(new URL("/.netlify/functions/studio-generate-image-background", req.url), {
       method: "POST",
-      headers: { "content-type": "application/json", "x-studio-password": req.headers.get("x-studio-password") ?? "" },
+      // The browser cookie is passed on so Netlify password protection on preview deploys lets this internal call through.
+      headers: { "content-type": "application/json", "x-studio-password": req.headers.get("x-studio-password") ?? "", ...(req.headers.get("cookie") ? { cookie: req.headers.get("cookie") as string } : {}) },
       body: JSON.stringify(payload),
     });
     if (!start.ok && start.status !== 202) {
+      console.error(`[studio-image] could not start background job: HTTP ${start.status} ${(await start.text().catch(() => "")).slice(0, 200)}`);
       await store.setJSON(`job__${jobId}`, { ...job, status: "error", error: `Could not start the image job (${start.status})` });
       return json({ error: `Could not start the image job (${start.status})` }, 502);
     }
     return json({ jobId }, 202);
   } catch (err) {
+    console.error(`[studio-image] request failed: ${err instanceof Error ? err.message : String(err)}`);
     return json({ error: err instanceof Error ? err.message : String(err) }, 500);
   }
 };

@@ -1,4 +1,4 @@
-import type { Action, Book, GeneratedImage, ImageAspect, ImageProvider, KdpPackage, StylePreset } from "./types";
+import type { Action, Book, GeneratedImage, ImageAspect, ImageProvider, KdpPackage, StylePreset, CoverIdeas } from "./types";
 
 const KEY = "studio-password";
 export const getPassword = () => sessionStorage.getItem(KEY) ?? "";
@@ -14,8 +14,12 @@ async function call<T>(url: string, init: RequestInit = {}): Promise<T> {
   });
   if (res.status === 401) throw new AuthError("Wrong password");
   const text = await res.text();
-  const data = text ? JSON.parse(text) : {};
-  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  let data: Record<string, unknown> = {};
+  try { data = text ? JSON.parse(text) : {}; } catch {
+    // Not JSON: usually a Netlify error page (timeout, paused site, function crash). Show its status and the start of the text.
+    throw new Error(`The server answered ${res.status} with a page instead of data: ${text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 160)}`);
+  }
+  if (!res.ok) throw new Error(String(data.error ?? `Request failed (${res.status})`));
   return data as T;
 }
 
@@ -128,6 +132,21 @@ export async function generateImage(req: ImageJobRequest, onTick?: (status: stri
   throw new Error("The picture is taking too long. Check the gallery in a minute; it may still appear.");
 }
 
+export const coverIdeas = (payload: Record<string, unknown>) =>
+  call<CoverIdeas>("/api/studio/cover-ideas", { method: "POST", body: JSON.stringify(payload) });
+
 export interface CoverCheck { ok: boolean; summary: string; checks: { name: string; pass: boolean; note: string }[] }
 export const checkCover = (payload: Record<string, unknown>) =>
   call<CoverCheck>("/api/studio/cover-check", { method: "POST", body: JSON.stringify(payload) });
+
+export interface ReservedItem { name: string; owner?: string; note?: string }
+export interface Reserved { names: ReservedItem[]; animals: ReservedItem[]; allowed: string[] }
+export interface UsageDay { day: string; images: number; byKey: Record<string, number> }
+export interface StudioSettings { reserved: Reserved; limits: { imagesPerDay: number }; usage: UsageDay[] }
+export const getSettings = () => call<StudioSettings>("/api/studio/settings");
+export const putSettings = (p: { reserved?: Reserved; limits?: { imagesPerDay: number } }) =>
+  call<StudioSettings>("/api/studio/settings", { method: "PUT", body: JSON.stringify(p) });
+
+export interface PictureCheck { ok: boolean; summary: string; checks: { what: string; wanted: string; seen: string; pass: boolean }[]; fix: string }
+export const pictureCheck = (bookId: string, sectionId: string, imageId: string) =>
+  call<PictureCheck>("/api/studio/picture-check", { method: "POST", body: JSON.stringify({ bookId, sectionId, imageId }) });

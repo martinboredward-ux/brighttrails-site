@@ -1,6 +1,6 @@
 import { getStore } from "@netlify/blobs";
 
-export type Mode = "activity" | "storybook" | "nonfiction";
+export type Mode = "activity" | "storybook" | "nonfiction" | "planner" | "gamebook" | "tracing";
 export type JobStatus = "idle" | "running" | "done" | "error";
 
 /** A named character picture in the book's Character Library (the picture is in the image store). */
@@ -17,6 +17,10 @@ export interface Section {
   title: string;
   summary: string;
   draft: string;
+  /** "coloring": a picture-only page. "template": a code-drawn page (planner, tracing). "cutout": single-sided cut-out sheet. "picture": a finished full-page picture (planner pages made in ChatGPT), printed alone. "detour": gamebook detour page. */
+  kind?: "coloring" | "template" | "cutout" | "detour" | "picture";
+  tpl?: string;
+  data?: Record<string, string>;
 }
 
 export interface APlusModule {
@@ -56,7 +60,7 @@ export interface GeneratedImage {
 
 export type ImageProvider = "openai-mini" | "openai-1.5" | "nano-banana" | "upload";
 export type ImageAspect = "portrait" | "square" | "landscape";
-export type StylePreset = "coloring" | "storybook" | "cover" | "aplus" | "library_bw" | "library_color";
+export type StylePreset = "coloring" | "storybook" | "cover" | "aplus" | "library_bw" | "library_color" | "planner" | "cutout";
 
 export interface ReviewFix { id: string; title: string; detail: string; target: "notes" | "styleBible" | "sections" }
 
@@ -107,6 +111,8 @@ export interface Book {
   stage: string;
   ignoredAssetNames: string[];
   cornerPropId: string;
+  /** Studio extras: flags for Claude, snapshots, launch checklist, target date, book type. Edited by the browser. */
+  studio: Record<string, unknown>;
   jobStatus: JobStatus;
   jobAction: string;
   jobError: string;
@@ -187,6 +193,7 @@ export function newBook(partial: Partial<Book>): Book {
     approvedAt: "",
     stage: "idea",
     ignoredAssetNames: [],
+    studio: partial.studio ?? {},
     cornerPropId: "",
     jobStatus: "idle",
     jobAction: "",
@@ -226,6 +233,7 @@ function normalise(b: Book | null): Book | null {
   b.stage ??= "idea";
   b.ignoredAssetNames ??= [];
   b.cornerPropId ??= "";
+  b.studio ??= {};
   if (!["8.5x8.5", "8x10", "8.5x11", "6x9", "5.5x8.5"].includes(b.trim)) b.trim = "8.5x11";
   // The old single reference becomes the first library entry.
   if (b.characterRefId && !b.characters.some((c) => c.id === b.characterRefId)) b.characters.push({ id: b.characterRefId, name: "Main character", kind: "character" });

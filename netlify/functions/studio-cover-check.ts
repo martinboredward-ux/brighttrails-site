@@ -34,7 +34,7 @@ Check, looking at the picture itself:
 4. KDP basics: text well inside the edges (about 0.25 in), nothing important near the trim, no barcode/ISBN or price printed on the art, no unreadable tiny text, and whether artwork looks AI-generated in a way that needs the AI disclosure answered "yes" in KDP.
 
 Return ONLY JSON: {"ok": boolean, "summary": string, "checks": [{"name": string, "pass": boolean, "note": string}]}. Use exactly the four check names "Spelling", "Readability & contrast", "Text vs faces", "KDP trim & AI compliance". Be concrete: say what you see and what to change. "ok" is true only when all four pass.`,
-      { json: true, image: { mimeType: "image/jpeg", data } },
+      { json: true, label: "cover_check", image: { mimeType: "image/jpeg", data } },
     );
     return json(parseJson(text));
   } catch (err) {

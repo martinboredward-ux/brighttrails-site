@@ -16,7 +16,7 @@ export default async (req: Request): Promise<Response> => {
     const book = body.bookId ? await getBook(body.bookId) : null;
     if (!book) return json({ error: "Book not found" }, 404);
 
-    const text = (await geminiGenerate(rescuePrompt(book), { temperature: 0.6 })).replace(/^```(?:markdown|md)?\s*|\s*```$/g, "").trim();
+    const text = (await geminiGenerate(rescuePrompt(book), { temperature: 0.6, label: "rescue_audit" })).replace(/^```(?:markdown|md)?\s*|\s*```$/g, "").trim();
     if (!text) return json({ error: "The model returned nothing. Try again." }, 502);
 
     // Re-read so a save that happened while Gemini was working is not overwritten.

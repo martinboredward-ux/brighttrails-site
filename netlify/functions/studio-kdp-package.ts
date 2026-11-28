@@ -68,7 +68,7 @@ Return ONLY a JSON object with exactly these keys:
 - "isLowContent": boolean. Coloring books, line-tracing books, activity books, storybooks and workbooks are NOT low-content: answer false for them. Answer true only for blank journals, notebooks, planners, logbooks with no authored content.
 - "aPlusModules": array of exactly 3 objects, in this order, each {"size","headline","body"}: sizes "970x600", "970x300", "300x300". Headline 60 characters or fewer, body 200 characters or fewer. Never use any of these words or phrases: free, bonus, affordable, cheap, discount, sale, buy now, order now, add to cart, best seller, #1, guarantee, new, latest, review, 5 star.`;
 
-    const text = (await geminiGenerate(prompt, { json: true, temperature: 0.7 })).replace(/^```(?:json)?|```$/g, "").trim();
+    const text = (await geminiGenerate(prompt, { json: true, temperature: 0.7, label: "kdp_package" })).replace(/^```(?:json)?|```$/g, "").trim();
     const raw = JSON.parse(text) as Partial<KdpPackage>;
 
     const warnings: string[] = [];

@@ -1,9 +1,10 @@
-export type Mode = "activity" | "storybook" | "nonfiction";
+export type Mode = "activity" | "storybook" | "nonfiction" | "planner" | "gamebook" | "tracing";
 export type JobStatus = "idle" | "running" | "done" | "error";
 
 import type { Trim } from "./utils/trims";
-export type WidgetKind = "wordbank" | "compass" | "mapgrid" | "steps" | "dots" | "tracing";
-export interface Section { id: string; title: string; summary: string; draft: string; widget?: WidgetKind; rank?: 0 | 1 | 2 | 3 }
+export type SectionKind = "coloring" | "template" | "cutout" | "detour" | "picture";
+export type WidgetKind = "wordbank" | "compass" | "mapgrid" | "steps" | "dots" | "tracing" | "dotmarker";
+export interface Section { id: string; title: string; summary: string; draft: string; /** "coloring": a picture-only page with no text (a blank back is added). */ kind?: SectionKind; /** Template sections (planner, gamebook, tracing): which template and its fields. */ tpl?: string; data?: Record<string, string>; widget?: WidgetKind; rank?: 0 | 1 | 2 | 3 }
 export interface APlusModule {
   size: "970x600" | "970x300" | "300x300";
   headline: string;
@@ -56,23 +57,43 @@ export interface Book {
   ignoredAssetNames: string[];
   /** Library item of type Prop stamped in the corner of printable pages (for example a Compass Rose). */
   cornerPropId: string;
+  /** Studio extras (flags for Claude, snapshots, launch checklist, target date, book type). */
+  studio?: BookStudio;
   jobStatus: JobStatus; jobAction: string; jobError: string; jobUpdatedAt: string;
   createdAt: string; updatedAt: string;
 }
 export type ImageProvider = "openai-mini" | "openai-1.5" | "nano-banana" | "upload";
 export type ImageAspect = "portrait" | "square" | "landscape";
-export type StylePreset = "coloring" | "storybook" | "cover" | "aplus" | "library_bw" | "library_color";
+export type StylePreset = "coloring" | "storybook" | "cover" | "aplus" | "library_bw" | "library_color" | "planner" | "cutout";
 export interface GeneratedImage {
   id: string; sectionId?: string; prompt: string; provider: ImageProvider; modelUsed: string;
   aspect: ImageAspect; stylePreset: StylePreset; quality: "low" | "medium"; createdAt: string;
   /** "puzzle": fills the worksheet box instead of being the page picture. */
   slot?: "puzzle";
 }
-export type Action = "generate_outline" | "draft_section" | "draft_all" | "review_book" | "extract_workbook" | "market_research" | "pre_review" | "apply_review" | "apply_polish";
+export interface Flag { id: string; sectionId?: string; where: string; note: string; at: string; done?: boolean }
+export interface Snapshot { id: string; at: string; label: string; title: string; subtitle: string; notes: string; styleBible: string; sections: Section[] }
+export interface BookStudio {
+  detailsFill?: { at: string; filled: string[]; kept: string[]; ideas: string[] };
+  flags?: Flag[];
+  snapshots?: Snapshot[];
+  launch?: Record<string, boolean>;
+  targetDate?: string;
+  bookType?: string;
+  outsideReview?: string;
+  titleIdeas?: TitleIdeas;
+  originality?: string;
+  paperFor?: string;
+  listPrice?: number;
+  seriesKit?: boolean;
+  sentPages?: Record<string, string>;
+}
+export interface TitleIdeas { at: string; options: { title: string; subtitle: string; why: string }[]; searches: string[]; results?: string }
+export type Action = "generate_outline" | "draft_section" | "draft_all" | "review_book" | "extract_workbook" | "market_research" | "pre_review" | "apply_review" | "apply_polish" | "import_review" | "title_ideas" | "originality_review" | "fill_template" | "fill_details";
 export interface CoverSettings {
   title?: string; subtitle?: string; author?: string; seriesPill?: string;
   pageCount?: number; trim?: Trim; paper?: PaperType;
-  frontArtId?: string; backBlurb?: string; barcodeCorner?: boolean;
+  frontArtId?: string; /** Optional faint picture behind the back-cover blurb. */ backArtId?: string; backArtStrength?: number; backBlurb?: string; barcodeCorner?: boolean;
   /** Framing and contrast controls. */
   fit?: "fill" | "fit"; padColor?: string; shift?: "top" | "center" | "bottom";
   titlePlacement?: "top" | "bottom" | "split"; scrim?: "none" | "softDark" | "softLight" | "pill";
@@ -81,7 +102,13 @@ export interface CoverSettings {
   topSky?: "off" | "20" | "30";
   /** The settings snapshot the author approved. The cover counts as approved while it matches. */
   approvedSig?: string; approvedAt?: string; checkNotes?: string; checkedAt?: string;
+  /** Saved Cover Ideas so they are not paid for twice. */
+  ideas?: CoverIdeas;
+  /** Up to 3 finished covers (image ids) whose look new cover ideas should match. */
+  refCoverIds?: string[];
 }
+export interface CoverIdea { artId?: string; name: string; why: string; scene: string; layout: { titlePlacement: "top" | "bottom" | "split"; topSky: "off" | "20" | "30"; scrim: "none" | "softDark" | "softLight" | "pill"; textColor: string; textEffect: "none" | "shadow" | "outline" } }
+export interface CoverIdeas { concepts: CoverIdea[]; tips: string[]; lookNotes?: string; model?: string; at?: string }
 export type PaperType = "standardColor" | "premiumColor" | "white" | "cream";
 export interface ReviewFix { id: string; title: string; detail: string; target: "notes" | "styleBible" | "sections" }
 export interface AppliedLog { kind: "idea" | "qa"; at: string; changes: string[] }

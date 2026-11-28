@@ -1,4 +1,5 @@
 import { TRIMS } from "../utils/trims";
+import BibleHealth from "../components/BibleHealth";
 import { useState } from "react";
 import type { Book } from "../types";
 import CharacterLibrary from "../components/CharacterLibrary";
@@ -36,7 +37,7 @@ export default function Tab1Details({ book, books, update, commit, fail, locked 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <section className="card space-y-3">
-        <h2 className="text-base font-bold text-forest">Core inputs</h2>
+        <h2 className="text-base font-bold text-forest">Core inputs (step 4: type these, or use Suggest details above)</h2>
         <div>
           <label className="label">Title</label>
           <input className="field" value={book.title} onChange={(e) => update({ title: e.target.value })} />
@@ -52,6 +53,9 @@ export default function Tab1Details({ book, books, update, commit, fail, locked 
               <option value="activity">Activity (coloring, tracing, STEM)</option>
               <option value="storybook">Storybook</option>
               <option value="nonfiction">Nonfiction / workbook</option>
+              <option value="planner">Planner / guided workbook (full color)</option>
+              <option value="gamebook">Trivia gamebook (ages 9-12)</option>
+              <option value="tracing">Preschool letter tracing</option>
             </select>
           </div>
           <div>
@@ -73,12 +77,6 @@ export default function Tab1Details({ book, books, update, commit, fail, locked 
             <option value="generated">AI-generated (disclose to KDP)</option>
           </select>
           <p className="mt-1 text-xs text-muted">KDP asks you to disclose AI-generated text, images or translations when you publish. Choose what applies and answer the question in KDP accordingly.</p>
-        </div>
-        <div>
-          <label className="label">Notes (scratchpad)</label>
-          <textarea className="field min-h-64" value={book.notes} readOnly={locked} onChange={(e) => update({ notes: e.target.value })}
-            placeholder={"Type messy ideas here. Or write storyline choices like:\nOption A: ...\nOption B: ...\nThen run the Pre-Outline Review below and ask which is stronger."} />
-          <p className="hint mt-1">Rough ideas are fine. Several storyline options are fine too: the review below compares them and recommends one.</p>
         </div>
       </section>
 
@@ -135,6 +133,7 @@ export default function Tab1Details({ book, books, update, commit, fail, locked 
         <h2 className="text-base font-bold text-forest">Style Bible</h2>
         <p className="text-xs text-muted">Voice, visuals, characters and layout rules. The Book Builder sends this with every section it drafts. {locked && "Locked while an AI job is running."}</p>
         <textarea className="field min-h-[26rem] font-mono" value={book.styleBible} readOnly={locked} onChange={(e) => update({ styleBible: e.target.value })} placeholder="Generate an outline in the Book Builder to draft this, or write your own." />
+        <BibleHealth bible={book.styleBible} />
       </section>
 
       <section className="card space-y-2 lg:col-span-2">

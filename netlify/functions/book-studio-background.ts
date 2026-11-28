@@ -2,8 +2,10 @@ import type { Config } from "@netlify/functions";
 import Anthropic from "@anthropic-ai/sdk";
 import { checkAuth, json } from "../lib/studio-auth.ts";
 import { geminiGenerate } from "../lib/gemini.ts";
+import { getReserved, logUsage, reservedPromptBlock } from "../lib/studio-settings.ts";
 import { getBook, putBook, type Book, type Section } from "../lib/studio-store.ts";
 import { seriesContext } from "../lib/series-context.ts";
+import { TEMPLATES, tplDef } from "../lib/templates.ts";
 import { automatedChecks, cleanFixes, diffSummary, parseJson } from "../lib/review-utils.ts";
 
 // Background function (15-minute limit). Invoked at /.netlify/functions/book-studio-background.
@@ -11,7 +13,7 @@ import { automatedChecks, cleanFixes, diffSummary, parseJson } from "../lib/revi
 export const config: Config = {};
 
 const MODELS = { haiku: "claude-haiku-5-5", sonnet: "claude-sonnet-5-5" } as const;
-type Action = "generate_outline" | "draft_section" | "draft_all" | "review_book" | "extract_workbook" | "market_research" | "pre_review" | "apply_review" | "apply_polish";
+type Action = "generate_outline" | "draft_section" | "draft_all" | "review_book" | "extract_workbook" | "market_research" | "pre_review" | "apply_review" | "apply_polish" | "import_review" | "title_ideas" | "originality_review" | "fill_template";
 
 interface Payload {
   bookId: string;
@@ -27,6 +29,12 @@ const MODE_GUIDE: Record<Book["mode"], string> = {
     "An activity book (coloring, line tracing, dot markers, STEM counting). Each section is a themed set of pages. A page spec says what is drawn, the instruction line for the child, and difficulty. No stickers claims.",
   storybook:
     "A picture book. Sections are spreads. A spread spec gives the story text (short, read-aloud rhythm), what the illustration shows, the camera/composition, and any interactive prompt for the reader. For ages 1-4 each spread has only 5-7 punchy lines of text (never 12+), so it breathes on a square page.",
+  planner:
+    "A FULL-COLOR adult planner / guided workbook (not a kids book). Most pages are code-drawn templates (guided prompts, checklists, trackers, sprints, collage canvases, cut-out sheets). You write only the words that go on them: inspiring, professional, commercially focused, executive adult reading level. Never write coloring-book or child wording.",
+  gamebook:
+    "An interactive trivia gamebook for ages 9-12 (map, checkpoint, gate, victory and detour pages). Each page is short and snappy. Choices point to other pages with a link written exactly as [GO: section-id]. Every explanation is under 50 words. Every multiple-choice question has a deductive clue in the question or answers; no obscure recall.",
+  tracing:
+    "A preschool letter-tracing book for ages 4-6 with a friendly animal mascot named in the Style Bible. Letter spreads are code-drawn templates; you write only the short story cue and the parent prompt (max 2 sentences). Direction words are ONLY: Pull down, Slide right, Hop over, Loop around. Never make medical, therapy or ADHD claims.",
   nonfiction:
     "A nonfiction guide. Sections are chapters. A chapter spec gives the chapter promise, key points, one real-world scenario, and an end-of-chapter takeaway.",
 };
@@ -42,10 +50,12 @@ AI disclosure setting: ${b.aiDisclosure}
 Notes: ${b.notes || "(none)"}`;
 }
 
-const gemini = (prompt: string, json = false) => geminiGenerate(prompt, { json });
+let currentAction = "job";
+const gemini = (prompt: string, json = false) => geminiGenerate(prompt, { json, label: currentAction });
 
 async function claude(prompt: string, which: keyof typeof MODELS): Promise<string> {
   const client = new Anthropic();
+  await logUsage(`text:${MODELS[which] ?? MODELS.haiku}:${currentAction}`);
   const msg = await client.messages.create({
     model: MODELS[which] ?? MODELS.haiku,
     max_tokens: 4000,
@@ -149,7 +159,10 @@ async function run(p: Payload): Promise<Partial<Book>> {
   if (!book) throw new Error("Book not found");
   const which = p.model === "sonnet" ? "sonnet" : "haiku";
   // Linked books (series memory) travel with every prompt below.
-  const ctx = bookContext(book) + (await seriesContext(book));
+  currentAction = p.action;
+  const reserved = reservedPromptBlock(await getReserved(), book);
+  const gbIds = book.mode === "gamebook" ? `\nPAGE IDS (use exactly these in [GO: id] links): ${book.sections.map((s, i) => `${i + 1}=${s.id} (${s.title})`).join("; ")}` : "";
+  const ctx = bookContext(book) + (reserved ? `\n${reserved}` : "") + gbIds + (await seriesContext(book));
 
   switch (p.action) {
     case "generate_outline": {
@@ -185,7 +198,7 @@ Create the working plan for this book. Return ONLY JSON: {"styleBible": string, 
     }
 
     case "draft_all": {
-      const todo = book.sections.map((s, i) => i).filter((i) => p.onlyEmpty === false || !book.sections[i].draft.trim());
+      const todo = book.sections.map((s, i) => i).filter((i) => !["coloring", "template", "cutout", "picture"].includes(String(book.sections[i].kind)) && (p.onlyEmpty === false || !book.sections[i].draft.trim()));
       if (!todo.length) throw new Error("Every section already has a draft.");
       let done = 0;
       for (const idx of todo) {
@@ -234,6 +247,38 @@ Return ONLY JSON: {"review": string, "reviewFixes": [{"id": string, "title": str
       );
       const data = parseJson<{ review?: string; reviewFixes?: unknown }>(text);
       return { review: String(data.review ?? "").trim() || "No problems found.", reviewFixes: cleanFixes(data.reviewFixes, ["sections"]), reviewSelected: [] };
+    }
+
+    case "fill_details": {
+      const text = await gemini(
+        `${ctx}
+
+NOTES AND IDEAS
+${book.notes || "(none yet)"}
+
+MARKET RESEARCH
+${book.research || "(none yet)"}
+
+Suggest the core details for this book from the notes and research. Return ONLY JSON: {"title": string, "subtitle": string, "audience": string, "mode": "activity"|"storybook"|"nonfiction"|"planner"|"gamebook"|"tracing", "styleBible": string}.
+- title: a strong, searchable title (max 8 words). subtitle: keyword-rich, under 150 characters, says who it is for and what is inside, no claims we cannot deliver.
+- audience: plain words, include the age range (for example "Girls ages 8-12, and the parents who buy for them").
+- mode: the best-fitting book type.
+- styleBible: 200-400 words covering voice, reading level, visual style, recurring characters or motifs, layout rules for the trim size, and a line starting "Avoid:" with things never to do. Use the reserved-names rules above; never reuse a reserved name or animal.`,
+      );
+      const d = parseJson<{ title?: string; subtitle?: string; audience?: string; mode?: string; styleBible?: string }>(text);
+      const patch: Partial<Book> = {};
+      const filled: string[] = [], kept: string[] = [];
+      const sub = String(d.subtitle ?? "").trim().slice(0, 200);
+      if (!book.subtitle?.trim() && sub) { patch.subtitle = sub; filled.push("Subtitle"); } else if (book.subtitle?.trim()) kept.push("Subtitle");
+      const aud = String(d.audience ?? "").trim().slice(0, 200);
+      if (!book.audience?.trim() && aud) { patch.audience = aud; filled.push("Audience"); } else if (book.audience?.trim()) kept.push("Audience");
+      const sb = String(d.styleBible ?? "").trim().slice(0, 8000);
+      if (!book.styleBible?.trim() && sb) { patch.styleBible = sb; filled.push("Style Bible"); } else if (book.styleBible?.trim()) kept.push("Style Bible");
+      const ideas: string[] = [];
+      if (d.title && d.title.trim() && d.title.trim() !== book.title) ideas.push(`Title idea: ${d.title.trim()}`);
+      if (d.mode && d.mode !== book.mode) ideas.push(`Studio type idea: ${d.mode}`);
+      const prev = (book.studio ?? {}) as Record<string, unknown>;
+      return { ...patch, studio: { ...prev, detailsFill: { at: new Date().toISOString(), filled, kept, ideas } } };
     }
 
     case "market_research": {
@@ -373,6 +418,101 @@ Change this section ONLY where a checked fix or the extra instructions affects i
         done++;
       }
       return { lastApplied: { kind: "qa" as const, at: new Date().toISOString(), changes: log.length ? log.slice(0, 60) : ["No section needed a change."] } };
+    }
+
+    case "fill_template": {
+      const todo = book.sections.filter((s) => s.tpl && tplDef(s.tpl) && (p.sectionId ? s.id === p.sectionId : true));
+      if (!todo.length) throw new Error("No template sections to fill.");
+      let done = 0;
+      const sections = book.sections.map((s) => ({ ...s }));
+      for (const sec of todo) {
+        const def = tplDef(sec.tpl)!;
+        const have = Object.values(sec.data ?? {}).some((v) => v.trim()) && !p.sectionId;
+        if (have) continue;
+        await setJob(book.id, { jobAction: `fill_template:${++done}/${todo.length}` });
+        const out = await claude(
+          `${ctx}
+
+STYLE BIBLE (voice only matters here)
+${book.styleBible || "(none yet)"}
+
+PAGE: ${sec.title}
+PAGE PURPOSE: ${sec.summary || "(none)"}
+TEMPLATE: ${def.label}. ${def.ai}
+${sec.data?.letter ? `LETTER: ${sec.data.letter} (upper and lower case)` : ""}
+
+Return ONLY JSON with exactly these string fields: ${def.fields.map((f) => `"${f.key}" (${f.label})`).join(", ")}. Multi-line fields use "\n" between lines. No markdown, no numbering.`,
+          which,
+        );
+        let data: Record<string, unknown> = {};
+        try { data = parseJson<Record<string, unknown>>(out); } catch { throw new Error(`The AI answer for "${sec.title}" could not be read. Press Fill words again.`); }
+        const idx = sections.findIndex((x) => x.id === sec.id);
+        const merged: Record<string, string> = { ...(sec.data ?? {}) };
+        for (const f of def.fields) merged[f.key] = String(data[f.key] ?? "").replace(/\r/g, "").trim().slice(0, 1500);
+        sections[idx] = { ...sections[idx], data: merged };
+        const fresh = await getBook(book.id);
+        if (fresh) { fresh.sections = fresh.sections.map((x) => (x.id === sec.id ? { ...x, data: merged } : x)); await putBook(fresh); }
+      }
+      return { sections };
+    }
+
+    case "import_review": {
+      const pasted = String((book.studio as { outsideReview?: string } | undefined)?.outsideReview ?? "").trim();
+      if (!pasted) throw new Error("Paste the reviewer's notes first.");
+      const list = book.sections.map((s, i) => `${i + 1}. ${s.title}`).join("\n");
+      const text = await gemini(
+        `${ctx}
+
+SECTIONS OF THIS BOOK
+${list || "(none)"}
+
+AN OUTSIDE REVIEWER WROTE THIS ABOUT THE BOOK
+${pasted.slice(0, 9000)}
+
+Turn the reviewer's notes into separate, concrete, checkable fixes that the author can tick and apply to the SECTION TEXT. Skip anything that is only about pictures or the cover (the author fixes those by hand) and anything that is praise. Each fix names the section number(s) it touches in its title when it is specific to one.
+Return ONLY JSON: {"summary": string (2-4 sentences, what the reviewer found), "fixes": [{"id": string, "title": string, "detail": string, "target": "sections"}]}. At most 15 fixes. Titles start with a verb.`,
+        true,
+      );
+      const data = parseJson<{ summary?: string; fixes?: unknown }>(text);
+      return { review: `Imported outside review\n\n${String(data.summary ?? "").trim()}`, reviewFixes: cleanFixes(data.fixes, ["sections"]), reviewSelected: [] };
+    }
+
+    case "title_ideas": {
+      const text = await gemini(
+        `${ctx}
+
+NOTES
+${book.notes.slice(0, 3000) || "(none)"}
+
+MARKET RESEARCH
+${(book.research || "(none)").slice(0, 3000)}
+
+You are a KDP title strategist. Give 10 title and subtitle options for this book. Rules: the title is short and memorable; the subtitle carries the main search words naturally; no trademarks, no brand names, no "best", "#1" or price words; title + subtitle together under 200 characters; do not reuse character names reserved by other books.
+Also give 6 exact Amazon search strings the author should type into Amazon to check for competing titles with the same name (for example "Vision Board 2027" clip art book).
+Return ONLY JSON: {"options": [{"title": string, "subtitle": string, "why": string}], "searches": string[]}.`,
+        true,
+      );
+      const data = parseJson<{ options?: unknown; searches?: unknown }>(text);
+      const options = (Array.isArray(data.options) ? data.options : []).slice(0, 10).map((o) => { const r = (o ?? {}) as Record<string, unknown>; return { title: String(r.title ?? "").slice(0, 120), subtitle: String(r.subtitle ?? "").slice(0, 160), why: String(r.why ?? "").slice(0, 200) }; }).filter((o) => o.title);
+      const searches = (Array.isArray(data.searches) ? data.searches : []).slice(0, 8).map((x) => String(x).slice(0, 120));
+      const prev = (book.studio ?? {}) as Record<string, unknown>;
+      return { studio: { ...prev, titleIdeas: { at: new Date().toISOString(), options, searches, results: (prev.titleIdeas as { results?: string } | undefined)?.results ?? "" } } };
+    }
+
+    case "originality_review": {
+      const body = book.sections.map((s, i) => `## ${i + 1}. ${s.title}\n${s.draft || s.summary}`).join("\n\n").slice(0, 60000);
+      if (!body.trim()) throw new Error("There is no text to review yet.");
+      const text = await gemini(
+        `You are an originality and copyright-risk reviewer for a self-published KDP book. No tool can prove a book is free of plagiarism, so you report RISK only.
+BOOK: ${book.title} (${book.mode}). Audience: ${book.audience || "n/a"}.
+
+TEXT
+${body}
+
+Report in Markdown with these sections: "## Overall risk" (Low, Medium or High, one sentence why), "## Passages that read like well-known material" (quote at most 12 words of each, say what it resembles and why; write "None found" if none), "## Generic or templated wording" (phrases an AI or template would repeat across many books), "## Names, brands and trademarks" (anything that needs checking), "## Facts to verify" (factual claims a reader could dispute), "## What to do next" (3-5 concrete steps, including pasting a few distinctive sentences into a search engine and a plagiarism checker you trust). Be honest and specific; do not invent matches.`,
+      );
+      const prev = (book.studio ?? {}) as Record<string, unknown>;
+      return { studio: { ...prev, originality: `${new Date().toISOString().slice(0, 10)}\n\n${text.trim()}` } };
     }
 
     case "extract_workbook": {

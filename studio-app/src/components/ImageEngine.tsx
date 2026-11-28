@@ -69,8 +69,8 @@ export default function ImageEngine({ book, sectionId, initialPrompt = "", defau
 
   const run = async () => {
     if (!prompt.trim()) { setStatus("Write a prompt first."); return; }
-    if (sectionId && book.images.some((i) => i.sectionId === sectionId && i.provider !== "upload" && i.slot !== "puzzle")
-      && !confirm("This page already has a picture. Generating another uses Netlify credits. Use your $0 prompt in ChatGPT instead, or press OK to generate anyway.")) return;
+    const hasPic = !!sectionId && book.images.some((i) => i.sectionId === sectionId && i.provider !== "upload" && i.slot !== "puzzle");
+    if (!confirm((hasPic ? "This page already has a picture. " : "") + "Generate a picture in Studio? Each one uses Netlify AI credits (pictures are most of the cost). A free ChatGPT or Nano Banana picture, uploaded here, costs nothing. Press OK to generate.")) return;
     setBusy(true);
     setNotes([]);
     setStatus("Starting…");
@@ -84,7 +84,8 @@ export default function ImageEngine({ book, sectionId, initialPrompt = "", defau
       setStatus(`Done with ${image.modelUsed}. ${generatedThisVisit} picture${generatedThisVisit === 1 ? "" : "s"} generated this visit.`);
       onDone(image);
     } catch (e) {
-      setStatus("");
+      // Keep the real reason on screen (the pop-up can disappear before it is read).
+      setStatus(`Picture failed: ${e instanceof Error ? e.message : String(e)}`);
       fail(e);
     } finally { setBusy(false); }
   };
@@ -128,6 +129,9 @@ export default function ImageEngine({ book, sectionId, initialPrompt = "", defau
             <option value="storybook">Storybook</option>
             <option value="cover">Cover</option>
             <option value="aplus">A+ illustration</option>
+            <option value="planner">Planner (full color, adult)</option>
+            <option value="cutout">Cut-out sheet (full color)</option>
+            <option value="library_bw">Black-and-white character / pose</option>
           </select>
         </label>
         <label className="text-xs text-muted">Shape
@@ -145,6 +149,10 @@ export default function ImageEngine({ book, sectionId, initialPrompt = "", defau
         </label>
       </div>
       <textarea className="field min-h-20" value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Describe the picture. The style wording above is added for you." />
+      <div className="flex flex-wrap items-center gap-3 text-xs">
+        {prompt !== initialPrompt && <button type="button" className="underline text-accent" onClick={() => setPrompt(initialPrompt)}>You edited this prompt. Reset to the page text</button>}
+        <details><summary className="cursor-pointer text-muted">Prompt preview (what is really sent)</summary><p className="mt-1 whitespace-pre-wrap rounded border border-line p-2 font-mono">{wrapPrompt(preset, prompt, sectionId ? book.styleBible : undefined)}</p></details>
+      </div>
       {lib.length > 0 ? (
         <div className="space-y-2 rounded-lg border border-line p-2">
           <label className="flex items-center gap-2 text-sm font-semibold text-forest"><input type="checkbox" checked={useRef} onChange={(e) => setUseRef(e.target.checked)} /> Use my Character Library ({provider === "nano-banana" ? "Nano Banana" : "ChatGPT"} copies the ones ticked)</label>

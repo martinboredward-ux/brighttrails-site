@@ -55,7 +55,9 @@ export default async (req: Request): Promise<Response> => {
     }
     await store.setJSON(jobKey, { ...base, status: "done", imageId, image: meta, notes: result.notes });
   } catch (err) {
-    await store.setJSON(jobKey, { ...base, status: "error", error: err instanceof Error ? err.message : String(err) });
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[studio-image] job ${p.jobId} failed (${p.provider}, ${p.stylePreset}, ${p.aspect}): ${msg}`);
+    await store.setJSON(jobKey, { ...base, status: "error", error: msg });
   }
   return json({ ok: true });
 };

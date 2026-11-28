@@ -31,11 +31,13 @@ const WRAPPERS: Record<StylePreset, (p: string) => string> = {
   coloring: (p) => `${COLORING_WRAPPER} ${COLORING_GUARDRAIL} Subject: ${p}`,
   storybook: (p) => `Warm, friendly children's picture book illustration, soft colors, clear simple shapes, no text or lettering. Scene: ${p}`,
   cover: (p) => `Bright, appealing children's book COVER artwork, no lettering of any kind. COMPOSITION CRITICAL: Place the character and kite (or other main subject) smaller in the LOWER 60% of the frame (below the horizontal midline). The entire TOP 35-40% MUST be completely empty open sky and soft clouds ONLY: no character head, hair, hands, kite tips or objects in the top 35%. Keep faces clear and fully visible, keep the bottom 12% a simple calm ground area, and make the scene still work if the edges are trimmed. Subject: ${p}`,
+  planner: (p) => `Modern full-color editorial illustration for an adult planner: refined palette, crisp elegant contours, generous negative space and margins, polished professional look. NOT a kids or cartoon style, no coloring-book outlines, no text or lettering. Subject: ${p}`,
+  cutout: (p) => `Full-color cut-out clip-art sheet on a PURE WHITE background: several separate icons or badges with clean outlines, generous empty space between every item, nothing touching the page edge, one consistent refined palette, no text or lettering. Subject: ${p}`,
   aplus: (p) => `Clean marketing illustration for an online book listing, uncluttered, friendly, no text or lettering. Subject: ${p}`,
 };
 
 
-const PROSE_RULE = /\b(voice|reading level|lap-?read|read-?aloud|sentence fragments?|onomatop\w*|worksheets?|word bank|answer key|spelling|vocabulary|phonics|rhythm|narrat\w*|dialogue|story text|tone of|prose|writing|word count|paragraphs?)\b/i;
+const PROSE_RULE = /\b(voice|reading level|lap-?read|read-?aloud|sentence fragments?|onomatop\w*|worksheets?|word bank|answer key|spelling|vocabulary|phonics|rhythm|narrat\w*|dialogue|story text|tone of|prose|writing|word count|paragraphs?|humou?r|(?<!skin )tone(?!s)|emotional beats?|affirmations?)\b/i;
 
 /** Keeps only the visual lines of a Style Bible (looks, colors, characters, setting). Writing rules are dropped. */
 export function visualBible(bible: string | undefined): string {
@@ -53,17 +55,23 @@ export function visualBible(bible: string | undefined): string {
   return keep.join(" ");
 }
 
-export function bibleSummary(bible: string | undefined): string {
+const AVOID_LINE = /^(avoid|never|do not|don't|no |not )/i;
+
+export function bibleSummary(bible: string | undefined, cap = 1200): string {
   const flat = visualBible(bible) || (bible ?? "").replace(/[#*_`>|]/g, " ").replace(/\s+/g, " ").trim();
   if (!flat) return "";
-  // Cut at a sentence end so a prompt never stops mid-sentence.
-  let cut = flat;
-  if (flat.length > 700) {
-    const head = flat.slice(0, 700);
+  // The Avoid / Never lines are always kept: they are what stops wrong styles, so they must not be cut off the end.
+  const sentences = flat.split(/(?<=[.!?])\s+/);
+  const avoid = sentences.filter((x) => AVOID_LINE.test(x.trim())).join(" ").slice(0, 320);
+  const rest = sentences.filter((x) => !AVOID_LINE.test(x.trim())).join(" ");
+  const room = Math.max(250, cap - avoid.length - 1);
+  let cut = rest;
+  if (rest.length > room) {
+    const head = rest.slice(0, room);
     const end = Math.max(head.lastIndexOf(". "), head.lastIndexOf("! "), head.lastIndexOf("? "));
-    cut = end > 250 ? head.slice(0, end + 1) : head.replace(/\s+\S*$/, "");
+    cut = end > 200 ? head.slice(0, end + 1) : head.replace(/\s+\S*$/, "");
   }
-  return `Book style and characters (follow exactly, never change a character's species or look): ${cut}\n\n`;
+  return `Book style and characters (follow exactly, never change a character's species or look): ${cut}${avoid ? ` ${avoid}` : ""}\n\n`;
 }
 
 export function wrapPrompt(preset: StylePreset, prompt: string, styleBible?: string): string {

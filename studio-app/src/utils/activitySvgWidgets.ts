@@ -7,6 +7,7 @@ export const WIDGETS: { id: WidgetKind; label: string }[] = [
   { id: "steps", label: "Directional Step Grid" },
   { id: "dots", label: "Dot-to-Dot (1–30)" },
   { id: "tracing", label: "Line Tracing & Counting" },
+  { id: "dotmarker", label: "Dot-Marker Targets (press on the circles)" },
 ];
 
 const F = `font-family="Fredoka, Nunito, Arial, sans-serif"`;
@@ -96,6 +97,31 @@ function tracing(seed: number): string {
   return wrap(`${rows}<text x="10" y="205" font-size="15" font-weight="600" ${F}>Count the stars:</text>${stars}<text x="400" y="244" font-size="16" ${F}>How many?</text><rect x="490" y="218" width="70" height="40" rx="10" fill="#fff" stroke="#000" stroke-width="3"/>`, 280);
 }
 
+function dotmarker(seed: number): string {
+  const r = rnd(seed + 7);
+  // Big hollow circles in a 5 x 2 grid. A few carry a small number so the page also practices counting.
+  let g = "";
+  const R = 34;
+  for (let row = 0; row < 2; row++) for (let col = 0; col < 5; col++) {
+    const x = 70 + col * 115, y = 75 + row * 105, n = 1 + row * 5 + col;
+    g += `<circle cx="${x}" cy="${y}" r="${R}" fill="#fff" stroke="#000" stroke-width="3.5"/>`;
+    if (r() > 0.45) g += `<text x="${x}" y="${y + 8}" text-anchor="middle" font-size="22" font-weight="700" ${F}>${n}</text>`;
+  }
+  return wrap(`<text x="10" y="22" font-size="15" font-weight="600" ${F}>Press a dot marker on each circle.</text>${g}<text x="10" y="272" font-size="15" ${F}>How many circles did you fill?</text><rect x="260" y="250" width="70" height="40" rx="10" fill="#fff" stroke="#000" stroke-width="3"/>`, 300);
+}
+
+/** Looks at a section's text and says which widget its worksheet is asking for, so the picture can actually be drawn. */
+export function suggestWidget(s: { title: string; summary: string; draft: string }): WidgetKind | undefined {
+  const t = `${s.title} ${s.summary} ${s.draft}`.toLowerCase();
+  if (/dot[- ]?markers?|dab|press (?:a |your )?(?:dot|marker)|round targets?/.test(t)) return "dotmarker";
+  if (/dot[- ]to[- ]dot|connect the dots/.test(t)) return "dots";
+  if (/\btrace\b|tracing|dashed (?:path|line)|follow the (?:path|line)/.test(t)) return "tracing";
+  if (/compass rose|\bnorth\b.*\bsouth\b/.test(t)) return "compass";
+  if (/map key|grid.*(?:map|key)/.test(t)) return "mapgrid";
+  if (/arrows?.*(?:steps|path)|step grid/.test(t)) return "steps";
+  return undefined;
+}
+
 /** Crisp inline SVG puzzle for one worksheet. Black on white, so it prints cleanly. Returns "" for the word bank. */
 export function widgetSvg(kind: WidgetKind | undefined, seed: number): string {
   switch (kind) {
@@ -104,6 +130,7 @@ export function widgetSvg(kind: WidgetKind | undefined, seed: number): string {
     case "steps": return steps(seed);
     case "dots": return dots(seed);
     case "tracing": return tracing(seed);
+    case "dotmarker": return dotmarker(seed);
     default: return "";
   }
 }
