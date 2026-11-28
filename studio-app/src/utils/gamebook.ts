@@ -62,3 +62,46 @@ export function pageNumbers(book: Book, frontPages: number): Map<string, number>
   for (const s of book.sections) { n += 1; m.set(s.id, n); if (s.kind === "cutout") n += 1; }
   return m;
 }
+
+const plain = (s: string) => s.replace(/[#*_`>]/g, "").replace(/\s+/g, " ").trim();
+
+/**
+ * Gamebook drafts are written as page specs: meta lines, map notes and an illustration brief for the artist, then the text the reader sees.
+ * The printed page must carry only the reader's parts (page text, field fact, question, choices). Drafts in other shapes print unchanged.
+ */
+export function readerText(draft: string): string {
+  if (!/^\s*(?:[-*_]{3,})\s*$/m.test(draft)) return draft;
+  const blocks = draft.split(/\n\s*(?:[-*_]{3,})\s*\n/);
+  const keep: string[] = [];
+  for (const b of blocks) {
+    const lines = b.split("\n");
+    const first = plain(lines.find((l) => l.trim()) ?? "").toLowerCase();
+    if (!first) continue;
+    if (/page id\b|page type\b/i.test(b) && !/\bchoice\b/i.test(first)) continue; // title + meta block
+    if (/^(visual progress map|illustration|art notes?|image prompt|artist|map notes?)\b/.test(first)) continue;
+    const labelled = /^(page text|story|text|field fact|[a-z' ]*field fact|[a-z' ]*micro-explanation|choices?|your choice|question|trivia|gate|checkpoint|clue)\b/.test(first) && plain(lines.find((l) => l.trim()) ?? "").length < 80;
+    let body = lines.slice(lines.findIndex((l) => l.trim()) + (labelled ? 1 : 0)).join("\n");
+    body = body.replace(/^[\s*_]*\(?\s*word count:?\s*\d+\s*\)?[\s*_]*$/gim, "").replace(/[*_]*\(\s*word count:?\s*\d+\s*\)[*_]*/gi, "").trim();
+    if (!body) continue;
+    let head = "";
+    if (labelled) {
+      if (/field fact|micro-explanation/.test(first)) head = "**Field Fact**\n\n";
+      else if (/^(choices?|your choice)/.test(first)) head = "**What will you do?**\n\n";
+      else if (/^(question|trivia|gate|checkpoint|clue)/.test(first)) head = `**${plain(lines.find((l) => l.trim()) ?? "").replace(/\(.*\)/, "").trim()}**\n\n`;
+    }
+    keep.push(head + body);
+  }
+  return keep.length ? keep.join("\n\n") : draft;
+}
+
+/** Page text that stops mid-sentence: the AI ran out of room. */
+export function cutOffCheck(book: Book): Finding[] {
+  const out: Finding[] = [];
+  book.sections.forEach((s, i) => {
+    const d = s.draft.trim();
+    if (d.length < 200) return;
+    const last = d.split("\n").map((l) => l.trim()).filter(Boolean).pop() ?? "";
+    if (!/[.!?:"”)\]*_>-]$/.test(last)) out.push({ sectionId: s.id, where: `Page ${i + 1}: ${s.title}`, level: "fix", text: "This page ends mid-sentence (the AI ran out of room). Redraft it or finish it by hand." });
+  });
+  return out;
+}

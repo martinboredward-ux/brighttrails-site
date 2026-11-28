@@ -3,7 +3,7 @@ import { trimDims } from "./trims";
 import { fetchImageBlob } from "../api";
 import { blobToDataUrl, mdToHtml } from "../printableBook";
 import { pagePicture } from "./checks";
-import { GO_RE, pageNumbers } from "./gamebook";
+import { GO_RE, pageNumbers, readerText } from "./gamebook";
 import { MATTER_CSS, matterPages } from "./matter";
 import { LETTER_STROKES, LOWER_STROKES, NUM_STROKES, NUMBER_ITEMS, WARMUPS } from "../../../netlify/lib/templates";
 import type { Stroke } from "../../../netlify/lib/templates";
@@ -308,7 +308,7 @@ export async function buildTemplateBook(book: Book, opts: TemplateBookOptions = 
     if (s.kind === "cutout") { body.push(page("cutpic", pic ? `<img src="${pic}" alt="${esc(s.title)}">` : `<div class="hint">Cut-out picture not added yet for: ${esc(s.title)}</div>`), `<section class="page blank" aria-label="Blank back of cut-out sheet"></section>`); continue; }
     if (book.mode === "gamebook") {
       const n = nums.get(s.id) ?? 0;
-      body.push(page(`gb${s.kind === "detour" ? " detour" : ""}`, `${s.kind === "detour" ? `<span class="tag">DETOUR</span>` : ""}<h2>${esc(s.title)}</h2>${pic ? `<img src="${pic}" alt="">` : ""}<div class="txt">${miniMd(s.draft || s.summary, nums)}</div><div class="pgno">${n}</div>`));
+      body.push(page(`gb${s.kind === "detour" ? " detour" : ""}`, `${s.kind === "detour" ? `<span class="tag">DETOUR</span>` : ""}<h2>${esc(s.title)}</h2>${pic ? `<img src="${pic}" alt="">` : ""}<div class="txt">${miniMd(readerText(s.draft) || s.summary, nums)}</div><div class="pgno">${n}</div>`));
       continue;
     }
     switch (s.tpl) {

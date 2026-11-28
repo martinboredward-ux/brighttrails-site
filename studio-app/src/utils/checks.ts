@@ -109,14 +109,14 @@ export function picFindings(book: Book, s: Section, st: PicStats, i: number): Fi
   return out;
 }
 
-import { pathCheck, fiftyWordCheck } from "./gamebook";
+import { pathCheck, fiftyWordCheck, cutOffCheck } from "./gamebook";
 import { CLAIM_WORDS, OTHER_DIRECTION, PICTURE_TPLS, tplDef } from "../../../netlify/lib/templates";
 import { isLargeTrim, printCost } from "./studioMeta";
 
 /** Checks that only apply to planner, preschool tracing and gamebook books. */
 export function modeChecks(book: Book): Finding[] {
   const out: Finding[] = [];
-  if (book.mode === "gamebook") return [...pathCheck(book), ...fiftyWordCheck(book)];
+  if (book.mode === "gamebook") return [...cutOffCheck(book), ...pathCheck(book), ...fiftyWordCheck(book)];
   if (book.mode === "planner") {
     book.sections.forEach((s, i) => {
       const where = `Page ${i + 1}: ${s.title}`;

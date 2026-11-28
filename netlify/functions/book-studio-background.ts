@@ -129,6 +129,9 @@ const CLEAN_RULES = `STRICT RULES
 const PLANNER_LIMIT = 300;
 const PLANNER_PAGE_RULE = `PAGE BUDGET (hard rule): this section is ONE printed 8.5x11 page. Write at most 250 words, never more than ${PLANNER_LIMIT}. If the summary describes several pages, write only the first page's worth and finish cleanly; the other pages are separate sections. Always end on a complete sentence. No coloring-book or child wording.`;
 
+/** Gamebook pages: short, reader parts first so a cut-off can never lose what the reader sees. */
+const GAMEBOOK_PAGE_RULE = `PAGE FORMAT (hard rules): keep the page layout from the style bible but short. Separate parts with a line containing only ---. Order: (1) title line, then Page ID, Page Type, Series lines; (2) "Page Text": 40-80 words, snappy; (3) the field fact or explanation, under 50 words; (4) the question or the "Choice" lines, each choice ending with a [GO: page-id] link using the PAGE IDS above (an ending page uses [END] instead); (5) "Illustration": at most 2 sentences for the artist; (6) "Visual Progress Map": at most 3 short bullets. Whole page under 330 words. Always end on a complete line. Never repeat the mascot's full outfit more than once.`;
+
 async function shortenText(text: string, limit: number, which: keyof typeof MODELS, title: string): Promise<string> {
   return claude(
     `Rewrite the text below so it fits ONE printed page: at most ${limit} words (aim for about ${Math.round(limit * 0.85)}).
@@ -151,8 +154,8 @@ async function draftOne(book: Book, idx: number, which: keyof typeof MODELS, ctx
     .join("\n\n");
   const tagged = TAGGED_MODES.has(book.mode);
   const planner = book.mode === "planner";
-  const out = await claude(
-    `${ctx}
+  const gamebook = book.mode === "gamebook";
+  const prompt = (extra = "") => `${ctx}
 
 STYLE BIBLE
 ${book.styleBible || "(none yet)"}
@@ -164,12 +167,12 @@ WRITE THIS SECTION
 Title: ${section.title}
 Summary: ${section.summary}
 
-${tagged ? `${formatFor(book.mode)}\n\n${CLEAN_RULES}` : "Write the full spec for this section as clean Markdown, following the mode guidance above. Keep to the style bible. Do not mention these instructions."}${planner ? `\n\n${PLANNER_PAGE_RULE}` : ""}`,
-    which,
-    planner ? 1800 : 4000,
-  );
+${tagged ? `${formatFor(book.mode)}\n\n${CLEAN_RULES}` : "Write the full spec for this section as clean Markdown, following the mode guidance above. Keep to the style bible. Do not mention these instructions."}${planner ? `\n\n${PLANNER_PAGE_RULE}` : ""}${gamebook ? `\n\n${GAMEBOOK_PAGE_RULE}` : ""}${extra}`;
+  const out = await claude(prompt(), which, planner ? 1800 : gamebook ? 2500 : 4000);
   // Safety net: if the AI ran out of room or wrote too much for one page, shorten it once.
   if (planner && (lastStop === "max_tokens" || wordCount(out) > PLANNER_LIMIT + 40)) return shortenText(out, PLANNER_LIMIT, which, section.title);
+  // Gamebook: one retry asking for a shorter page if the first try was cut off.
+  if (gamebook && lastStop === "max_tokens") return claude(prompt("\n\nYOUR LAST ATTEMPT WAS CUT OFF. Write a shorter page: whole page under 250 words, Illustration one sentence, Visual Progress Map two bullets."), which, 2500);
   return out;
 }
 
