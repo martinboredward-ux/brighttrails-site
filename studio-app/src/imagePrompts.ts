@@ -106,7 +106,7 @@ export function defaultScenePrompt(s: Section, mascot = ""): string {
     const ch = (s.data?.letter ?? s.title.replace(/^Letter\s+/i, "")[0] ?? "A").toUpperCase();
     const word = LETTER_WORDS[ch] ?? "";
     const who = mascot || "the mascot";
-    return `${who}, the book's friendly mascot character: copy the attached reference picture exactly (same animal, face, ears, headband and outfit; never change the species), standing full body in a happy pose with one hand pointing to the right${word ? `, beside one small ${word}` : ""}. Only ${who}${word ? ` and the ${word}` : ""}, centered on a plain pure white background with generous empty space around them. NO letters, NO numbers, NO words, NO arrows, NO dotted lines, NO tracing rows, NO boxes, NO frames, NO borders, NO second character. One single small picture, not a worksheet.`;
+    return `A single small sticker-style illustration: ${who}, the mascot from the attached reference picture (copy it exactly: same animal, face, ears, headband and outfit), standing full body with a happy smile and one hand pointing to the right${word ? `, next to one small ${word}` : ""}. Black-and-white clean line art, isolated in the middle of a completely blank white page with wide empty margins. Just the character${word ? ` and the ${word}` : ""}, nothing else on the page, no text.`;
   }
   const tagged = parseTagged(s.draft)?.IMAGE_PROMPT?.replace(/\s+/g, " ").trim();
   const counts = countLine(s);
