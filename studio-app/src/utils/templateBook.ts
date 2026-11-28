@@ -12,7 +12,9 @@ const lines = (t?: string) => (t ?? "").split("\n").map((x) => x.trim()).filter(
 const rule = (n: number) => Array.from({ length: n }, () => `<div class="wl"></div>`).join("");
 
 // ---------- planner pages (full color) ----------
-const head = (s: Section, kicker?: string) => `<div class="band">${kicker ? `<span class="kick">${esc(kicker)}</span>` : ""}<h2>${esc(s.title)}</h2></div>`;
+/** The picture for the section being built, so every template page can show it under its title band. */
+let PIC = "";
+const head = (s: Section, kicker?: string) => `<div class="band">${kicker ? `<span class="kick">${esc(kicker)}</span>` : ""}<h2>${esc(s.title)}</h2></div>${PIC && !kicker ? `<img class="hdrpic" src="${PIC}" alt="">` : ""}`;
 const intro = (s: Section) => (s.data?.intro ? `<p class="intro">${esc(s.data.intro)}</p>` : "");
 const page = (cls: string, inner: string, extra = "") => `<section class="page ${cls}" ${extra}>${inner}</section>`;
 
@@ -56,7 +58,7 @@ function kpi(s: Section): string[] {
 }
 function collage(s: Section): string[] {
   const z = lines(s.data?.zones).slice(0, 6);
-  return [page("pl", `${head(s)}${intro(s)}<div class="canvas">${z.map((x) => `<div class="zone"><span>${esc(x)}</span></div>`).join("")}</div><p class="hint">Cut out your favorites from the sheets at the back and glue them in the zones.</p>`)];
+  return [page("pl", `${head(s)}${intro(s)}<div class="canvas"${PIC ? ` style="background:linear-gradient(rgba(255,255,255,.72),rgba(255,255,255,.72)),url(${PIC}) center/cover"` : ""}>${z.map((x) => `<div class="zone"><span>${esc(x)}</span></div>`).join("")}</div><p class="hint">Cut out your favorites from the sheets at the back and glue them in the zones.</p>`)];
 }
 function quotes(s: Section): string[] {
   const q = lines(s.data?.lines);
@@ -126,6 +128,7 @@ h1,h2,h3,.kick,.lbl,.mh,.bigl,.trcue { font-family: 'Fredoka','Nunito',sans-seri
 .kpi { width: 100%; border-collapse: collapse; font-size: 11.5pt; flex: 1; }
 .kpi th { background: #b9c9b5; padding: 0.07in; border: 1.5px solid #fff; font-family: Fredoka, sans-serif; }
 .kpi td { border: 1.5px solid #b9c9b5; background: #fff; height: 0.52in; padding: 0 0.08in; }
+.hdrpic { width: 100%; height: 1.7in; object-fit: cover; border-radius: 0.2in; flex: 0 0 auto; }
 .canvas { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 0.14in; border: 3px dashed #c9a24b; border-radius: 0.2in; padding: 0.14in; background: #fff; }
 .zone { border: 2px dotted #b9c9b5; border-radius: 0.14in; padding: 0.08in; } .zone span { font: 600 12pt Fredoka, sans-serif; color: #8a6d1f; }
 .strips { display: flex; flex-direction: column; gap: 0.18in; flex: 1; justify-content: space-around; }
@@ -174,6 +177,7 @@ export async function buildTemplateBook(book: Book, opts: TemplateBookOptions = 
   const body: string[] = [];
   for (const s of book.sections) {
     const pic = imgs.get(s.id);
+    PIC = pic ?? "";
     if (s.kind === "cutout") { body.push(page("cutpic", pic ? `<img src="${pic}" alt="${esc(s.title)}">` : `<div class="hint">Cut-out picture not added yet for: ${esc(s.title)}</div>`), `<section class="page blank" aria-label="Blank back of cut-out sheet"></section>`); continue; }
     if (book.mode === "gamebook") {
       const n = nums.get(s.id) ?? 0;
@@ -194,6 +198,7 @@ export async function buildTemplateBook(book: Book, opts: TemplateBookOptions = 
       default: body.push(page("pl", `${head(s)}<div class="txt">${mdToHtml(s.draft || s.summary)}</div>${pic ? `<img src="${pic}" alt="" style="max-height:5in;align-self:center">` : ""}`));
     }
   }
+  PIC = "";
   const all = [...front, ...body, ...mat.back];
   if (opts.evenPages !== false && all.length % 2) all.push(`<section class="page blank" aria-label="Blank page to make the page count even"></section>`);
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(book.title)} (${w} x ${h} in interior)</title>
