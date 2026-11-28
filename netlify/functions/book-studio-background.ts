@@ -423,12 +423,13 @@ Change this section ONLY where a checked fix or the extra instructions affects i
     case "fill_template": {
       const todo = book.sections.filter((s) => s.tpl && tplDef(s.tpl) && (p.sectionId ? s.id === p.sectionId : true));
       if (!todo.length) throw new Error("No template sections to fill.");
-      let done = 0;
+      let done = 0, skipped = 0;
       const sections = book.sections.map((s) => ({ ...s }));
       for (const sec of todo) {
         const def = tplDef(sec.tpl)!;
-        const have = Object.values(sec.data ?? {}).some((v) => v.trim()) && !p.sectionId;
-        if (have) continue;
+        // Only the template's own word fields count (a letter page always stores its letter, which must not make it look filled).
+        const have = def.fields.some((f) => (sec.data?.[f.key] ?? "").trim()) && !p.sectionId;
+        if (have) { skipped++; continue; }
         await setJob(book.id, { jobAction: `fill_template:${++done}/${todo.length}` });
         const out = await claude(
           `${ctx}
@@ -453,6 +454,7 @@ Return ONLY JSON with exactly these string fields: ${def.fields.map((f) => `"${f
         const fresh = await getBook(book.id);
         if (fresh) { fresh.sections = fresh.sections.map((x) => (x.id === sec.id ? { ...x, data: merged } : x)); await putBook(fresh); }
       }
+      if (!done && skipped) throw new Error("Every template page already has words, so nothing was filled. To redo one page, open it and press its own Fill button.");
       return { sections };
     }
 
