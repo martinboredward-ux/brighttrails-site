@@ -78,12 +78,17 @@ function quotes(s: Section): string[] {
 const ARROW = (x: number, y: number, ang: number) => `<polygon points="0,-7 14,0 0,7" transform="translate(${x} ${y}) rotate(${ang})" fill="#e2603c"/>`;
 function strokeSvg(ch: string): string {
   const strokes = LETTER_STROKES[ch] ?? [];
+  const badges: [number, number][] = [];
   const paths = strokes.map((st, i) => {
     const pts = st.pts.map(([x, y]) => `${(x * 4).toFixed(0)},${(y * 4.6).toFixed(0)}`);
     const [sx, sy] = pts[0].split(",").map(Number);
     const [ex, ey] = pts[pts.length - 1].split(",").map(Number), [px, py] = (pts[pts.length - 2] ?? pts[0]).split(",").map(Number);
     const ang = (Math.atan2(ey - py, ex - px) * 180) / Math.PI;
-    return `<polyline points="${pts.join(" ")}" fill="none" stroke="#2c3a33" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="2 24" opacity=".9"/>${ARROW(ex, ey, ang)}<circle cx="${sx}" cy="${sy}" r="19" fill="#7fb069"/><text x="${sx}" y="${sy + 7}" text-anchor="middle" font-size="22" font-weight="700" fill="#fff" font-family="Fredoka, sans-serif">${i + 1}</text>`;
+    // Two strokes that start at the same dot (like the apex of A) get number badges side by side, not stacked.
+    let bx = sx; const by = sy;
+    while (badges.some(([ox, oy]) => Math.abs(ox - bx) < 40 && Math.abs(oy - by) < 40)) bx += 42;
+    badges.push([bx, by]);
+    return `<polyline points="${pts.join(" ")}" fill="none" stroke="#2c3a33" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="2 24" opacity=".9"/>${ARROW(ex, ey, ang)}<circle cx="${bx}" cy="${by}" r="19" fill="#7fb069"/><text x="${bx}" y="${by + 7}" text-anchor="middle" font-size="22" font-weight="700" fill="#fff" font-family="Fredoka, sans-serif">${i + 1}</text>`;
   }).join("");
   return `<svg viewBox="0 0 400 460" width="100%" style="max-height:5.2in"><rect x="6" y="6" width="388" height="448" rx="26" fill="#fff" stroke="#2c3a33" stroke-width="4"/>${paths}</svg>`;
 }
@@ -91,7 +96,7 @@ const traceLetters = (txt: string, size: number) => `<svg viewBox="0 0 800 130" 
 function letter(s: Section, mascot?: string): string[] {
   const ch = (s.data?.letter ?? s.title.replace(/^Letter\s+/i, "")[0] ?? "A").toUpperCase();
   const cues = [...new Set((LETTER_STROKES[ch] ?? []).map((x) => x.cue))].join(" · ");
-  const A = page("tr", `<div class="trhead"><span class="bigl">${ch}${ch.toLowerCase()}</span><span class="trcue">${esc(s.data?.cue ?? "")}</span></div><div class="trbody"><div class="trglyph">${strokeSvg(ch)}</div><div class="trmas">${mascot ? `<img src="${mascot}" alt="Mascot">` : `<div class="none">Dash pose</div>`}<p class="strokes">${esc(cues)}</p></div></div><div class="parent"><b>Parent prompt:</b> ${esc(s.data?.parent ?? "")}</div>`);
+  const A = page("tr", `<div class="trhead"><span class="bigl">${ch}${ch.toLowerCase()}</span><span class="trcue">${esc(s.data?.cue ?? "")}</span></div><div class="trbody"><div class="trglyph">${strokeSvg(ch)}</div><div class="trmas">${mascot ? `<img src="${mascot}" alt="Mascot">` : `<div class="none">Mascot pose picture</div>`}<p class="strokes">${esc(cues)}</p></div></div><div class="parent"><b>Parent prompt:</b> ${esc(s.data?.parent ?? "")}</div>`);
   const L = [`${ch} ${ch} ${ch} ${ch}`, `${ch.toLowerCase()} ${ch.toLowerCase()} ${ch.toLowerCase()} ${ch.toLowerCase()}`, `${ch}${ch.toLowerCase()} ${ch}${ch.toLowerCase()}`];
   const B = page("tr", `<div class="trhead"><span class="bigl">${ch}${ch.toLowerCase()}</span><span class="trcue">Your turn. Three short lines.</span></div>${L.map((x) => `<div class="tline">${traceLetters(x, 96)}</div>`).join("")}<div class="target"><span>My letter</span></div>`);
   return [A, B];
