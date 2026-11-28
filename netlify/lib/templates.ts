@@ -42,7 +42,7 @@ export interface PackItem { title: string; tpl?: string; kind?: "template" | "cu
 /** Planner "template pack": the four phases in order. Words are filled by AI afterwards; Studio draws the pages. */
 export const PLANNER_PACK: PackItem[] = [
   { title: "Phase 1: Vision & Revenue Goals", tpl: "guided", kind: "template", summary: "Define the 2027 vision and revenue targets." },
-  { title: "Revenue Thermometer", tpl: "thermometer", kind: "template", summary: "Color in the revenue milestones." },
+  { title: "Revenue Thermometer", tpl: "thermometer", kind: "template", summary: "Shade or record each revenue milestone as you reach it." },
   { title: "Phase 2: Strategic Pillars", tpl: "guided", kind: "template", summary: "Pick the pillars that carry the year." },
   { title: "Milestone Checklist 1", tpl: "checklist", kind: "template", summary: "First half of the milestones." },
   { title: "Milestone Checklist 2", tpl: "checklist", kind: "template", summary: "Second half of the milestones." },
