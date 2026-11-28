@@ -1,3 +1,4 @@
+import TabSteps from "../components/TabSteps";
 import { useEffect, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type { APlusModule, Book, GeneratedImage, KdpPackage } from "../types";
@@ -152,7 +153,13 @@ export default function Tab4APlus({ book, update, setBook, fail }: Props) {
 
   return (
     <div className="space-y-4">
-      <section className="card text-sm">
+      <TabSteps title="Tab 5 order: work down this list, then go to tab 6" steps={[
+        { label: "Make the KDP package first (tab 4)", hint: "It writes the module copy", target: "a-top", done: modules.length > 0 },
+        { label: "Edit each module's headline and text", hint: "Watch the banned-words warning", target: "a-top", done: modules.length > 0 && modules.every((m) => m.headline.trim() && m.body.trim()) },
+        { label: "Add a picture to every module", hint: "Upload, or send the cover from tab 3", target: "a-top", done: modules.length > 0 && modules.every((m) => !!m.imageId) },
+        { label: "Upload to Amazon A+ Content", target: "a-top" },
+      ]} />
+      <section id="a-top" className="card text-sm">
         <h2 className="mb-1 text-base font-bold text-forest">A+ Content Builder</h2>
         <p className="text-muted">Upload a cover or interior page for each module and edit the copy. The banner is drawn in your browser as a clean opaque RGB PNG at the exact pixel size. Pictures are shrunk to under 400 KB first and saved with the book, so they are still here next time. Press Save to keep your choices. Generate the starting copy on tab 4.</p>
         {total.length > 0 && <p className="mt-2 font-semibold text-accent">Banned words across all modules: {total.join(", ")}</p>}

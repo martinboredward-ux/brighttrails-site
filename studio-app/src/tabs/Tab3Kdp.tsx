@@ -1,3 +1,4 @@
+import TabSteps from "../components/TabSteps";
 import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import type { Book, KdpPackage } from "../types";
 import { generateKdp, generateRescueAudit } from "../api";
@@ -83,6 +84,14 @@ export default function Tab3Kdp({ book, update, save, setBook, fail }: Props) {
 
   return (
     <div className="space-y-4">
+      <TabSteps title="Tab 4 order: work down this list, then go to tab 5" steps={[
+        { label: "Make the KDP package", hint: "The button at the top (reads tabs 1 and 2)", target: "k-titles", done: !!book.kdp },
+        { label: "Choose the title and subtitle", hint: "Copy it into tab 1 and tab 3 if you change it", target: "k-titles" },
+        { label: "Fill the seven keyword boxes", target: "k-keywords", done: (kdp.keywords?.filter((x) => x.trim()).length ?? 0) >= 7 },
+        { label: "Check the description", hint: "Allowed HTML only; copy it into KDP", target: "k-desc", done: !!kdp.htmlDescription.trim() },
+        { label: "Pick the categories", target: "k-cats", done: (kdp.categories?.length ?? 0) > 0 },
+      ]} />
+
       <details className="card" open={!!book.rescueAudit.trim()}>
         <summary className="cursor-pointer text-base font-bold text-forest">Book Rescue Audit (listing makeovers and client proposals)</summary>
         <div className="mt-3 space-y-3">
@@ -110,7 +119,7 @@ export default function Tab3Kdp({ book, update, save, setBook, fail }: Props) {
         <section className="card border-accent/40 text-sm text-accent">{kdp.warnings.map((w) => <p key={w}>{w}</p>)}</section>
       ) : null}
 
-      <section className="card space-y-2">
+      <section id="k-titles" className="card space-y-2">
         <h2 className="text-base font-bold text-forest">Title ideas</h2>
         {kdp.titleIdeas.length === 0 && <p className="text-sm text-muted">None yet.</p>}
         <ul className="space-y-1 text-sm">
@@ -123,7 +132,7 @@ export default function Tab3Kdp({ book, update, save, setBook, fail }: Props) {
         </ul>
       </section>
 
-      <section className="card space-y-3">
+      <section id="k-keywords" className="card space-y-3">
         <h2 className="text-base font-bold text-forest">Seven keyword boxes</h2>
         {kdp.keywords.map((k, i) => {
           const is = issues[i];
@@ -146,14 +155,14 @@ export default function Tab3Kdp({ book, update, save, setBook, fail }: Props) {
         <p className="text-xs text-muted">KDP allows 50 characters per box. Words already in your title or subtitle, or repeated across boxes, add nothing.</p>
       </section>
 
-      <section className="card space-y-2">
+      <section id="k-desc" className="card space-y-2">
         <h2 className="text-base font-bold text-forest">Description (HTML)</h2>
         <textarea className="field min-h-48 font-mono" value={kdp.htmlDescription} onChange={(e) => set({ htmlDescription: e.target.value })} />
         {badTags.length > 0 && <p className="text-xs text-accent">KDP-unsafe tags found: {badTags.map((t) => `<${t}>`).join(", ")}. Allowed: b, i, br, p, ul, li, h4.</p>}
         <details className="text-sm"><summary className="cursor-pointer text-muted">Preview</summary><div className="prose mt-2 rounded-lg bg-surface border border-line p-3 [&_h4]:font-bold [&_ul]:list-disc [&_ul]:pl-5" dangerouslySetInnerHTML={{ __html: previewHtml(kdp.htmlDescription) }} /></details>
       </section>
 
-      <section className="card space-y-2">
+      <section id="k-cats" className="card space-y-2">
         <h2 className="text-base font-bold text-forest">Categories</h2>
         {kdp.categories.map((c, i) => (
           <input key={i} className="field" value={c} placeholder={`Category ${i + 1}`} onChange={(e) => set({ categories: kdp.categories.map((x, j) => (j === i ? e.target.value : x)) })} />

@@ -1,3 +1,4 @@
+import TabSteps from "../components/TabSteps";
 import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import type { Book } from "../types";
 import { createBook } from "../api";
@@ -232,13 +233,22 @@ export default function TabTools({ book, update, commit, save, setBook, fail, on
   const run = useRunJob({ book, save, setBook, fail, commit });
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      <Flags book={book} commit={commit} />
-      <Snapshots book={book} commit={commit} />
-      <OutsideReview book={book} commit={commit} run={run} />
-      <ArtPack book={book} />
-      <TitlePanel book={book} update={update} commit={commit} run={run} />
-      <Originality book={book} run={run} />
-      <div className="lg:col-span-2"><Launch book={book} commit={commit} onNewBook={onNewBook} fail={fail} /></div>
+      <div className="lg:col-span-2"><TabSteps title="Tab 6 is a toolbox. Use it in this order" steps={[
+        { label: "Pick a title and search strings", hint: "Topic & title help; do this early", target: "t-titles", done: !!book.studio?.titleIdeas },
+        { label: "Run the originality check", hint: "Before you publish", target: "t-orig", done: !!book.studio?.originality },
+        { label: "Flag problems for Claude as you find them", hint: "Use Flag for Claude in tab 2", target: "t-flags" },
+        { label: "Restore points if an AI change goes wrong", target: "t-snaps" },
+        { label: "Paste an outside review", hint: "From ChatGPT or a friend; it becomes fixes", target: "t-outside" },
+        { label: "Art pack for pictures made outside Studio", target: "t-art" },
+        { label: "Launch checklist, countdown and calculator", hint: "Last, when the book is ready to publish", target: "t-launch" },
+      ]} /></div>
+      <div id="t-flags"><Flags book={book} commit={commit} /></div>
+      <div id="t-snaps"><Snapshots book={book} commit={commit} /></div>
+      <div id="t-outside"><OutsideReview book={book} commit={commit} run={run} /></div>
+      <div id="t-art"><ArtPack book={book} /></div>
+      <div id="t-titles"><TitlePanel book={book} update={update} commit={commit} run={run} /></div>
+      <div id="t-orig"><Originality book={book} run={run} /></div>
+      <div id="t-launch" className="lg:col-span-2"><Launch book={book} commit={commit} onNewBook={onNewBook} fail={fail} /></div>
     </div>
   );
 }

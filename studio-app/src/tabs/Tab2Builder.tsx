@@ -16,6 +16,7 @@ import AssetDetector from "../components/AssetDetector";
 import ArtChecklist from "../components/ArtChecklist";
 import WidgetLibrary from "../components/WidgetLibrary";
 import BulkUpload from "../components/BulkUpload";
+import TabSteps from "../components/TabSteps";
 import PolishPanel from "../components/PolishPanel";
 import JobStatus from "../components/JobStatus";
 import ReservedScan from "../components/ReservedScan";
@@ -168,7 +169,17 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
 
   return (
     <div className="space-y-4">
-      <section className="card space-y-3">
+      <TabSteps title="Tab 2 order: work down this list, then go to tab 3" steps={[
+        { label: "Make the outline", hint: "Outline & draft: Generate outline (needs tab 1 done)", target: "b-outline", done: book.sections.length > 0 },
+        { label: "See what art you need", hint: "Asset detector and Art checklist", target: "b-assets", done: book.images.length > 0 },
+        { label: "Draft the pages", hint: "Draft all, or fill template pages with AI", target: "b-outline", done: book.sections.some((x) => x.draft.trim() || (x.data && Object.keys(x.data).length > 0)) },
+        { label: "Add pictures to each page", hint: "Pictures for each section, or Upload many pictures", target: "b-pictures", done: book.sections.length > 0 && book.sections.every((x) => book.images.some((i) => i.sectionId === x.id)) },
+        { label: "Read the Checks & preview", hint: "Fix the red items (free, no AI)", target: "b-checks" },
+        { label: "Proofread and polish", hint: "Run Review #2, tick fixes, apply", target: "b-polish", done: !!book.review.trim() },
+        { label: "Export the printable book", hint: "Then print to PDF for KDP", target: "b-export" },
+      ]} />
+
+      <section id="b-outline" className="card space-y-3">
         <div className="flex flex-wrap items-center gap-3">
           <h2 className="text-base font-bold text-forest">Outline &amp; draft</h2>
           <label className="ml-auto flex items-center gap-2 text-sm">
@@ -190,7 +201,7 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
         <JobStatus book={book} only={["generate_outline", "draft_section", "draft_all", "extract_workbook"]} />
       </section>
 
-      <AssetDetector book={book} commit={commit} fail={fail} pins={pins} onPin={pin} />
+      <div id="b-assets"><AssetDetector book={book} commit={commit} fail={fail} pins={pins} onPin={pin} /></div>
 
       <ArtChecklist book={book} commit={commit} fail={fail} onDone={addImage} />
 
@@ -199,11 +210,11 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
       <ReservedScan book={book} />
       {book.mode === "activity" && <WidgetLibrary book={book} />}
 
-      <BulkUpload book={book} onDone={addImage} fail={fail} />
+      <div id="b-pictures"><BulkUpload book={book} onDone={addImage} fail={fail} /></div>
 
-      <BookChecks book={book} />
+      <div id="b-checks"><BookChecks book={book} /></div>
 
-      <section className="card space-y-3">
+      <section id="b-sections" className="card space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-bold text-forest">Sections ({book.sections.length})</h2>
           <TooltipButton className="btn-alt" disabled={running} onClick={() => update({ sections: [...book.sections, { id: `s${Date.now().toString(36)}`, title: "New section", summary: "", draft: "" }] })}>+ Add section</TooltipButton>
@@ -269,7 +280,7 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
         </ul>
       </section>
 
-      <PolishPanel book={book} update={update} commit={commit} run={(a) => run2(a)} />
+      <div id="b-polish"><PolishPanel book={book} update={update} commit={commit} run={(a) => run2(a)} /></div>
 
       <section className="card space-y-3">
         <h2 className="text-base font-bold text-forest">Book images ({book.images.length})</h2>
@@ -278,7 +289,7 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
       </section>
 
       {book.mode === "nonfiction" && (
-        <section className="card space-y-3">
+        <section id="b-export" className="card space-y-3">
           <h2 className="text-base font-bold text-forest">Manuscript exports <span className="text-xs font-normal text-green">· runs in your browser, $0</span></h2>
           <p className="hint">Both exports use your chapters and the Companion Workbook, with a title page, copyright page and contents. The print interior uses the trim size from tab 1 ({book.trim.replace("x", " × ")} in).</p>
           <div className="flex flex-wrap gap-2">

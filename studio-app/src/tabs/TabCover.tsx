@@ -1,3 +1,4 @@
+import TabSteps from "../components/TabSteps";
 import { useEffect, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type { Book, CoverSettings, GeneratedImage, PaperType } from "../types";
@@ -144,7 +145,15 @@ export default function TabCover({ book, update, commit, setBook, fail }: Props)
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      <section className="card space-y-3">
+      <div className="lg:col-span-2"><TabSteps title="Tab 3 order: work down this list, then go to tab 4" steps={[
+        { label: "Check the cover details", hint: "Title, subtitle, author, trim", target: "c-details", done: !!(s.title?.trim() && s.subtitle?.trim()) },
+        { label: "Get the front art", hint: "Suggest 3 covers, pick one, make the picture, upload it", target: "c-art", done: !!s.frontArtId },
+        { label: "Set framing and text contrast", hint: "Fill or Fit, shift, text color", target: "c-frame" },
+        { label: "Write the back blurb and set the page count", hint: "In Cover details; the page count sets the spine", target: "c-details", done: !!(s.backBlurb?.trim() && s.pageCount) },
+        { label: "Run the cover quality check", target: "c-check" },
+        { label: "Download the front, Kindle cover and paperback wrap", target: "c-export" },
+      ]} /></div>
+      <section id="c-details" className="card space-y-3">
         <h2 className="text-base font-bold text-forest">Cover details</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="sm:col-span-2"><label className="label">Title</label><input className="field" value={s.title} onChange={(e) => set({ title: e.target.value })} /></div>
@@ -189,7 +198,7 @@ export default function TabCover({ book, update, commit, setBook, fail }: Props)
         </div>
       </section>
 
-      <section className="card space-y-3">
+      <section id="c-frame" className="card space-y-3">
         <h2 className="text-base font-bold text-forest">Framing &amp; contrast</h2>
         <Seg label="Picture" value={s.fit ?? "fill"} onPick={(v) => set({ fit: v })} opts={[["fill", "Fill (crop)"], ["fit", "Fit (with color pad)"]]} />
         {s.fit === "fit" && <div><label className="label">Pad color (sky)</label><input type="color" className="h-9 w-16 rounded border border-line" value={s.padColor} onChange={(e) => set({ padColor: e.target.value })} /></div>}
@@ -204,7 +213,7 @@ export default function TabCover({ book, update, commit, setBook, fail }: Props)
         <p className="hint">Wide art is cropped to the cover shape. If the sides of your picture are cut off, choose Fit with a sky color, or move the picture up or down with the shift buttons. The author name always sits at the bottom.</p>
       </section>
 
-      <section className="card space-y-3 lg:col-span-2">
+      <section id="c-art" className="card space-y-3 lg:col-span-2">
         <h2 className="text-base font-bold text-forest">Front cover art</h2>
         <p className="hint">Pick a picture from this book, upload your own, or make cover-safe art below. It leaves the top 30% as open sky for the title and keeps faces in the middle.</p>
         <CoverIdeas book={book} s={s} aspect={trimAspect(s.trim ?? book.trim)} set={set} commit={commit} fail={fail} />
@@ -223,7 +232,7 @@ export default function TabCover({ book, update, commit, setBook, fail }: Props)
         {msg && <p className="text-sm font-semibold text-forest">{msg}</p>}
       </section>
 
-      <section className="card space-y-3">
+      <section id="c-export" className="card space-y-3">
         <h2 className="text-base font-bold text-forest">Print front cover</h2>
         <canvas ref={printRef} className="max-h-[30rem] w-auto rounded-lg border border-line" aria-label="Print front cover preview" />
         <TooltipButton className="btn" onClick={printPng}>Download print front PNG ({Math.round(dims.w * 300)}×{Math.round(dims.h * 300)})</TooltipButton>
@@ -251,7 +260,7 @@ export default function TabCover({ book, update, commit, setBook, fail }: Props)
         </div>
       </section>
 
-      <section className="card space-y-3 lg:col-span-2">
+      <section id="c-check" className="card space-y-3 lg:col-span-2">
         <h2 className="text-base font-bold text-forest">Cover quality check</h2>
         <p className="hint">Gemini looks at the rendered front cover and checks title and author spelling, text readability, whether text covers a face, and KDP trim and AI-disclosure basics. Costs a small Gemini call. Mark the cover approved when you are happy.</p>
         <div className="flex flex-wrap items-center gap-2">
