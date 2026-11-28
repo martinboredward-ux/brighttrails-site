@@ -7,7 +7,7 @@ import JobStatus from "../components/JobStatus";
 import { TooltipButton } from "../components/TooltipButton";
 import { download } from "../exportZip";
 import { scanBanned } from "../banned";
-import { defaultScenePrompt, wrapPrompt } from "../imagePrompts";
+import { defaultScenePrompt, mascotName, wrapPrompt } from "../imagePrompts";
 import { findCandidates } from "../utils/assetDetector";
 import { pagePicture } from "../utils/checks";
 import { DEFAULT_LEAD, INTERIOR_LABEL, KDP_COST_NOTE, KDP_REMINDERS, LAUNCH_STEPS, addFlag, bookType, flagsText, isLargeTrim, launchProgress, meta, minPrice, printCost, removeFlag, restoreSnapshot, royalty, seasonPlan, setFlagDone, withSnapshot, type InteriorType } from "../utils/studioMeta";
@@ -98,7 +98,7 @@ function ArtPack({ book }: { book: Book }) {
       const refs = lib.filter((c) => new RegExp(`\\b${c.name.split(" ")[0]}\\b`, "i").test(`${s.title} ${s.summary} ${s.draft}`)).map((c) => c.name);
       lines.push(`\n[${n}-${s.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase().replace(/^-|-$/g, "")}.png]${have}`);
       if (refs.length) lines.push(`Attach reference pictures: ${refs.join(", ")}`);
-      lines.push(wrapPrompt(preset, defaultScenePrompt(s), book.styleBible));
+      lines.push(wrapPrompt(preset, defaultScenePrompt(s, mascotName(book)), book.styleBible));
     });
     download(`${book.slug}-art-pack.txt`, new Blob([lines.join("\n")], { type: "text/plain" }));
   };

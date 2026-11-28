@@ -34,7 +34,7 @@ const MODE_GUIDE: Record<Book["mode"], string> = {
   gamebook:
     "An interactive trivia gamebook for ages 9-12 (map, checkpoint, gate, victory and detour pages). Each page is short and snappy. Choices point to other pages with a link written exactly as [GO: section-id]. Every explanation is under 50 words. Every multiple-choice question has a deductive clue in the question or answers; no obscure recall.",
   tracing:
-    "A preschool letter-tracing book for ages 4-6 with Dash the small bunny rabbit. Letter spreads are code-drawn templates; you write only the short story cue and the parent prompt (max 2 sentences). Direction words are ONLY: Pull down, Slide right, Hop over, Loop around. Never make medical, therapy or ADHD claims.",
+    "A preschool letter-tracing book for ages 4-6 with a friendly animal mascot named in the Style Bible. Letter spreads are code-drawn templates; you write only the short story cue and the parent prompt (max 2 sentences). Direction words are ONLY: Pull down, Slide right, Hop over, Loop around. Never make medical, therapy or ADHD claims.",
   nonfiction:
     "A nonfiction guide. Sections are chapters. A chapter spec gives the chapter promise, key points, one real-world scenario, and an end-of-chapter takeaway.",
 };

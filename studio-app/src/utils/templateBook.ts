@@ -91,7 +91,7 @@ const traceLetters = (txt: string, size: number) => `<svg viewBox="0 0 800 130" 
 function letter(s: Section, mascot?: string): string[] {
   const ch = (s.data?.letter ?? s.title.replace(/^Letter\s+/i, "")[0] ?? "A").toUpperCase();
   const cues = [...new Set((LETTER_STROKES[ch] ?? []).map((x) => x.cue))].join(" · ");
-  const A = page("tr", `<div class="trhead"><span class="bigl">${ch}${ch.toLowerCase()}</span><span class="trcue">${esc(s.data?.cue ?? "")}</span></div><div class="trbody"><div class="trglyph">${strokeSvg(ch)}</div><div class="trmas">${mascot ? `<img src="${mascot}" alt="Dash">` : `<div class="none">Dash pose</div>`}<p class="strokes">${esc(cues)}</p></div></div><div class="parent"><b>Parent prompt:</b> ${esc(s.data?.parent ?? "")}</div>`);
+  const A = page("tr", `<div class="trhead"><span class="bigl">${ch}${ch.toLowerCase()}</span><span class="trcue">${esc(s.data?.cue ?? "")}</span></div><div class="trbody"><div class="trglyph">${strokeSvg(ch)}</div><div class="trmas">${mascot ? `<img src="${mascot}" alt="Mascot">` : `<div class="none">Dash pose</div>`}<p class="strokes">${esc(cues)}</p></div></div><div class="parent"><b>Parent prompt:</b> ${esc(s.data?.parent ?? "")}</div>`);
   const L = [`${ch} ${ch} ${ch} ${ch}`, `${ch.toLowerCase()} ${ch.toLowerCase()} ${ch.toLowerCase()} ${ch.toLowerCase()}`, `${ch}${ch.toLowerCase()} ${ch}${ch.toLowerCase()}`];
   const B = page("tr", `<div class="trhead"><span class="bigl">${ch}${ch.toLowerCase()}</span><span class="trcue">Your turn. Three short lines.</span></div>${L.map((x) => `<div class="tline">${traceLetters(x, 96)}</div>`).join("")}<div class="target"><span>My letter</span></div>`);
   return [A, B];

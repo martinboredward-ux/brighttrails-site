@@ -22,8 +22,8 @@ export const TEMPLATES: TplDef[] = [
     fields: [{ key: "intro", label: "Instruction (1-2 sentences)", lines: 2, hint: "Glue your cut-outs here" }, { key: "zones", label: "Zone labels (one per line, up to 6)", lines: 5, hint: "Wealth" }] },
   { id: "quotes", label: "Quote boxes (cut-out)", modes: ["planner"], ai: "12 short affirmation lines for cut-out quote boxes, one per line. Mix 1-3 word labels (like Choose joy, Money flows, Own your power) with short phrases under 9 words. Confident, warm and professional, never childish.",
     fields: [{ key: "lines", label: "Quotes (one per line)", lines: 8, hint: "I build with clarity and calm." }] },
-  { id: "letter", label: "Letter spread (A + B)", modes: ["tracing"], ai: "For one letter of a preschool tracing book (ages 4-6): a one-sentence story cue about Dash the bunny acting out the stroke, and a calm parent prompt of at most 2 sentences. Use ONLY these stroke phrases for directions: Pull down, Slide right, Hop over, Loop around.",
-    fields: [{ key: "cue", label: "Story cue (1 sentence)", lines: 2, hint: "Dash pulls down a long line for the letter." }, { key: "parent", label: "Parent prompt (max 2 sentences)", lines: 2, hint: "Trace with your finger first." }] },
+  { id: "letter", label: "Letter spread (A + B)", modes: ["tracing"], ai: "For one letter of a preschool tracing book (ages 4-6): a one-sentence story cue about the book's mascot (named in the Style Bible) acting out the stroke, and a calm parent prompt of at most 2 sentences. Use ONLY these stroke phrases for directions: Pull down, Slide right, Hop over, Loop around.",
+    fields: [{ key: "cue", label: "Story cue (1 sentence)", lines: 2, hint: "The mascot pulls down a long line for the letter." }, { key: "parent", label: "Parent prompt (max 2 sentences)", lines: 2, hint: "Trace with your finger first." }] },
 ];
 export const tplDef = (id?: string) => TEMPLATES.find((t) => t.id === id);
 

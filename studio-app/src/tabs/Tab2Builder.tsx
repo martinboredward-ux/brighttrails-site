@@ -5,7 +5,7 @@ import { PATTERNS, buildActivityPdf, type ImagePage, type Pattern } from "../act
 import { fetchImageBlob } from "../api";
 import { blobToImage } from "../imageTools";
 import { buildPrintableBook, parseTagged } from "../printableBook";
-import { defaultScenePrompt } from "../imagePrompts";
+import { defaultScenePrompt, mascotName } from "../imagePrompts";
 import { CLEAN_RULES, formatFor, isTaggedMode } from "../draftFormat";
 import { WIDGETS, RANKS, suggestWidget } from "../utils/activitySvgWidgets";
 import { buildDocx, buildPrintInterior } from "../utils/nonfictionExporter";
@@ -270,7 +270,7 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
                   <textarea className="field min-h-16" value={s.summary} readOnly={running} onChange={(e) => setSection(s.id, { summary: e.target.value })} placeholder="Summary" />
                   {!s.tpl && s.kind !== "cutout" && s.kind !== "picture" && <textarea className="field min-h-48 font-mono" value={s.draft} readOnly={running} onChange={(e) => setSection(s.id, { draft: e.target.value })} placeholder="Draft spec (paste from your web chat or let the Draft button write it)" />}
                   <h3 className="pt-1 text-sm font-bold text-forest">Pictures for this section</h3>
-                  <ImageEngine key={`${s.id}:${defaultScenePrompt(s)}`} book={book} sectionId={s.id} initialPrompt={defaultScenePrompt(s)} defaultAspect={book.trim === "8.5x8.5" ? "square" : book.mode === "activity" || newMode ? "portrait" : "landscape"} defaultPreset={presetFor(s)} onDone={addImage} fail={fail} commit={commit} pinned={pins[s.id]} />
+                  <ImageEngine key={`${s.id}:${defaultScenePrompt(s, mascotName(book))}`} book={book} sectionId={s.id} initialPrompt={defaultScenePrompt(s, mascotName(book))} defaultAspect={book.trim === "8.5x8.5" ? "square" : book.mode === "activity" || newMode ? "portrait" : "landscape"} defaultPreset={presetFor(s)} onDone={addImage} fail={fail} commit={commit} pinned={pins[s.id]} />
                   <ImageGallery book={book} images={book.images.filter((i) => i.sectionId === s.id)} selected={pdfPick} onToggle={togglePick} onCharacter={toggleLibrary} onRemoved={removeImage} fail={fail} />
                   <PictureCheck book={book} sectionId={s.id} fail={fail} />
                 </div>

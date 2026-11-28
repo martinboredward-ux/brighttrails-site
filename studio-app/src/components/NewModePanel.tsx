@@ -41,7 +41,7 @@ export default function NewModePanel({ book, update, commit, run }: Props) {
       )}
       {mode === "tracing" && (
         <>
-          <p className="hint">One two-page spread per letter. Page A: story cue, big letter with numbered 3-4pt stroke paths and arrows, Dash pose picture, parent prompt. Page B: exactly 3 practice lines and a target box. Upload a Dash pose as the page picture of each letter section. 0.75 in margins are built in.</p>
+          <p className="hint">One two-page spread per letter. Page A: story cue, big letter with numbered 3-4pt stroke paths and arrows, mascot pose picture, parent prompt. Page B: exactly 3 practice lines and a target box. Upload a mascot pose as the page picture of each letter section. 0.75 in margins are built in.</p>
           <TooltipButton className="btn" disabled={running} onClick={() => add(letterPack())}>Insert letters A-Z (26 spreads)</TooltipButton>
         </>
       )}

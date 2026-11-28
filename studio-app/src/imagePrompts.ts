@@ -1,4 +1,5 @@
 export const COVER_SAFE = "Bright, appealing children's book COVER artwork, no lettering of any kind. COMPOSITION CRITICAL: Place the character and kite (or other main subject) smaller in the LOWER 60% of the frame (below the horizontal midline). The entire TOP 35-40% MUST be completely empty open sky and soft clouds ONLY: no character head, hair, hands, kite tips or objects in the top 35%. Keep faces clear and fully visible, keep the bottom 12% a simple calm ground area, and make the scene still work if the edges are trimmed. FULL SUBJECT IN FRAME (critical): show the WHOLE subject, never cropped by any edge: for a vehicle, every wheel, the bumper and the ground under it must be visible with clear empty ground below it (at least 10% of the picture height) and clear space on both sides; zoom OUT and draw the subject smaller rather than let any part touch or leave the bottom or side edges.";
+import { LETTER_WORDS } from "../../netlify/lib/templates";
 import type { Section, StylePreset } from "./types";
 import { parseTagged } from "./printableBook";
 
@@ -94,7 +95,19 @@ export function countLine(s: Section): string {
 }
 
 /** What the picture box starts with: the section's [IMAGE_PROMPT] if it has one, else a cleaned-up scene from its summary. Exact counts the page asks for always come first. */
-export function defaultScenePrompt(s: Section): string {
+/** The book's mascot: the first character in the Library, else a generic phrase. */
+export function mascotName(book: { characters?: { name: string; kind?: string }[] }): string {
+  return (book.characters ?? []).find((c) => (c.kind ?? "character") === "character")?.name?.trim() || "the mascot";
+}
+
+export function defaultScenePrompt(s: Section, mascot = ""): string {
+  // Tracing letter pages: Studio draws the letter, strokes and practice rows in code, so the picture must be the mascot only.
+  if (s.tpl === "letter") {
+    const ch = (s.data?.letter ?? s.title.replace(/^Letter\s+/i, "")[0] ?? "A").toUpperCase();
+    const word = LETTER_WORDS[ch] ?? "";
+    const who = mascot || "the mascot";
+    return `${who}, the book's friendly mascot character: copy the attached reference picture exactly (same animal, face, ears, headband and outfit; never change the species), standing full body in a happy pose with one hand pointing to the right${word ? `, beside one small ${word}` : ""}. Only ${who}${word ? ` and the ${word}` : ""}, centered on a plain pure white background with generous empty space around them. NO letters, NO numbers, NO words, NO arrows, NO dotted lines, NO tracing rows, NO boxes, NO frames, NO borders, NO second character. One single small picture, not a worksheet.`;
+  }
   const tagged = parseTagged(s.draft)?.IMAGE_PROMPT?.replace(/\s+/g, " ").trim();
   const counts = countLine(s);
   if (tagged) return counts && !/exactly \d/i.test(tagged) ? counts + tagged : tagged;

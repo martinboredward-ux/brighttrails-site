@@ -2,6 +2,7 @@ import type { Book, GeneratedImage, Section } from "../types";
 import { trimDims } from "./trims";
 import { countCues } from "../imagePrompts";
 import { matterOf } from "./matter";
+import { mascotName } from "../imagePrompts";
 
 export interface Finding { sectionId?: string; where: string; level: "fix" | "note"; text: string }
 
@@ -139,7 +140,7 @@ export function modeChecks(book: Book): Finding[] {
       if (CLAIM_WORDS.test(txt)) out.push({ sectionId: s.id, where, level: "fix", text: "Medical or therapy wording found. Preschool tracing books must not make those claims." });
       if (OTHER_DIRECTION.test(txt)) out.push({ sectionId: s.id, where, level: "fix", text: "Direction words must be only: Pull down, Slide right, Hop over, Loop around." });
       if ((s.data?.parent ?? "").split(/(?<=[.!?])\s+/).filter(Boolean).length > 2) out.push({ sectionId: s.id, where, level: "fix", text: "Parent prompt is longer than 2 sentences." });
-      if (!pagePicture(book, s)) out.push({ sectionId: s.id, where, level: "note", text: "No Dash pose picture on this letter yet." });
+      if (!pagePicture(book, s)) out.push({ sectionId: s.id, where, level: "note", text: `No ${mascotName(book)} pose picture on this letter yet.` });
     });
     const text = `${book.title} ${book.subtitle} ${book.kdp?.htmlDescription ?? ""} ${(book.kdp?.keywords ?? []).join(" ")}`;
     if (CLAIM_WORDS.test(text)) out.push({ where: "Title / KDP description", level: "fix", text: "Medical or therapy claim word in the title, subtitle, description or keywords." });
