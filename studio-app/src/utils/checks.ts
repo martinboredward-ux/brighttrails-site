@@ -1,6 +1,7 @@
 import type { Book, GeneratedImage, Section } from "../types";
 import { trimDims } from "./trims";
 import { countCues } from "../imagePrompts";
+import { matterOf } from "./matter";
 
 export interface Finding { sectionId?: string; where: string; level: "fix" | "note"; text: string }
 
@@ -56,7 +57,18 @@ export function structureCheck(book: Book, printedPages: number): Finding[] {
 /** Counts printed pages the same way the printable book does, roughly: one per section, two for coloring pages (blank back), plus title, copyright and end matter. */
 export function estimatePages(book: Book): number {
   let n = 2; // title + copyright
-  for (const s of book.sections) n += s.kind === "coloring" || s.kind === "cutout" ? 2 : book.mode === "activity" ? 2 : 1;
+  const m = matterOf(book);
+  n += [m.dedication, m.howTo, m.about, m.alsoBy, m.review].filter((x) => x.trim()).length;
+  const tpl = book.mode === "planner" || book.mode === "tracing" || book.mode === "gamebook";
+  for (const s of book.sections) {
+    if (tpl) {
+      if (s.kind === "cutout") n += 2;
+      else if (s.tpl === "letter") n += 2;
+      else if (s.tpl === "quotes") n += 2;
+      else if (s.tpl === "checklist") n += Math.max(1, Math.ceil((s.data?.items ?? "").split("\n").filter((x) => x.trim()).length / 16));
+      else n += 1;
+    } else n += s.kind === "coloring" ? 2 : book.mode === "activity" ? 2 : 1;
+  }
   return n + (n % 2);
 }
 
