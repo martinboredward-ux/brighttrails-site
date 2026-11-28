@@ -138,7 +138,7 @@ h1,h2,h3,.kick,.lbl,.mh,.bigl,.trcue { font-family: 'Fredoka','Nunito',sans-seri
 .kpi th { background: #b9c9b5; padding: 0.07in; border: 1.5px solid #fff; font-family: Fredoka, sans-serif; }
 .kpi td { border: 1.5px solid #b9c9b5; background: #fff; height: 0.52in; padding: 0 0.08in; }
 .page.fullpic { padding: 0; } .fullpic img { width: 100%; height: 100%; object-fit: contain; display: block; }
-.hdrpic { width: 100%; height: 1.7in; object-fit: cover; border-radius: 0.2in; flex: 0 0 auto; }
+.hdrpic { max-width: 100%; max-height: 3.2in; width: auto; height: auto; object-fit: contain; align-self: center; border-radius: 0.2in; flex: 0 0 auto; }
 .canvas { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 0.14in; border: 3px dashed #c9a24b; border-radius: 0.2in; padding: 0.14in; background: #fff; }
 .zone { border: 2px dotted #b9c9b5; border-radius: 0.14in; padding: 0.08in; } .zone span { font: 600 12pt Fredoka, sans-serif; color: #8a6d1f; }
 .qboxes { column-count: 2; column-gap: 0.28in; flex: 1; }
