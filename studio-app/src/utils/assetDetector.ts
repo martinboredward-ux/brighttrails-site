@@ -1,7 +1,7 @@
 import type { Book, RefKind } from "../types";
 import { parseTagged } from "../printableBook";
 
-const STOP = new Set(["Series", "Setting", "Cast", "Tone", "Format", "Book", "Ages", "Supporting", "Visual", "Voice", "Layout", "Notes", "Option", "Style", "Mode", "Audience", "Skill", "Trim", "Page", "Pages", "Chapter", "Part", "Never", "Avoid", "Story", "Case"]);
+const STOP = new Set(["Straight", "Practice", "Lines", "Tracing", "Series", "Setting", "Cast", "Tone", "Format", "Book", "Ages", "Supporting", "Visual", "Voice", "Layout", "Notes", "Option", "Style", "Mode", "Audience", "Skill", "Trim", "Page", "Pages", "Chapter", "Part", "Never", "Avoid", "Story", "Case"]);
 
 /** Words that make a capitalized phrase a PLACE, not a character. */
 const PLACE_WORD = /\b(City|Cities|Bay|Island|Islands|Falls|Mountain|Mountains|Mount|Volcano|Hill|Hills|Sea|Ocean|Lagoon|Province|Garden|Gardens|Market|Trail|Trails|Beach|Reef|Park|South|North|East|West|Southern|Northern|Eastern|Western|River|Lake|Cove|Harbor|Harbour|Port|Town|Village|Barangay|Street|Road|Avenue|Cave|Forest|Valley|Strait|Gulf|Peak|Shore|Coast|Bridge|Plaza|School|Museum|Church|Temple|Cathedral|Airport|Philippines|Mindanao|Luzon|Visayas|Davao|Manila|Cebu|Hong Kong)\b/i;

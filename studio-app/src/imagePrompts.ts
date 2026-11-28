@@ -9,7 +9,7 @@ export const COLORING_WRAPPER = "Children's coloring book page ONLY: pure white 
 export const COLORING_GUARDRAIL = "One single full-page scene with generous margins.";
 
 
-const PROSE_RULE = /\b(voice|reading level|lap-?read|read-?aloud|sentence fragments?|onomatop\w*|worksheets?|word bank|answer key|spelling|vocabulary|phonics|rhythm|narrat\w*|dialogue|story text|tone of|prose|writing|word count|paragraphs?|humou?r|(?<!skin )tone(?!s)|emotional beats?|affirmations?)\b/i;
+const PROSE_RULE = /\b(voice|reading level|lap-?read|read-?aloud|sentence fragments?|onomatop\w*|worksheets?|word bank|answer key|spelling|vocabulary|phonics|rhythm|narrat\w*|dialogue|story text|tone of|prose|writing|word count|paragraphs?|humou?r|(?<!skin )tone(?!s)|emotional beats?|affirmations?|layout|tiers?|vertical hierarchy|facing spreads?|gutter|safety margin|dashed|dotted|tracing|stroke vocabulary|directional|movement verbs?|practice (?:lines|boxes))\b/i;
 
 /** Keeps only the visual lines of a Style Bible (looks, colors, characters, setting). Writing rules are dropped. */
 export function visualBible(bible: string | undefined): string {

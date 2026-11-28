@@ -7,7 +7,7 @@ import JobStatus from "../components/JobStatus";
 import { TooltipButton } from "../components/TooltipButton";
 import { download } from "../exportZip";
 import { scanBanned } from "../banned";
-import { defaultScenePrompt, mascotName, wrapPrompt } from "../imagePrompts";
+import { bibleSummary, defaultScenePrompt, mascotName, wrapPrompt } from "../imagePrompts";
 import { findCandidates } from "../utils/assetDetector";
 import { pagePicture } from "../utils/checks";
 import { DEFAULT_LEAD, INTERIOR_LABEL, KDP_COST_NOTE, KDP_REMINDERS, LAUNCH_STEPS, addFlag, bookType, flagsText, isLargeTrim, launchProgress, meta, minPrice, printCost, removeFlag, restoreSnapshot, royalty, seasonPlan, setFlagDone, withSnapshot, type InteriorType } from "../utils/studioMeta";
@@ -82,17 +82,17 @@ function OutsideReview({ book, commit, run }: Pick<Props, "book" | "commit"> & {
 
 function ArtPack({ book }: { book: Book }) {
   const build = () => {
-    const preset = book.mode === "activity" ? "coloring" : "storybook";
+    const preset = book.mode === "activity" ? "coloring" : book.mode === "tracing" ? "library_bw" : "storybook";
     const lib = book.characters ?? [];
     const cands = findCandidates(book);
-    const lines: string[] = [`ART PACK: ${book.title}`, `Make these pictures in ChatGPT or Nano Banana, name the files exactly as shown, then drop them into Bulk upload in Tab 2.`, "", "== STYLE (paste first, once) ==", book.styleBible.slice(0, 1500) || "(no style bible yet)", ""];
+    const lines: string[] = [`ART PACK: ${book.title}`, `Make these pictures in ChatGPT or Nano Banana, name the files exactly as shown, then drop them into Bulk upload in Tab 2.`, "", "== STYLE (paste first, once) ==", bibleSummary(book.styleBible, 1500) || "(no style bible yet)", ""];
     lines.push("== LIBRARY FIRST (make these before the pages) ==");
     if (lib.length) lines.push(`Already in your Library: ${lib.map((c) => `${c.name} (${c.kind})`).join(", ")}`);
     cands.filter((c) => !lib.some((l) => l.name.toLowerCase() === c.name.toLowerCase())).forEach((c) => lines.push(`- ${c.name} (${c.kind}) ${c.detail ? "- " + c.detail : ""}`));
     lines.push("");
     lines.push("== PAGES ==");
     book.sections.forEach((s, i) => {
-      if (s.kind === "template") return;
+      if (s.kind === "template" && s.tpl !== "letter") return;
       const n = String(i + 1).padStart(2, "0");
       const have = pagePicture(book, s) ? " (already has a picture)" : "";
       const refs = lib.filter((c) => new RegExp(`\\b${c.name.split(" ")[0]}\\b`, "i").test(`${s.title} ${s.summary} ${s.draft}`)).map((c) => c.name);
