@@ -24,7 +24,8 @@ export function scanReserved(book: Book, r: Reserved): ReservedHit[] {
   const hits: ReservedHit[] = [];
   const test = (i: ReservedItem, kind: ReservedHit["kind"]) => {
     const plural = kind === "animal" ? "(?:s|es)?" : "";
-    const re = new RegExp(`\\b${esc(i.name)}${plural}\\b`, "i");
+    // Names are matched exactly as written (capitalized), so the ordinary word "dot" or "dash" is not mistaken for a character. Animals match in any case.
+    const re = new RegExp(`\\b${esc(i.name)}${plural}\\b`, kind === "name" ? "" : "i");
     for (const sp of spots) if (re.test(sp.text)) hits.push({ word: i.name, kind, where: sp.where, owner: i.owner });
   };
   f.names.forEach((i) => test(i, "name"));
