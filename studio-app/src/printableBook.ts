@@ -204,7 +204,7 @@ export function fitStory(story: string, play: string, w: number, h: number): { p
   return [{ paras, pt: 12 }];
 }
 
-const WIDGET_TITLE: Record<string, string> = { compass: "Compass rose", mapgrid: "Map key grid", steps: "Step grid", dots: "Dot-to-dot", tracing: "Trace and count" };
+const WIDGET_TITLE: Record<string, string> = { compass: "Compass rose", mapgrid: "Map key grid", steps: "Step grid", dots: "Dot-to-dot", tracing: "Trace and count", dotmarker: "Dot-marker circles" };
 
 const cssFor = (w: number, h: number) => `
 @page { size: ${w}in ${h}in; margin: 0; }

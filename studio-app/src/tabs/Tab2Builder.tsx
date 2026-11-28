@@ -7,7 +7,7 @@ import { blobToImage } from "../imageTools";
 import { buildPrintableBook, parseTagged } from "../printableBook";
 import { defaultScenePrompt } from "../imagePrompts";
 import { CLEAN_RULES, formatFor, isTaggedMode } from "../draftFormat";
-import { WIDGETS, RANKS } from "../utils/activitySvgWidgets";
+import { WIDGETS, RANKS, suggestWidget } from "../utils/activitySvgWidgets";
 import { buildDocx, buildPrintInterior } from "../utils/nonfictionExporter";
 import ImageEngine from "../components/ImageEngine";
 import ImageGallery from "../components/ImageGallery";
@@ -204,6 +204,12 @@ export default function Tab2Builder({ book, update, commit, save, setBook, asset
                         <select className="field mt-1" value={s.widget ?? "wordbank"} onChange={(e) => setSection(s.id, { widget: e.target.value as WidgetKind })}>
                           {WIDGETS.map((w) => <option key={w.id} value={w.id}>{w.label}</option>)}
                         </select>
+                        {(() => {
+                          const sug = suggestWidget(s);
+                          if (!sug || (s.widget ?? "wordbank") === sug) return null;
+                          const label = WIDGETS.find((w) => w.id === sug)?.label ?? sug;
+                          return <span className="mt-1 flex items-center gap-2 text-accent">This page's text asks for: {label}. <button type="button" className="underline" onClick={() => setSection(s.id, { widget: sug })}>Use it</button></span>;
+                        })()}
                       </label>
                       <label className="text-xs text-muted">Rank badge (corner stamp)
                         <select className="field mt-1" value={s.rank ?? 0} onChange={(e) => setSection(s.id, { rank: Number(e.target.value) as 0 | 1 | 2 | 3 })}>
